@@ -38,7 +38,7 @@ export interface ForeignSkillView {
   alsoIn?: string[]
 }
 
-/** GET /api/skill-hub/foreign */
+/** GET /api/skill-shelf/foreign */
 export interface ForeignListResponse {
   ok: true
   roots: ForeignRootView[]
@@ -56,7 +56,7 @@ export interface ForeignImportItem {
   projectRoot?: string
 }
 
-/** POST /api/skill-hub/foreign/import — 按 agent + 名字收编（不信任前端给的路径）。 */
+/** POST /api/skill-shelf/foreign/import — 按 agent + 名字收编（不信任前端给的路径）。 */
 export interface ForeignImportRequest {
   items: ForeignImportItem[]
 }

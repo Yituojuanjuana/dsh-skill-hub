@@ -13,17 +13,17 @@ describe('resolveApiUrl (issue #18)', () => {
 
   it('resolves to the site root for a plain deployment', () => {
     vi.stubGlobal('document', { baseURI: 'http://127.0.0.1:3080/' })
-    expect(resolveApiUrl('/api/skill-hub/catalog')).toBe('http://127.0.0.1:3080/api/skill-hub/catalog')
+    expect(resolveApiUrl('/api/skill-shelf/catalog')).toBe('http://127.0.0.1:3080/api/skill-shelf/catalog')
   })
 
   it('keeps a reverse proxy path prefix', () => {
     vi.stubGlobal('document', { baseURI: 'https://host.example.com/app/dsh/' })
-    expect(resolveApiUrl('/api/skill-hub/catalog')).toBe('https://host.example.com/app/dsh/api/skill-hub/catalog')
+    expect(resolveApiUrl('/api/skill-shelf/catalog')).toBe('https://host.example.com/app/dsh/api/skill-shelf/catalog')
   })
 
   it('passes full URLs through and tolerates a missing document (SSR/tests)', () => {
     expect(resolveApiUrl('https://cdn.example.com/x.json')).toBe('https://cdn.example.com/x.json')
-    expect(resolveApiUrl('/api/skill-hub/catalog')).toBe('/api/skill-hub/catalog')
+    expect(resolveApiUrl('/api/skill-shelf/catalog')).toBe('/api/skill-shelf/catalog')
   })
 })
 
@@ -61,7 +61,7 @@ describe('SkillHubApi outbound boundary (issue #18)', () => {
 
     // One outbound path for the whole family: the prefix is applied once, here.
     expect(seen).toHaveLength(1)
-    expect(seen[0]).toBe('https://host.example.com/app/dsh/api/skill-hub/catalog')
+    expect(seen[0]).toBe('https://host.example.com/app/dsh/api/skill-shelf/catalog')
   })
 })
 

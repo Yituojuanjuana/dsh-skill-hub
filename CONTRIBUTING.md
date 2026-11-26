@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for considering a contribution to **dsh-skill-hub**. This project is a
+Thanks for considering a contribution to **dsh-skill-shelf**. This project is a
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh) plugin with two halves:
 
 - the **host half** (`src/index.ts` + `src/routes.ts`) runs in the dsh process and speaks only official
@@ -89,10 +89,10 @@ npm run build
 # restart the dsh web process, then verify both surfaces (three entry points):
 #   Settings → Skills Hub        — the skill hub panel
 #   sidebar 插件 → 技能中枢       — the same panel, 960px sidebar mount
-#   sidebar 插件 → dsh-skill-hub  — the plugin's settings card
+#   sidebar 插件 → dsh-skill-shelf  — the plugin's settings card
 ```
 
-When the web profile installs this repo as a link (`"dsh-skill-hub": "link:/path/to/repo"`, the
+When the web profile installs this repo as a link (`"dsh-skill-shelf": "link:/path/to/repo"`, the
 usual local-dev setup), `lib/` is picked up on the next `dsh web` restart — no copy step needed.
 
 ## Issues

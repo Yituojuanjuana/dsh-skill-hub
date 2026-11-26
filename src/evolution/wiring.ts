@@ -195,7 +195,7 @@ function isAborted(signal: unknown): boolean {
 
 /** 用宿主 llm 服务构造一个「无工具一次性调用」的模型。 */
 export function llmModel(llm: LlmLike, route: { provider: string; model: string }, log?: (message: string) => void): EvolutionModel {
-  const trace = (message: string): void => { log?.('[dsh-skill-hub] evolution model ' + message) }
+  const trace = (message: string): void => { log?.('[dsh-skill-shelf] evolution model ' + message) }
   return {
     async complete(system: string, user: string, signal: AbortSignal): Promise<string> {
       trace(`prepareCall start provider=${route.provider} model=${route.model} signal=${signal === undefined ? 'undefined' : typeof signal}`)
@@ -316,7 +316,7 @@ export function sessionReader(query: SessionQueryLike, log?: (message: string) =
     /** 把累计的噪声过滤统计写成一行日志（一次运行结束后调用）。 */
     flushNoiseStats(): string {
       const line = formatNoiseStats(noiseStats)
-      log?.('[dsh-skill-hub] evolution ' + line)
+      log?.('[dsh-skill-shelf] evolution ' + line)
       return line
     },
   }
@@ -403,7 +403,7 @@ export function wireEvolution(deps: EvolutionWiringDeps): EvolutionWiring {
             : capMerge(current.proposals, result.proposals),
           runs: [record, ...current.runs].slice(0, 50),
         })).catch((error: unknown) => {
-          log('[dsh-skill-hub] evolution persist failed: ' + (error instanceof Error ? error.message : String(error)))
+          log('[dsh-skill-shelf] evolution persist failed: ' + (error instanceof Error ? error.message : String(error)))
         })
         return result
       },
@@ -443,7 +443,7 @@ export function wireEvolution(deps: EvolutionWiringDeps): EvolutionWiring {
           proposals: result.proposals,
           // 注意：markdown / ranAt / runs 一律不动 —— 原始运行记录永久保留。
         }))
-        log('[dsh-skill-hub] evolution reparse produced ' + String(result.proposals.length) + ' proposal(s) in ' + String(result.elapsedMs) + 'ms')
+        log('[dsh-skill-shelf] evolution reparse produced ' + String(result.proposals.length) + ' proposal(s) in ' + String(result.elapsedMs) + 'ms')
         return {
           ok: true,
           proposals: result.proposals.length,

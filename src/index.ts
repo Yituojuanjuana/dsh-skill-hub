@@ -1,5 +1,5 @@
 /**
- * dsh-skill-hub — host half. Mounts the /api/skill-hub route family (full
+ * dsh-skill-shelf — host half. Mounts the /api/skill-shelf route family (full
  * skill catalog from the official ctx.skills registry, skill detail,
  * enable/disable toggle, new-skill scaffold) plus a system-prompt
  * announcement. The browser half (./client) renders the sidebar entry and
@@ -40,10 +40,10 @@ import { writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 
 /** Stable cordis plugin name (matches cordis.patch.yml insert id). */
-export const name = 'skill-hub'
+export const name = 'skill-shelf'
 
 /**
- * Services required before the skill-hub surfaces can mount. `settings` is deliberately NOT here: the plugin reads its own volatile config refs and only reaches for the settings service when it is present (issue #11).
+ * Services required before the skill-shelf surfaces can mount. `settings` is deliberately NOT here: the plugin reads its own volatile config refs and only reaches for the settings service when it is present (issue #11).
  *
  * `webServer` is deliberately NOT here either. It only exists in the web
  * profile (`dsh-base` + `dsh-web-app`); declaring it required makes the plugin
@@ -189,7 +189,7 @@ function registerAgentSkillPolicy(
     get?: (key: string) => unknown
   }
   if (typeof host.on !== 'function') {
-    ctx.logger.warn('[dsh-skill-hub] ctx.on unavailable: agent-layer invocation overrides are disabled (global catalog still applies them)')
+    ctx.logger.warn('[dsh-skill-shelf] ctx.on unavailable: agent-layer invocation overrides are disabled (global catalog still applies them)')
     return () => {}
   }
   const disposers = new Map<string, () => void>()
@@ -201,7 +201,7 @@ function registerAgentSkillPolicy(
       ? agentCtx.get('skills')
       : agentCtx?.skills) as SkillsLike | undefined
     if (skills === undefined || typeof skills.registerProvider !== 'function') {
-      ctx.logger.warn('[dsh-skill-hub] agent layer has no skills service; skipping agent-layer registration for ' + String(agent.id))
+      ctx.logger.warn('[dsh-skill-shelf] agent layer has no skills service; skipping agent-layer registration for ' + String(agent.id))
       return
     }
     const id = agent.id
@@ -212,7 +212,7 @@ function registerAgentSkillPolicy(
       // Versions up to 0.3.36 kept the agent-layer registration in a plain map
       // that a fibre teardown never released (issue #24). A market
       // self-update replays the profile in-process, so the OLD — unfixed —
-      // fibre is the one that just died and its "skill-hub" registration is
+      // fibre is the one that just died and its "skill-shelf" registration is
       // still there; the host rejects ours as a scoped duplicate.
       //
       // This must never bubble: a failed entry activation makes reloadProfile
@@ -223,7 +223,7 @@ function registerAgentSkillPolicy(
       // leaked registration at all.
       if (isDuplicateProviderError(error)) {
         ctx.logger.warn(
-          '[dsh-skill-hub] agent layer ' + id + ' already holds a skill-hub provider left by the previous version; skipping agent-layer override until the next restart',
+          '[dsh-skill-shelf] agent layer ' + id + ' already holds a skill-shelf provider left by the previous version; skipping agent-layer override until the next restart',
         )
         return
       }
@@ -240,7 +240,7 @@ function registerAgentSkillPolicy(
         dispose()
       }
       disposers.set(id, release)
-      ctx.logger.info('[dsh-skill-hub] invocation-override provider registered into agent layer ' + id)
+      ctx.logger.info('[dsh-skill-shelf] invocation-override provider registered into agent layer ' + id)
     }
   }
   const uninstall = (agent: AgentLike | undefined): void => {
@@ -267,7 +267,7 @@ function registerAgentSkillPolicy(
 
 /** Model-facing announcement: plugin presence, capabilities, and limits. */
 export const SKILL_HUB_GUIDANCE =
-  "本机已安装 dsh-skill-hub 插件（DSH Web GUI 技能中枢）：管理主页在 设置 →「技能中枢」（通用 / 工作区 / 市场 / 回收站），配置卡片在插件管理页（折叠，点标题展开）。能力：全量技能目录的浏览与搜索（项目 / 用户 / 内置及第三方）、按来源 / 目录 / 角色整组启停、市场安装、来源跟踪与同步、跨 agent 与 ZIP 导入、调用统计、诊断与内容审计。限制：只有用户级技能能写能删；所有开关都只写 sidecar 覆盖（关闭模型自动调用，「/技能名」仍可用，源文件不动），内置与运行时技能只读，即时生效无需重启。用户提到「技能管理 / 技能列表 / 技能开关 / 技能同步 / 技能市场 / 更新技能 / 新建技能」时即指本插件，请据此协作。"
+  "本机已安装 dsh-skill-shelf 插件（DSH Web GUI 技能中枢）：管理主页在 设置 →「技能中枢」（通用 / 工作区 / 市场 / 回收站），配置卡片在插件管理页（折叠，点标题展开）。能力：全量技能目录的浏览与搜索（项目 / 用户 / 内置及第三方）、按来源 / 目录 / 角色整组启停、市场安装、来源跟踪与同步、跨 agent 与 ZIP 导入、调用统计、诊断与内容审计。限制：只有用户级技能能写能删；所有开关都只写 sidecar 覆盖（关闭模型自动调用，「/技能名」仍可用，源文件不动），内置与运行时技能只读，即时生效无需重启。用户提到「技能管理 / 技能列表 / 技能开关 / 技能同步 / 技能市场 / 更新技能 / 新建技能」时即指本插件，请据此协作。"
 
 /**
  * Mount the skill hub routes and announcement.
@@ -321,12 +321,30 @@ export function apply(ctx: Context, config?: Config): void {
   /** One control per skill layer (global + each live agent): an override change must invalidate all of them. */
   const providerControls = new Set<SkillProviderControl>()
 
+  /** Legacy settings namespace used before the dsh-skill-shelf rename. */
+  const LEGACY_ENTRY_ID = HUB_ENTRY_ID.replace('skill-shelf', 'skill-hub') as SettingsNamespace
+
   // The raw saved config layer (fields the user explicitly overrode); the
   // config route reports it so callers can mark overridden fields. Empty when
   // the deployment has no Settings service — the plugin still runs.
+  //
+  // 改名迁移：新命名空间 `skill-shelf` 优先；它还没有用户覆盖时回退读旧
+  // 命名空间 `skill-hub`，并把旧值复制进新命名空间（旧值不删）。
   const saved = (): Partial<HubConfig> => {
-    const descriptor = settingsOf()?.describe().find((entry) => entry.ns === ENTRY_ID)
-    return (descriptor?.user as Partial<HubConfig> | undefined) ?? {}
+    const describe = settingsOf()?.describe()
+    const find = (ns: SettingsNamespace): Record<string, unknown> | undefined =>
+      describe?.find((entry) => entry.ns === ns)?.user as Record<string, unknown> | undefined
+    const next = find(ENTRY_ID)
+    if (next !== undefined && Object.keys(next).length > 0) return next as Partial<HubConfig>
+    const legacy = find(LEGACY_ENTRY_ID)
+    if (legacy !== undefined && Object.keys(legacy).length > 0) {
+      // 只复制，不删旧值；写回新命名空间由 settings.mutate 完成。
+      void settingsOf()?.mutate(ENTRY_ID, Object.entries(legacy).map(([path, value]) => ({ op: 'set' as const, path: [path], value })))
+        .then(() => logInfo('[dsh-skill-shelf] migrated settings namespace ' + LEGACY_ENTRY_ID + ' -> ' + ENTRY_ID + ' (legacy kept)'))
+        .catch((error: unknown) => logWarn('[dsh-skill-shelf] settings namespace migration failed (legacy kept)', error))
+      return legacy as Partial<HubConfig>
+    }
+    return (next as Partial<HubConfig> | undefined) ?? {}
   }
 
   // Persist a config patch through the settings transport. A patch value of
@@ -413,7 +431,7 @@ export function apply(ctx: Context, config?: Config): void {
     setGithubToken(value.githubToken)
     if (value.announceToAgent) {
       disposeSection = ctx.systemPrompt.section({
-        name: 'plugin:dsh-skill-hub',
+        name: 'plugin:dsh-skill-shelf',
         order: SECTION_ORDER,
         text: SKILL_HUB_GUIDANCE,
       })
@@ -437,7 +455,7 @@ export function apply(ctx: Context, config?: Config): void {
       }
       disposeProvider = ctx.effect(
         () => ctx.skills.registerProvider((control) => ensureProvider(control)),
-        'dsh-skill-hub: provider',
+        'dsh-skill-shelf: provider',
       )
       // Must be fibre-bound like the global provider above: a market
       // self-update replays the profile in-process, the old fibre is torn
@@ -458,7 +476,7 @@ export function apply(ctx: Context, config?: Config): void {
         return () => {
           dispose()
         }
-      }, 'dsh-skill-hub: agent providers')
+      }, 'dsh-skill-shelf: agent providers')
     }
     if (disposeRoutes !== undefined) {
       disposeRoutes()
@@ -468,7 +486,7 @@ export function apply(ctx: Context, config?: Config): void {
     //
     // 旧写法在 `ctx.effect` 里一次性 `ctx.get('webServer')`：插件按组合顺序启动，
     // 它很可能比 webServer 先起来，于是读到 undefined、打一行日志就永远放弃，
-    // 而 fiber 仍显示 active——界面上就是整个 /api/skill-hub 族返回 404。
+    // 而 fiber 仍显示 active——界面上就是整个 /api/skill-shelf 族返回 404。
     // `ctx.inject` 是官方的「等服务就绪再跑」入口：服务永远不到的
     // 非 web profile 里回调根本不执行，也就不会拖住启动。
     disposeRoutes = ctx.effect(
@@ -580,7 +598,7 @@ export function apply(ctx: Context, config?: Config): void {
             // would latch the literal-loopback fallback for the whole process.
             fence: hostTrustFence(
               () => ctx.get('connection'),
-              () => ctx.logger.warn('[dsh-skill-hub] Connection service absent: routes fall back to literal-loopback; reverse-proxy deployments will 403 until it mounts'),
+              () => ctx.logger.warn('[dsh-skill-shelf] Connection service absent: routes fall back to literal-loopback; reverse-proxy deployments will 403 until it mounts'),
             ),
             invalidate: () => {
               for (const control of providerControls) control.invalidate()
@@ -616,7 +634,7 @@ export function apply(ctx: Context, config?: Config): void {
           void fiber.dispose()
         }
       },
-      'dsh-skill-hub: routes',
+      'dsh-skill-shelf: routes',
     )
   }
 
@@ -640,7 +658,7 @@ export function apply(ctx: Context, config?: Config): void {
       void onSkillCall(sessionEvent as unknown as SessionLikeEvent)
     })
     return () => off()
-  }, 'dsh-skill-hub: skill call recorder')
+  }, 'dsh-skill-shelf: skill call recorder')
 
   // 历史回填：账本从安装那一刻才开始记，之前的调用不在里面。启动后扫一次
   // 已有会话日志，把 (name, ts) 尚未入账的调用补进去。幂等，重复启动不会重复计数；
@@ -652,10 +670,10 @@ export function apply(ctx: Context, config?: Config): void {
       const sessionsRoot = join(dshHome(), 'sessions')
       const result = await backfillFromSessionLogs(sessionsRoot, entries, (entry) => appendEntry(ledgerFile, entry))
       if (result.appended > 0) {
-        logInfo(`[dsh-skill-hub] backfilled ${result.appended} historical skill call(s) from ${result.files} session log(s)`)
+        logInfo(`[dsh-skill-shelf] backfilled ${result.appended} historical skill call(s) from ${result.files} session log(s)`)
       }
     } catch (error) {
-      logWarn('[dsh-skill-hub] history backfill failed', error)
+      logWarn('[dsh-skill-shelf] history backfill failed', error)
     }
   })()
 
@@ -671,37 +689,37 @@ export function apply(ctx: Context, config?: Config): void {
     for (const root of [join(home, 'skills'), join(agentsHome, 'skills')]) {
       try {
         const c = await cleanupLeftoverImportDirs(root)
-        if (c > 0) logInfo(`[dsh-skill-hub] startup cleaned ${c} leftover import temp dir(s) in ${root}`)
+        if (c > 0) logInfo(`[dsh-skill-shelf] startup cleaned ${c} leftover import temp dir(s) in ${root}`)
       } catch (error) {
-        logWarn('[dsh-skill-hub] startup cleanup failed', error)
+        logWarn('[dsh-skill-shelf] startup cleanup failed', error)
       }
     }
     // 一次性迁移：旧版本靠把 SKILL.md 改名成 SKILL.md.disabled 来停用，新版
     // 改成写策略、文件不动。必须最先跑，否则老用户升级后停用技能会全部复活。
     try {
       const migrated = await migrateRenamedDisabledSkills(store, home)
-      if (migrated.length > 0) logInfo(`[dsh-skill-hub] startup migrated ${migrated.length} renamed disabled skill(s) to policy overrides`)
+      if (migrated.length > 0) logInfo(`[dsh-skill-shelf] startup migrated ${migrated.length} renamed disabled skill(s) to policy overrides`)
     } catch (error) {
-      logWarn('[dsh-skill-hub] startup disabled-skill migration failed', error)
+      logWarn('[dsh-skill-shelf] startup disabled-skill migration failed', error)
     }
     // 对账：迁移后处理残留的 .disabled、sidecar 缺记录等历史情况。
     try {
       const reconciled = await reconcileDisabledSkills(store, home)
       if (reconciled.length > 0) {
-        logInfo(`[dsh-skill-hub] startup reconciled ${reconciled.length} disabled skill record(s): ${reconciled.map((entry) => entry.name).join(', ')}`)
+        logInfo(`[dsh-skill-shelf] startup reconciled ${reconciled.length} disabled skill record(s): ${reconciled.map((entry) => entry.name).join(', ')}`)
       }
     } catch (error) {
-      logWarn('[dsh-skill-hub] startup disabled-skill reconcile failed', error)
+      logWarn('[dsh-skill-shelf] startup disabled-skill reconcile failed', error)
     }
     // 反向对账：记录还在、文件已不在 → 修路径或删记录。不做这一步，那条记录会
     // 把名字永久锁死（启用/新建/删除三条路都失败）。
     try {
       const pruned = await pruneStaleDisabledSkills(store, home)
       if (pruned.repaired.length > 0 || pruned.removed.length > 0) {
-        logInfo(`[dsh-skill-hub] startup pruned disabled records: repaired ${pruned.repaired.length} (${pruned.repaired.map((entry) => entry.name).join(', ') || '-'}), removed ${pruned.removed.length} (${pruned.removed.join(', ') || '-'})`)
+        logInfo(`[dsh-skill-shelf] startup pruned disabled records: repaired ${pruned.repaired.length} (${pruned.repaired.map((entry) => entry.name).join(', ') || '-'}), removed ${pruned.removed.length} (${pruned.removed.join(', ') || '-'})`)
       }
     } catch (error) {
-      logWarn('[dsh-skill-hub] startup disabled-record prune failed', error)
+      logWarn('[dsh-skill-shelf] startup disabled-record prune failed', error)
     }
     // 回收站对账：记录还在、目录已不在 → 删记录。不做这一步，「恢复」按钮会
     // 永远失败（rename ENOENT），而「永久删除」因为 rm --force 反而成功 ——
@@ -709,10 +727,10 @@ export function apply(ctx: Context, config?: Config): void {
     try {
       const prunedTrash = await pruneStaleTrash(store)
       if (prunedTrash.length > 0) {
-        logInfo(`[dsh-skill-hub] startup pruned ${prunedTrash.length} stale trash record(s): ${prunedTrash.map((entry) => entry.name).join(', ')}`)
+        logInfo(`[dsh-skill-shelf] startup pruned ${prunedTrash.length} stale trash record(s): ${prunedTrash.map((entry) => entry.name).join(', ')}`)
       }
     } catch (error) {
-      logWarn('[dsh-skill-hub] startup trash-record prune failed', error)
+      logWarn('[dsh-skill-shelf] startup trash-record prune failed', error)
     }
   })()
 
@@ -726,7 +744,7 @@ export function apply(ctx: Context, config?: Config): void {
         if (settings !== undefined) await settings.update(ENTRY_ID, legacy as Record<string, unknown>)
       }
     } catch (error) {
-      logWarn('[dsh-skill-hub] sidecar config migration into the settings namespace failed', error)
+      logWarn('[dsh-skill-shelf] sidecar config migration into the settings namespace failed', error)
     }
   })()
 

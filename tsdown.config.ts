@@ -1,5 +1,5 @@
 /**
- * Standalone build config for dsh-skill-hub (adapted from dsh-web-ui's
+ * Standalone build config for dsh-skill-shelf (adapted from dsh-web-ui's
  * shared/tsdown.client.ts preset, vendored for a single-package repo).
  *
  * Two artifacts:
@@ -20,7 +20,7 @@ import type { UserConfig } from 'tsdown'
 import { transform } from 'lightningcss'
 
 /** Plugin id stamped into the __ModuleLoader__.load handoff and style tags. */
-const ID = 'dsh-skill-hub'
+const ID = 'dsh-skill-shelf'
 
 /**
  * The shell's shared module table (vendored from dsh-web-ui's

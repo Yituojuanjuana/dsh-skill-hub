@@ -17,7 +17,7 @@ import {
   resetUpdateCache,
 } from './update.ts'
 
-const REPO = 'cheshireez/dsh-skill-hub'
+const REPO = 'cheshireez/dsh-skill-shelf'
 
 /** A fetch stub that answers the registry and the GitHub API from separate routes. */
 function routedFetch(routes: { registry?: () => Response; github?: () => Response }): typeof fetch {
@@ -34,7 +34,7 @@ function routedFetch(routes: { registry?: () => Response; github?: () => Respons
 
 /** Registry answer carrying one published version. */
 function registryVersion(version: string): () => Response {
-  return () => new Response(JSON.stringify({ name: 'dsh-skill-hub', version }), { status: 200 })
+  return () => new Response(JSON.stringify({ name: 'dsh-skill-shelf', version }), { status: 200 })
 }
 
 /** GitHub latest-release answer carrying one tag. */
@@ -197,14 +197,14 @@ describe('detectInstallContext', () => {
   }
 
   it('recognises a copy installed into a profile', () => {
-    const url = makeTree('profiles/web/node_modules/dsh-skill-hub/lib/index.js')
+    const url = makeTree('profiles/web/node_modules/dsh-skill-shelf/lib/index.js')
     const context = detectInstallContext(url)
     expect(context.kind).toBe('profile')
     expect(context.profileName).toBe('web')
   })
 
   it('treats a linked working copy as development', () => {
-    const url = makeTree('projects/dsh-skill-hub/lib/index.js')
+    const url = makeTree('projects/dsh-skill-shelf/lib/index.js')
     const context = detectInstallContext(url)
     expect(context.kind).toBe('development')
     expect(context.reason).toContain('linked from a working directory')
@@ -212,7 +212,7 @@ describe('detectInstallContext', () => {
 
   it('recognises a profile whose packages resolve through the .pnpm store', () => {
     // isolated linker 下 realpath 会穿过 .pnpm/<id>/node_modules/ —— 仍然是装在 profile 里。
-    const url = makeTree('profiles/desktop/node_modules/.pnpm/dsh-skill-hub@0.3.36/node_modules/dsh-skill-hub/lib/index.js')
+    const url = makeTree('profiles/desktop/node_modules/.pnpm/dsh-skill-shelf@0.3.36/node_modules/dsh-skill-shelf/lib/index.js')
     const context = detectInstallContext(url)
     expect(context.kind).toBe('profile')
     expect(context.profileName).toBe('desktop')
@@ -256,7 +256,7 @@ describe('applyUpdate', () => {
     expect(result).toEqual({ ok: true, appliedVersion: '0.3.35' })
     // `--config.minimum-release-age=0` 必须在 target 前面：用户点更新的时机
     // 恰好是新版本还没过 pnpm 的保护窗口。
-    expect(calls[0]).toEqual(['dsh', 'plugin', '--profile', 'web', 'add', '--config.minimum-release-age=0', 'dsh-skill-hub@0.3.35'])
+    expect(calls[0]).toEqual(['dsh', 'plugin', '--profile', 'web', 'add', '--config.minimum-release-age=0', 'dsh-skill-shelf@0.3.35'])
     expect(pendingRestartVersion()).toBe('0.3.35')
   })
 

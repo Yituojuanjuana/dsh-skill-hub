@@ -70,14 +70,14 @@ jobs:
           mkdir -p /tmp/dsh-clean
           cd /tmp/dsh-clean
           npm init -y >/dev/null
-          npm install /tmp/dsh-pack/dsh-skill-hub-*.tgz --omit=dev --no-audit --no-fund
+          npm install /tmp/dsh-pack/dsh-skill-shelf-*.tgz --omit=dev --no-audit --no-fund
       - name: Artifact must not vendor the dsh runtime
         run: |
           cd /tmp/dsh-clean
           node -e "
           const assert = require('node:assert')
           const fs = require('node:fs')
-          const pkg = require('./node_modules/dsh-skill-hub/package.json')
+          const pkg = require('./node_modules/dsh-skill-shelf/package.json')
 
           // Only the genuinely private runtime dependency may be bundled.
           assert.deepEqual(Object.keys(pkg.dependencies ?? {}), ['js-yaml'], 'dependencies must not contain dsh packages')
@@ -98,7 +98,7 @@ jobs:
 
           // Ship the surfaces the host loads.
           for (const f of ['lib/index.js', 'lib/client.js']) {
-            assert.ok(fs.existsSync('node_modules/dsh-skill-hub/' + f), f + ' must be in the tarball')
+            assert.ok(fs.existsSync('node_modules/dsh-skill-shelf/' + f), f + ' must be in the tarball')
           }
 
           console.log('clean tree carries no dsh runtime; peers stay optional; entrypoints present')

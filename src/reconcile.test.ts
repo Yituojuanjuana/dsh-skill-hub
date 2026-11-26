@@ -13,7 +13,7 @@ describe('reconcileDisabledSkills', () => {
   let store: SkillHubStore
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-hub-reconcile-'))
+    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-shelf-reconcile-'))
     home = join(dir, 'home')
     agentsHome = join(dir, 'agents')
     await mkdir(join(home, 'skills'), { recursive: true })
@@ -91,7 +91,7 @@ describe('pruneStaleDisabledSkills', () => {
   let store: SkillHubStore
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-hub-prune-'))
+    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-shelf-prune-'))
     home = join(dir, 'home')
     agentsHome = join(dir, 'agents')
     await mkdir(join(home, 'skills'), { recursive: true })
@@ -156,7 +156,7 @@ describe('migrateRenamedDisabledSkills', () => {
   let store: SkillHubStore
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-hub-migrate-'))
+    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-shelf-migrate-'))
     home = join(dir, 'home')
     agentsHome = join(dir, 'agents')
     await mkdir(join(home, 'skills'), { recursive: true })
@@ -209,7 +209,7 @@ describe('pruneStaleTrash', () => {
   let store: SkillHubStore
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-hub-trash-'))
+    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-shelf-trash-'))
     home = join(dir, 'home')
     await mkdir(join(home, 'skills', '.trash'), { recursive: true })
     store = new SkillHubStore(statePath(home))

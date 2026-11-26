@@ -10,27 +10,27 @@ export interface MarketSourceRecord {
   commitSha?: string
 }
 
-/** GET /api/skill-hub/market — the user's added market sources. */
+/** GET /api/skill-shelf/market — the user's added market sources. */
 export interface MarketSourcesResponse {
   ok: true
   /** Added market sources, in addition order. */
   repos: MarketSourceRecord[]
 }
 
-/** POST /api/skill-hub/market/source — add one repo as a market source. */
+/** POST /api/skill-shelf/market/source — add one repo as a market source. */
 export interface MarketSourceRequest {
   /** owner/repo, owner/repo@ref, or a github.com URL. */
   repo: string
 }
 
-/** POST /api/skill-hub/market/source|delete */
+/** POST /api/skill-shelf/market/source|delete */
 export interface MarketSourceResponse {
   ok: true
   repos: MarketSourceRecord[]
 }
 
 /**
- * POST /api/skill-hub/market/source — same list, plus the slug the host
+ * POST /api/skill-shelf/market/source — same list, plus the slug the host
  * resolved from the input. Clients must scan *this* slug rather than assume
  * the acted-on source sits at some position in `repos`: re-adding a repo the
  * user already tracks only updates its `ref` in place and never reorders the
@@ -41,14 +41,14 @@ export interface MarketSourceAddResponse extends MarketSourceResponse {
   repo: string
 }
 
-/** POST /api/skill-hub/market/source/ref — pin a market source to an explicit ref. */
+/** POST /api/skill-shelf/market/source/ref — pin a market source to an explicit ref. */
 export interface MarketSourceRefRequest {
   repo: string
   /** Release tag or branch name chosen for the repo. */
   ref: string
 }
 
-/** GET /api/skill-hub/market/source/versions?repo= — releases + branches for the version picker. */
+/** GET /api/skill-shelf/market/source/versions?repo= — releases + branches for the version picker. */
 export interface MarketSourceVersionsResponse {
   ok: true
   repo: string
@@ -68,7 +68,7 @@ export interface MarketStatsSnapshot {
   stats: Record<string, { stars: number; downloads: number }>
 }
 
-/** GET /api/skill-hub/market/stats — stars + release-asset downloads per market source. */
+/** GET /api/skill-shelf/market/stats — stars + release-asset downloads per market source. */
 export interface MarketStatsResponse {
   ok: true
   results: Array<{
@@ -83,7 +83,7 @@ export interface MarketStatsResponse {
   }>
 }
 
-/** GET /api/skill-hub/market/source/check — update check over market sources. */
+/** GET /api/skill-shelf/market/source/check — update check over market sources. */
 export interface MarketCheckResponse {
   ok: true
   results: Array<{
@@ -103,7 +103,7 @@ export interface MarketCheckResponse {
 }
 
 /**
- * POST /api/skill-hub/market/source/sync — align a market source to its pinned
+ * POST /api/skill-shelf/market/source/sync — align a market source to its pinned
  * ref. `ref` re-pins the source first, which is what the row's 「更新」button
  * sends when the check reported a newer release: without it the pinned ref
  * wins, the sync re-downloads the same old tag, and the "new release" badge
@@ -115,7 +115,7 @@ export interface MarketSyncRequest {
   ref?: string
 }
 
-/** POST /api/skill-hub/market/source/sync — align a market source to its pinned ref. */
+/** POST /api/skill-shelf/market/source/sync — align a market source to its pinned ref. */
 export interface MarketSyncResponse {
   ok: true
   repo: string
@@ -151,7 +151,7 @@ export interface MarketSkillsShEntry {
   installs?: number
 }
 
-/** GET /api/skill-hub/market/skills-sh?q= */
+/** GET /api/skill-shelf/market/skills-sh?q= */
 export interface MarketSkillsShResponse {
   ok: true
   /** 已按相关度排序、去重、限制条数。 */
@@ -159,7 +159,7 @@ export interface MarketSkillsShResponse {
 }
 
 /**
- * GET /api/skill-hub/market/skills-sh/detail?source=&skillId= — 取一个技能的说明。
+ * GET /api/skill-shelf/market/skills-sh/detail?source=&skillId= — 取一个技能的说明。
  *
  * skills.sh 的搜索索引只给 id/source/skillId/name/installs，没有说明；说明只
  * 存在于技能包内的 SKILL.md frontmatter 里。所以这条路由要下载整个包，代价
@@ -171,7 +171,7 @@ export interface MarketSkillsShDetailResponse {
   description: string
 }
 
-/** POST /api/skill-hub/market/skills-sh/install — 直装单个技能（不登记来源）。 */
+/** POST /api/skill-shelf/market/skills-sh/install — 直装单个技能（不登记来源）。 */
 export interface MarketSkillsShInstallRequest {
   /** `owner/repo`。 */
   source: string

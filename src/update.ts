@@ -1,9 +1,9 @@
 /**
- * Self-update check for dsh-skill-hub.
+ * Self-update check for dsh-skill-shelf.
  *
  * 数据源以 **npm registry** 为准，GitHub release 降为兜底。三个理由：
  *
- * - `dist-tags.latest` 就是用户 `pnpm add dsh-skill-hub` 会装到的版本，也是发版
+ * - `dist-tags.latest` 就是用户 `pnpm add dsh-skill-shelf` 会装到的版本，也是发版
  *   链路的终点；GitHub release 是另一次独立动作（`npm publish` + `gh release
  *   create`），两者可能不同步 —— 发了包但没建 release 时，只查 GitHub 会答
  *   「暂无可用的发布版本」，用户看到的是假阴性。
@@ -23,10 +23,10 @@ import { apiHeaders, rateLimitResetAt } from './repo.ts'
 import type { UpdateCheckResponse } from './protocol.ts'
 
 /** Repository checked for releases. Keep in sync with package.json. */
-export const UPDATE_REPO = 'cheshireez/dsh-skill-hub'
+export const UPDATE_REPO = 'cheshireez/dsh-skill-shelf'
 
 /** npm package name (the artifact users actually install). */
-export const UPDATE_PACKAGE = 'dsh-skill-hub'
+export const UPDATE_PACKAGE = 'dsh-skill-shelf'
 
 /** Registry endpoint that answers the `latest` dist-tag. */
 const REGISTRY_LATEST_URL = 'https://registry.npmjs.org/' + UPDATE_PACKAGE + '/latest'
@@ -267,13 +267,13 @@ export interface InstallContext {
 }
 
 /**
- * `…/profiles/<name>/node_modules/dsh-skill-hub/…` —— 只认这个形状。
+ * `…/profiles/<name>/node_modules/dsh-skill-shelf/…` —— 只认这个形状。
  *
  * 中间那段 `.pnpm/<id>/node_modules/` 是可有可无的：profile 用 hoisted 布局时
  * 包就摆在 `node_modules` 下，换成 isolated 布局后 realpath 会穿过 `.pnpm`
  * 虚拟目录。两者都是「装在 profile 里」，不该因为链接布局不同就判成开发目录。
  */
-const PROFILE_INSTALL = /[\\/]profiles[\\/]([^\\/]+)[\\/]node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?dsh-skill-hub[\\/]/
+const PROFILE_INSTALL = /[\\/]profiles[\\/]([^\\/]+)[\\/]node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?dsh-skill-shelf[\\/]/
 
 /**
  * Classify the running copy.

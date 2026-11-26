@@ -14,7 +14,7 @@ import type { AuditWarningView } from './audit.ts'
 /** 一条警告级审计发现（阻断级会让整个技能进 `failed`，不落盘）。 */
 export type ZipAuditWarning = AuditWarningView
 
-/** POST /api/skill-hub/import/zip */
+/** POST /api/skill-shelf/import/zip */
 export interface ZipImportResponse {
   ok: true
   /** 落盘成功的技能名（以 frontmatter 的 name 为准）。 */

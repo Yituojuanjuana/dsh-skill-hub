@@ -1,5 +1,5 @@
 /**
- * The /api/skill-hub route family: full catalog (enabled skills from the
+ * The /api/skill-shelf route family: full catalog (enabled skills from the
  * official registry + hub-disabled skills + discovery diagnostics), skill
  * detail, enable/disable toggle, new-skill scaffold, user groups (tags +
  * origin collections), and upstream source tracking (check/sync/follow
@@ -68,7 +68,7 @@ export function hostTrustFence(_read: () => HostConnectionHandle | undefined, on
 }
 
 /**
- * Build every /api/skill-hub route.
+ * Build every /api/skill-shelf route.
  * @param deps - skill registry view + sidecar store + trust fence.
  * @returns the exact-path routes plus the family's 404 catch-all.
  */

@@ -7,7 +7,7 @@ const skill = (name: string): CatalogSkill => ({
   name,
   description: 'd',
   source: 'user-dsh',
-  provider: 'skill-hub',
+  provider: 'skill-shelf',
   invocation: { modelInvocable: true, userInvocable: true },
   writable: true,
 })

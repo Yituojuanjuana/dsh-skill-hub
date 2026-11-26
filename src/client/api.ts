@@ -1,5 +1,5 @@
 /**
- * Browser-side API client for the /api/skill-hub route family. The only
+ * Browser-side API client for the /api/skill-shelf route family. The only
  * data access path the panel uses — plain fetch, same origin.
  */
 import {
@@ -120,7 +120,7 @@ async function readJson<T>(response: Response, url?: string): Promise<T> {
  * Resolve one route path against the page's base.
  *
  * Every route in this family is registered on the server as a root-absolute
- * path (`/api/skill-hub/...`), which is right there but wrong in a browser
+ * path (`/api/skill-shelf/...`), which is right there but wrong in a browser
  * behind a reverse proxy that owns a path prefix: the page loads from
  * `https://host/app/dsh/` while a root-absolute URL drops the prefix entirely,
  * so the gateway answers 404 HTML and `readJson` reports "invalid JSON
@@ -129,7 +129,7 @@ async function readJson<T>(response: Response, url?: string): Promise<T> {
  * `new URL(path.slice(1), document.baseURI)` — so a root deployment resolves to
  * exactly the same absolute path while a prefixed one keeps its prefix, and the
  * gateway strips it before forwarding: the server still receives
- * `/api/skill-hub/*`.
+ * `/api/skill-shelf/*`.
  *
  * `SKILL_HUB_API_ROOT` must stay absolute (the same constant registers the
  * routes on the server), which is why the prefix is applied here at the single

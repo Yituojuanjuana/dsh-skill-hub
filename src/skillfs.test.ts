@@ -110,7 +110,7 @@ describe('createSkill / disableSkill / enableSkill', () => {
   let home: string
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-hub-fs-'))
+    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-shelf-fs-'))
     home = join(dir, 'home')
     await mkdir(join(home, 'skills'), { recursive: true })
   })
@@ -182,7 +182,7 @@ describe('trashSkill / restoreSkill', () => {
   let home: string
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-hub-trash-'))
+    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-shelf-trash-'))
     home = join(dir, 'home')
     await mkdir(join(home, 'skills'), { recursive: true })
   })
@@ -245,7 +245,7 @@ describe('scanDiagnostics', () => {
   let skills: string
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-hub-diag-'))
+    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-shelf-diag-'))
     home = join(dir, 'home')
     skills = join(home, 'skills')
     await mkdir(skills, { recursive: true })
@@ -367,7 +367,7 @@ describe('fixDiagnosticFile', () => {
   let skills: string
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-hub-fixdiag-'))
+    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-shelf-fixdiag-'))
     home = join(dir, 'home')
     skills = join(home, 'skills')
     await mkdir(skills, { recursive: true })
@@ -410,7 +410,7 @@ describe('fixDiagnosticFile', () => {
 
 describe('rootOfPath', () => {
   it('recognizes the writable roots', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'dsh-skill-hub-root-'))
+    const dir = await mkdtemp(join(tmpdir(), 'dsh-skill-shelf-root-'))
     try {
       expect(rootOfPath(join(dir, 'skills', 'a', 'SKILL.md'), dir)).toBe('user-dsh')
       expect(rootOfPath(join(dir, 'other', 'b.md'), dir)).toBeUndefined()

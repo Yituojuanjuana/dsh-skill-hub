@@ -21,7 +21,7 @@ const summary = (name: string, source: string): SkillSummary => ({
   name,
   description: 'd',
   source,
-  provider: 'skill-hub',
+  provider: 'skill-shelf',
   invocation: { modelInvocable: true, userInvocable: true },
   path: `C:/x/${name}/SKILL.md`,
 })

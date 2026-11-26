@@ -49,14 +49,21 @@ export const SLOW_POLL_MS = 60_000
 export const USES_CATCH_UP_MAX = 72
 
 /** localStorage key of the last daily auto-check timestamp (survives sessions). */
-export const AUTO_CHECK_KEY = 'skill-hub.last-auto-check'
+export const AUTO_CHECK_KEY = 'skill-shelf.last-auto-check'
+/** Legacy key from before the dsh-skill-shelf rename (read-only fallback). */
+export const LEGACY_AUTO_CHECK_KEY = 'skill-hub.last-auto-check'
 /** Daily auto-check interval: at most one network round per day. */
 export const AUTO_CHECK_INTERVAL_MS = 24 * 60 * 60_000
 
 /** Whether the daily auto-check should run now (first visit or ≥24h since the last). */
 export function shouldAutoCheck(): boolean {
   try {
-    const raw = localStorage.getItem(AUTO_CHECK_KEY)
+    // 新 key 优先，读不到回退旧 key 并复制到新 key（旧 key 不删）。
+    let raw = localStorage.getItem(AUTO_CHECK_KEY)
+    if (raw === null) {
+      raw = localStorage.getItem(LEGACY_AUTO_CHECK_KEY)
+      if (raw !== null) localStorage.setItem(AUTO_CHECK_KEY, raw)
+    }
     const last = raw === null ? NaN : Number(raw)
     if (!Number.isFinite(last)) return true
     return Date.now() - last >= AUTO_CHECK_INTERVAL_MS

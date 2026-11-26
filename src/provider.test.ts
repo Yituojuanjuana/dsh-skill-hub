@@ -23,7 +23,7 @@ describe('SkillHubProvider', () => {
   const originalAgentsHome = process.env.DSH_AGENTS_HOME
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-hub-provider-'))
+    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-shelf-provider-'))
     home = join(dir, 'home')
     agentsHome = join(dir, 'agents-home')
     process.env.DSH_AGENTS_HOME = agentsHome
@@ -44,7 +44,7 @@ describe('SkillHubProvider', () => {
     const candidates = await provider.list({})
     const alpha = candidates.find((candidate) => candidate.name === 'alpha-skill')
     const beta = candidates.find((candidate) => candidate.name === 'beta-skill')
-    expect(alpha).toMatchObject({ source: 'user-dsh', rank: 400, provider: 'skill-hub', description: 'Alpha' })
+    expect(alpha).toMatchObject({ source: 'user-dsh', rank: 400, provider: 'skill-shelf', description: 'Alpha' })
     expect(alpha?.invocation).toEqual({ modelInvocable: true, userInvocable: true })
     expect(alpha?.path).toContain('alpha-skill')
     expect(beta).toMatchObject({ source: 'user-agents', rank: 500 })

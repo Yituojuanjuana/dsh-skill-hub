@@ -147,7 +147,7 @@ export function computeAnnouncementBudget(skills: readonly CatalogSkill[]): Anno
   }
 }
 
-/** POST /api/skill-hub/diagnostic/fix — repair a fixable diagnostic in place. */
+/** POST /api/skill-shelf/diagnostic/fix — repair a fixable diagnostic in place. */
 export interface DiagnosticFixRequest {
   path: string
 }
@@ -156,7 +156,7 @@ export interface DiagnosticFixResponse {
   path: string
 }
 
-/** GET /api/skill-hub/catalog */
+/** GET /api/skill-shelf/catalog */
 export interface CatalogResponse {
   ok: true
   /** 已安装插件自身的版本号（package.json version），面板标题旁显示。 */
@@ -179,7 +179,7 @@ export interface CatalogResponse {
   duplicateNames?: string[]
 }
 
-/** GET /api/skill-hub/skill */
+/** GET /api/skill-shelf/skill */
 export interface SkillDetail {
   name: string
   description: string
@@ -211,12 +211,12 @@ export interface SkillDetailResponse {
   skill: SkillDetail
 }
 
-/** POST /api/skill-hub/skill/delete — 把单个技能移入回收站（可恢复）。 */
+/** POST /api/skill-shelf/skill/delete — 把单个技能移入回收站（可恢复）。 */
 export interface SkillDeleteRequest {
   name: string
 }
 
-/** POST /api/skill-hub/skill/delete */
+/** POST /api/skill-shelf/skill/delete */
 export interface SkillDeleteResponse {
   ok: true
   name: string
@@ -224,7 +224,7 @@ export interface SkillDeleteResponse {
   path: string
 }
 
-/** POST /api/skill-hub/toggle */
+/** POST /api/skill-shelf/toggle */
 export interface ToggleRequest {
   /** Kebab-case skill name. */
   name: string
@@ -240,7 +240,7 @@ export interface ToggleResponse {
   catalog: CatalogResponse
 }
 
-/** POST /api/skill-hub/toggle-batch — one group of skills, one write. */
+/** POST /api/skill-shelf/toggle-batch — one group of skills, one write. */
 export interface ToggleBatchRequest {
   names: string[]
   enabled: boolean
@@ -248,7 +248,7 @@ export interface ToggleBatchRequest {
   cwd?: string
 }
 
-/** POST /api/skill-hub/toggle-batch */
+/** POST /api/skill-shelf/toggle-batch */
 export interface ToggleBatchResponse {
   ok: true
   catalog: CatalogResponse
@@ -256,7 +256,7 @@ export interface ToggleBatchResponse {
   failures: Array<{ name: string; error: string }>
 }
 
-/** POST /api/skill-hub/create */
+/** POST /api/skill-shelf/create */
 export interface CreateRequest {
   /** Kebab-case skill name (validated with the official isSkillName grammar). */
   name: string

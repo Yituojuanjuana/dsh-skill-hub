@@ -26,7 +26,7 @@ export const MAX_DISPLAY_NAME_LENGTH = 18
 const PLATFORM_HINTS: ReadonlyArray<{ id: string; keys: readonly string[] }> = [
   { id: 'sports-coach', keys: ['sports-coach', 'sportscoach', '运动陪练', '游泳馆', '教练端', '抢单大厅'] },
   { id: 'taro-weapp', keys: ['taro', '微信小程序', '小程序', 'miniapp', 'weapp'] },
-  { id: 'dsh-plugin', keys: ['dsh', '插件', 'skill-hub', '技能中枢', 'cordis'] },
+  { id: 'dsh-plugin', keys: ['dsh', '插件', 'skill-shelf', '技能中枢', 'cordis'] },
   { id: 'llm-pipeline', keys: ['prompt', 'llm', '模型调用', '解析器', '进化'] },
 ]
 

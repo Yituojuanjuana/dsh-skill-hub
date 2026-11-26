@@ -27,7 +27,7 @@ function fakeAgent(id: string) {
           ? {
               registerProvider: () => {
                 if (agent.live > 0) {
-                  throw new Error('a skill provider named "skill-hub" is already registered in this scope')
+                  throw new Error('a skill provider named "skill-shelf" is already registered in this scope')
                 }
                 agent.live += 1
                 return () => {
@@ -126,7 +126,7 @@ describe('plugin lifecycle (issues #19, #24)', () => {
   const originalHome = process.env.DSH_HOME
 
   beforeEach(async () => {
-    home = await mkdtemp(join(tmpdir(), 'dsh-skill-hub-lifecycle-'))
+    home = await mkdtemp(join(tmpdir(), 'dsh-skill-shelf-lifecycle-'))
     process.env.DSH_HOME = home
   })
 
@@ -139,8 +139,8 @@ describe('plugin lifecycle (issues #19, #24)', () => {
   it('mounts the announced section and route family once for an active fiber', () => {
     const host = fakeHost()
     apply(host.context as never, undefined)
-    expect(host.sections).toEqual(['plugin:dsh-skill-hub'])
-    expect(host.routes).toContain('/api/skill-hub/catalog')
+    expect(host.sections).toEqual(['plugin:dsh-skill-shelf'])
+    expect(host.routes).toContain('/api/skill-shelf/catalog')
   })
 
   it('releases agent-layer provider registrations with the fiber so a profile replay can re-register (issue #24)', () => {
@@ -177,7 +177,7 @@ describe('plugin lifecycle (issues #19, #24)', () => {
     // The leaked registration is not ours to release; the layer keeps serving
     // overrides through it until the process restarts.
     expect(agent.live).toBe(1)
-    expect(host.warns.some((line) => line.includes('already holds a skill-hub provider'))).toBe(true)
+    expect(host.warns.some((line) => line.includes('already holds a skill-shelf provider'))).toBe(true)
 
     // A fresh process has no leaked registration, so the layer registers anew.
     const restarted = fakeAgent('agent-1')

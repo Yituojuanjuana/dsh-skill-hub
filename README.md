@@ -1,16 +1,16 @@
-# dsh-skill-hub
+# dsh-skill-shelf
 
 [中文版](README.zh.md) | [English](README.md)
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/dsh-skill-hub"><img alt="npm version" src="https://img.shields.io/npm/v/dsh-skill-hub?color=2f81f7&label=npm"></a>
-  <img alt="downloads" src="https://img.shields.io/npm/dm/dsh-skill-hub">
-  <img alt="license" src="https://img.shields.io/npm/l/dsh-skill-hub">
+  <a href="https://www.npmjs.com/package/dsh-skill-shelf"><img alt="npm version" src="https://img.shields.io/npm/v/dsh-skill-shelf?color=2f81f7&label=npm"></a>
+  <img alt="downloads" src="https://img.shields.io/npm/dm/dsh-skill-shelf">
+  <img alt="license" src="https://img.shields.io/npm/l/dsh-skill-shelf">
   <img alt="node" src="https://img.shields.io/badge/node-%3E%3D22.19-339933">
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/cheshireez/dsh-skill-hub/main/promo/real-skill-hub.png" alt="dsh-skill-hub panel" width="640">
+  <img src="https://raw.githubusercontent.com/cheshireez/dsh-skill-shelf/main/promo/real-skill-hub.png" alt="dsh-skill-shelf panel" width="640">
 </p>
 
 In-GUI skill hub for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — manage the full `ctx.skills` catalog from the Web GUI. Beyond browsing, toggling and market installs, it puts the weight on two things: **audit before install** (hidden control characters, encoding disguises and size caps are refused before they land; remote-execution pipes and credential paths are flagged for human review) and **budget after install** (the name + description characters of the first progressive-disclosure layer, so you learn at 8000 that a skill would install but never trigger).
@@ -20,13 +20,13 @@ In-GUI skill hub for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-
 ## Quick start
 
 ```bash
-dsh plugin --profile web add dsh-skill-hub
+dsh plugin --profile web add dsh-skill-shelf
 # restart dsh web → Settings → Skills Hub → Market → scan → import
 ```
 
 Requires `Node ^22.19 || >=24` + dsh web `>=0.1.7-alpha.1 <0.3`. dsh `0.2.2` and later require `Node >=24.9`.
 
-Two surfaces — the hub panel lives at **Settings → Skills Hub**, and this plugin's own configuration card sits on the plugin's page in the **Plugins manager** (sidebar → 插件 → dsh-skill-hub). The card is registered by the plugin itself into the `plugins.bundle.config` slot — dsh has no auto-generated config page — and covers the master switch, announce-to-agent, dot colors, the GitHub token and which usage figures are shown.
+Two surfaces — the hub panel lives at **Settings → Skills Hub**, and this plugin's own configuration card sits on the plugin's page in the **Plugins manager** (sidebar → 插件 → dsh-skill-shelf). The card is registered by the plugin itself into the `plugins.bundle.config` slot — dsh has no auto-generated config page — and covers the master switch, announce-to-agent, dot colors, the GitHub token and which usage figures are shown.
 
 ## Features
 
@@ -38,7 +38,7 @@ The same hub is available as a **960px sidebar panel** (left rail → Plugins ar
 - **Content audit** — enabled skills' bodies (`SKILL.md`) are checked too: raw ESC control characters, Unicode tag characters, bidirectional controls, and encoding disguises (NUL bytes / UTF-16 / invalid UTF-8 in a text file) — these make "reviewed" not equal "seen" and are refused outright — plus zero-width characters, `curl … | sh` remote execution, SSH/cloud-credential/keychain paths, over-long descriptions, and the 2 MiB per-file / 10 MiB per-skill / 500-file limits. Only findings with no legitimate use block the install; the rest are warnings for a human to judge. Pure local static matching: no model call, no network. A market import scans the whole bundle (including `scripts/`); the standing check only reads `SKILL.md` — it runs on every 5-second poll, and walking every directory would slow the panel down.
 - **Announcement budget** — the name + description total that the first progressive-disclosure layer injects comes back with the catalog, so the panel can show characters and an estimated token count; past 8000 characters it turns red (clients truncate the tail there, which shows up as "installed but never triggers").
 - **Toggle** — per-skill switches and per-group tri-state switches with a conflict dialog (close all / keep on). Disabling is a sidecar policy: the discovery file is never renamed or deleted; an invocation override turns off model auto-invocation while `/name` keeps working. Paused skills stay in the catalog, are inspectable and re-enableable, and can be moved to trash from edit mode. Only `~/.dsh/skills` & `~/.agents/skills` are writable; everything else is read-only.
-- **Organize** — three independent axes: **source** (the upstream repo a skill was installed from), **location** (the discovery root, e.g. `~/.dsh/skills` / `Codex`), and **roles** (user-curated skill sets). Source collections auto-aggregate; locations get their own **by location** view, one card per discovery root with a whole-root switch (when a skill is discovered in several roots, it belongs to the registry's winning root — the same one the row badge shows); roles are manual and drag-reorderable, and support **switch to role** — enable the members, pause every other switchable skill (the confirm dialog lists them so you can keep any of them on), with the previous switch states saved for a one-click restore. Skills not assigned to any role stay reachable from the collapsed "Unassigned" card. Role cards always show their full rosters and ignore the source/status filters (search and invocation still apply). Roles and source collections persist in `~/.dsh/dsh-skill-hub.json`; the restore snapshot lives in browser localStorage. Edit mode reveals delete/reorder without cluttering the read view.
+- **Organize** — three independent axes: **source** (the upstream repo a skill was installed from), **location** (the discovery root, e.g. `~/.dsh/skills` / `Codex`), and **roles** (user-curated skill sets). Source collections auto-aggregate; locations get their own **by location** view, one card per discovery root with a whole-root switch (when a skill is discovered in several roots, it belongs to the registry's winning root — the same one the row badge shows); roles are manual and drag-reorderable, and support **switch to role** — enable the members, pause every other switchable skill (the confirm dialog lists them so you can keep any of them on), with the previous switch states saved for a one-click restore. Skills not assigned to any role stay reachable from the collapsed "Unassigned" card. Role cards always show their full rosters and ignore the source/status filters (search and invocation still apply). Roles and source collections persist in `~/.dsh/dsh-skill-shelf.json`; the restore snapshot lives in browser localStorage. Edit mode reveals delete/reorder without cluttering the read view.
 - **Diagnose & fix** — files the provider skips (missing frontmatter, bad YAML, name mismatch, short description) show up with reasons; every entry is tagged **broken** (the provider skips the file, so the skill never appears in the list) or **warning** (it loads, but has an issue), the section header counts both levels, and broken rows are red; auto-fixable ones (e.g. unquoted `:` in descriptions) get a one-click Fix button.
 - **Scaffold** — new-skill wizard writing to `~/.dsh/skills` or `~/.agents/skills` (`SKILL.md` template below).
 - **Market** — built-in curated repos plus custom `owner/repo` sources. Any top-level directory containing `SKILL.md` scans as a root (no allowlist), and a `SKILL.md` at the repo root itself scans as a single skill named after the repo (minus repo tooling such as `.github/`). Async import with byte-level progress and cancel. Each source pins a version — click the ref badge to switch between releases, branches, or a custom ref. Every import passes the content audit first: a skill with a blocking finding is refused as a whole and its temp directory is removed (nothing left on disk).
@@ -50,7 +50,7 @@ The same hub is available as a **960px sidebar panel** (left rail → Plugins ar
 - **Import from ZIP** — pick a `.zip`: every directory containing a `SKILL.md` becomes one skill, so a single-skill archive and a collection both work, each passing the content audit independently. Before anything is unpacked the reader rejects path traversal, symlinks, encrypted and ZIP64 archives, and decompression bombs; writes go through a temp directory plus an atomic rename, so a failure leaves nothing behind. A name that is already enabled is skipped — only a disabled placeholder or an empty shell steps aside into the restorable trash.
 - **Skill evolution** (off by default) — after a turn ends, an idle window opens; once the conversation has been idle for 20 seconds the hub replays that conversation's user, assistant and tool messages through **one tool-less model call** and asks whether anything in it is worth reusing. A suggestion that comes back has to pass a hard gate before it queues: kebab-case name, non-empty description/body/rationale, confidence ≥ 0.6, `create` must not collide with an existing name and `update` must target one. Each suggestion carries the **real ledger counts** (today / week / total) of the skills it touches, so "this is worth a skill" rests on evidence rather than the model's opinion. Suggestions only queue — **adopting one is a click**, and only `create` can be adopted automatically (improving an existing skill means merging into a file a human wrote, which is never overwritten for you). Review runs outside the conversation: no turn, no tools, no prompt-cache change, and every failure degrades to "nothing learned this turn".
 - **Usage stats** — an append-only local ledger (`~/.dsh/skill-usage-manager/usage-ledger.jsonl`) records every skill invocation and is aggregated into day / week / total, with the same three figures summed on group headers. The ledger is independent of session logs, so **deleting a session loses nothing**; history is backfilled from the session logs once at plugin startup. Which figures and the last-used time are shown stays live-configurable from the settings card.
-- **Settings card** — registered on the plugin's own page in the **Plugins manager** (sidebar → 插件 → dsh-skill-hub; collapsed until you expand the title): master switch, announce-to-agent, invocation dot colors, GitHub token, usage display toggles. The version badge in the title row flags a newer published version (**update check** reads the npm registry `latest` tag — the version `dsh plugin add` would actually install — with the GitHub release only as a fallback, cached for 10 minutes), next to an **Update now** button: a copy installed inside a profile upgrades in place and asks for a restart; a copy `link:`ed from a working directory is refused on purpose (replacing it would break the development loop), and an Electron-managed profile is refused by the host itself.
+- **Settings card** — registered on the plugin's own page in the **Plugins manager** (sidebar → 插件 → dsh-skill-shelf; collapsed until you expand the title): master switch, announce-to-agent, invocation dot colors, GitHub token, usage display toggles. The version badge in the title row flags a newer published version (**update check** reads the npm registry `latest` tag — the version `dsh plugin add` would actually install — with the GitHub release only as a fallback, cached for 10 minutes), next to an **Update now** button: a copy installed inside a profile upgrades in place and asks for a restart; a copy `link:`ed from a working directory is refused on purpose (replacing it would break the development loop), and an Electron-managed profile is refused by the host itself.
 
 ## Content audit and announcement budget
 
@@ -79,45 +79,45 @@ GitHub repo ──scan/import──▶ ~/.dsh/skills
      └─check/sync/delete── ctx.skills ◀─ provider
                                 │ snapshot/get
                                 ▼
-                    /api/skill-hub/* ──▶ Panel (Settings → Skills Hub)
+                    /api/skill-shelf/* ──▶ Panel (Settings → Skills Hub)
 ```
 
-Host uses only `ctx.skills.snapshot/get`, `ctx.webServer.register`, `ctx.systemPrompt.section`. Routes sit behind dsh's own `/api` trust fence (loopback / the listener's bind address / `--trusted-host`), JSON; **write routes (POST) additionally require an `x-dsh-skill-hub: 1` header** — a cross-site page cannot forge a custom header, and a same-origin request skips the CORS preflight so it costs no extra round trip. The provider registers in the global skill layer and once more into every live agent's skill layer (nearer than the preset layer), so an invocation override can outrank the host's native entries.
+Host uses only `ctx.skills.snapshot/get`, `ctx.webServer.register`, `ctx.systemPrompt.section`. Routes sit behind dsh's own `/api` trust fence (loopback / the listener's bind address / `--trusted-host`), JSON; **write routes (POST) additionally require an `x-dsh-skill-shelf: 1` header** — a cross-site page cannot forge a custom header, and a same-origin request skips the CORS preflight so it costs no extra round trip. The provider registers in the global skill layer and once more into every live agent's skill layer (nearer than the preset layer), so an invocation override can outrank the host's native entries.
 
 ## HTTP API
 
 | Endpoint | Method | Purpose |
 | --- | --- | --- |
-| `/api/skill-hub/catalog?cwd=` | GET | skills + disabled + diagnostics + duplicates |
-| `/api/skill-hub/skill?name=&cwd=` | GET | skill body (works for disabled too) |
-| `/api/skill-hub/skill/delete` | POST | move to trash (snapshots source+roles) |
-| `/api/skill-hub/toggle` | POST | `{name, enabled}` |
-| `/api/skill-hub/toggle-batch` | POST | `{names, enabled}` |
-| `/api/skill-hub/create` | POST | `{name, description?, root?}` |
-| `/api/skill-hub/diagnostic/fix` | POST | `{path}` auto-fix frontmatter |
-| `/api/skill-hub/permanent-stats` | GET | ledger-aggregated day / week / total invocation counts |
-| `/api/skill-hub/evolution` | GET | pending skill suggestions, handled history, review runs |
-| `/api/skill-hub/evolution/adopt` | POST | `{id, root?}` writes one `create` suggestion as a real skill |
-| `/api/skill-hub/evolution/dismiss` | POST | `{id}` drops a suggestion |
-| `/api/skill-hub/evolution/run` | POST | `{sessionId?}` reviews immediately, bypassing the cooldown |
-| `/api/skill-hub/config` | GET/POST | runtime config (`null` clears) |
-| `/api/skill-hub/groups` | GET | tags + collections + orders |
-| `/api/skill-hub/tag` etc. | POST | create/rename, delete, set members, reorder |
-| `/api/skill-hub/market` etc. | GET/POST | list/add/delete/pin sources; `…/source/check` + `…/source/sync` update them |
-| `/api/skill-hub/market/source/versions?repo=` | GET | releases + branches for the version picker |
-| `/api/skill-hub/market/skills-sh?q=` | GET | skills.sh index search (server-side proxy, ≥2 chars; results validated as strict `owner/repo`) |
-| `/api/skill-hub/market/skills-sh/install` | POST | `{source, skillId}` installs one skill directly (no source record, so no update tracking) |
-| `/api/skill-hub/repo?repo=` | GET | discover (any root) |
-| `/api/skill-hub/repo/import` | POST | async job `{jobId, total, totalBytes}` |
-| `/api/skill-hub/repo/import/progress?jobId=` | GET | poll job |
-| `/api/skill-hub/repo/import/cancel` | POST | cancel job |
-| `/api/skill-hub/sources` etc. | GET/POST | list/check/sync/delete/restore/clear trash |
-| `/api/skill-hub/foreign` | GET | read-only scan of other agents' skill folders (user-level + project-level; project roots derived from registered workspaces) |
-| `/api/skill-hub/foreign/import` | POST | `{items:[{agent,name,scope?,projectRoot?}]}` copied into `~/.dsh/skills` (user-level) or that project's `.dsh/skills` (project-level) |
-| `/api/skill-hub/import/zip` | POST | raw `.zip` bytes (`content-type: application/zip`, ≤32 MiB); every directory holding a `SKILL.md` becomes one skill, audited and installed independently |
-| `/api/skill-hub/update` | GET | plugin latest release (`?refresh=1` bypasses the 10-minute cache) |
-| `/api/skill-hub/update/apply` | POST | `{version}` installs that version into the current profile; `link:` copies and Electron-managed profiles are refused (reason in `error`, HTTP stays 200) |
-| unknown `/api/skill-hub/*` | GET/POST | `404 {error}` naming the path — a typo must not read as an auth failure (the SPA fallback answers 401 for `/api/*` it does not own) |
+| `/api/skill-shelf/catalog?cwd=` | GET | skills + disabled + diagnostics + duplicates |
+| `/api/skill-shelf/skill?name=&cwd=` | GET | skill body (works for disabled too) |
+| `/api/skill-shelf/skill/delete` | POST | move to trash (snapshots source+roles) |
+| `/api/skill-shelf/toggle` | POST | `{name, enabled}` |
+| `/api/skill-shelf/toggle-batch` | POST | `{names, enabled}` |
+| `/api/skill-shelf/create` | POST | `{name, description?, root?}` |
+| `/api/skill-shelf/diagnostic/fix` | POST | `{path}` auto-fix frontmatter |
+| `/api/skill-shelf/permanent-stats` | GET | ledger-aggregated day / week / total invocation counts |
+| `/api/skill-shelf/evolution` | GET | pending skill suggestions, handled history, review runs |
+| `/api/skill-shelf/evolution/adopt` | POST | `{id, root?}` writes one `create` suggestion as a real skill |
+| `/api/skill-shelf/evolution/dismiss` | POST | `{id}` drops a suggestion |
+| `/api/skill-shelf/evolution/run` | POST | `{sessionId?}` reviews immediately, bypassing the cooldown |
+| `/api/skill-shelf/config` | GET/POST | runtime config (`null` clears) |
+| `/api/skill-shelf/groups` | GET | tags + collections + orders |
+| `/api/skill-shelf/tag` etc. | POST | create/rename, delete, set members, reorder |
+| `/api/skill-shelf/market` etc. | GET/POST | list/add/delete/pin sources; `…/source/check` + `…/source/sync` update them |
+| `/api/skill-shelf/market/source/versions?repo=` | GET | releases + branches for the version picker |
+| `/api/skill-shelf/market/skills-sh?q=` | GET | skills.sh index search (server-side proxy, ≥2 chars; results validated as strict `owner/repo`) |
+| `/api/skill-shelf/market/skills-sh/install` | POST | `{source, skillId}` installs one skill directly (no source record, so no update tracking) |
+| `/api/skill-shelf/repo?repo=` | GET | discover (any root) |
+| `/api/skill-shelf/repo/import` | POST | async job `{jobId, total, totalBytes}` |
+| `/api/skill-shelf/repo/import/progress?jobId=` | GET | poll job |
+| `/api/skill-shelf/repo/import/cancel` | POST | cancel job |
+| `/api/skill-shelf/sources` etc. | GET/POST | list/check/sync/delete/restore/clear trash |
+| `/api/skill-shelf/foreign` | GET | read-only scan of other agents' skill folders (user-level + project-level; project roots derived from registered workspaces) |
+| `/api/skill-shelf/foreign/import` | POST | `{items:[{agent,name,scope?,projectRoot?}]}` copied into `~/.dsh/skills` (user-level) or that project's `.dsh/skills` (project-level) |
+| `/api/skill-shelf/import/zip` | POST | raw `.zip` bytes (`content-type: application/zip`, ≤32 MiB); every directory holding a `SKILL.md` becomes one skill, audited and installed independently |
+| `/api/skill-shelf/update` | GET | plugin latest release (`?refresh=1` bypasses the 10-minute cache) |
+| `/api/skill-shelf/update/apply` | POST | `{version}` installs that version into the current profile; `link:` copies and Electron-managed profiles are refused (reason in `error`, HTTP stays 200) |
+| unknown `/api/skill-shelf/*` | GET/POST | `404 {error}` naming the path — a typo must not read as an auth failure (the SPA fallback answers 401 for `/api/*` it does not own) |
 
 ## Development
 
@@ -138,11 +138,11 @@ Display metadata for the **Plugins manager** page ships beside the code and is r
 - Empty source group — its skills were deleted, or their paused records were lost (sidecar restored/hand-edited). Startup first migrates any legacy `.disabled` file into a policy override, then reconciles records **and prunes records whose file is gone**. Source groups with no visible member are no longer rendered.
 - A skill cannot be created / stays "paused" — the paused record pointed at a file that no longer exists. Startup drops the stale record so the name is free again; enabling a paused skill simply clears the override and the record.
 - Dots missing in `/` menu — dsh internals changed; catalog still works.
-- Settings card missing — open the plugin in the Plugins manager (sidebar → 插件 → dsh-skill-hub) and expand the 「技能中枢」 card at the top of the page (collapsed by default). On dsh older than `0.1.7-alpha.1` this plugin does not load at all (the settings API it targets does not exist there).
+- Settings card missing — open the plugin in the Plugins manager (sidebar → 插件 → dsh-skill-shelf) and expand the 「技能中枢」 card at the top of the page (collapsed by default). On dsh older than `0.1.7-alpha.1` this plugin does not load at all (the settings API it targets does not exist there).
 
 ## Community
 
-[Issues](https://github.com/cheshireez/dsh-skill-hub/issues) · [Discussions](https://github.com/cheshireez/dsh-skill-hub/discussions) · [Showcase](https://github.com/deepseek-ai/deepseek-harness/discussions/3161) · [Market PR](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/1746) · [Discord](https://discord.gg/Ycq5dCaS4)
+[Issues](https://github.com/cheshireez/dsh-skill-shelf/issues) · [Discussions](https://github.com/cheshireez/dsh-skill-shelf/discussions) · [Showcase](https://github.com/deepseek-ai/deepseek-harness/discussions/3161) · [Market PR](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/1746) · [Discord](https://discord.gg/Ycq5dCaS4)
 
 ## License
 

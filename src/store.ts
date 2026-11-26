@@ -8,7 +8,7 @@
  * update checks), the market source list, and the trash (skills removed
  * after upstream deletion).
  *
- * State file: $DSH_HOME/dsh-skill-hub.json — a small JSON document written
+ * State file: $DSH_HOME/dsh-skill-shelf.json — a small JSON document written
  * atomically (tmp file + rename).
  *
  * 按职责拆分后的重导出入口：老 `from './store.ts'` 写法保持可用，

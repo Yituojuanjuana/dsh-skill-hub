@@ -1,6 +1,6 @@
 {
-  "name": "dsh-skill-hub",
-  "version": "0.3.39",
+  "name": "dsh-skill-shelf",
+  "version": "0.4.0",
   "description": "Browse, search and switch every local skill in one dsh Web GUI panel, with day / week / total call counts from an append-only ledger, install-time content audit, GitHub sources with commit pins, local-edit detection, cross-agent and ZIP import, and a restorable trash.",
   "type": "module",
   "engines": {
@@ -82,9 +82,9 @@
       ]
     },
     "capability": {
-      "id": "skill-hub-settings-panel",
+      "id": "skill-shelf-settings-panel",
       "kind": "ui",
-      "invocation": "Open Settings → Skills Hub (技能中枢), or the 960 px sidebar panel; GET /api/skill-hub/catalog",
+      "invocation": "Open Settings → Skills Hub (技能中枢), or the 960 px sidebar panel; GET /api/skill-shelf/catalog",
       "expected": "The full local skill catalog (all roots) renders as groups with day / week / total call counts, and toggles persist an enabled/disabled row without a restart."
     },
     "evidence": {
@@ -226,7 +226,7 @@
     "skills",
     "skill-manager",
     "agent-skills",
-    "skill-hub"
+    "skill-shelf"
   ],
   "license": "MIT",
   "scripts": {
@@ -241,10 +241,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Yituojuanjuana/dsh-skill-hub.git"
+    "url": "git+https://github.com/Yituojuanjuana/dsh-skill-shelf.git"
   },
   "bugs": {
-    "url": "https://github.com/Yituojuanjuana/dsh-skill-hub/issues"
+    "url": "https://github.com/Yituojuanjuana/dsh-skill-shelf/issues"
   },
-  "homepage": "https://github.com/Yituojuanjuana/dsh-skill-hub"
+  "homepage": "https://github.com/Yituojuanjuana/dsh-skill-shelf"
 }

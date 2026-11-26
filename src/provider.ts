@@ -54,7 +54,7 @@ interface ProviderRoot {
  * body. Both are readonly reads of the local skill roots.
  */
 export class SkillHubProvider implements SkillProvider {
-  readonly name = 'skill-hub'
+  readonly name = 'skill-shelf'
   private readonly home: string
   /** 用户主目录（外部 Agent 的技能根相对它解析，与 dshHome 是两个概念）。 */
   private readonly userHome: string
@@ -101,7 +101,7 @@ export class SkillHubProvider implements SkillProvider {
         const text = errorText(error)
         if (text === this.lastWatchError) return
         this.lastWatchError = text
-        console.warn('[dsh-skill-hub] skill root watch failed:', text)
+        console.warn('[dsh-skill-shelf] skill root watch failed:', text)
       },
     )
   }

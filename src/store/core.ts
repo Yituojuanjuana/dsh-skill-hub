@@ -19,6 +19,7 @@ import type {
   TrashEntry,
 } from '../protocol.ts'
 import { StoreError } from './errors.ts'
+import { errorText } from '../error-text.ts'
 import { hydrateMigratedState, migrateStore } from './migrate.ts'
 import { DEFAULT_SCENE_NAME, STORE_VERSION, statePath, type StoreFile } from './paths.ts'
 
@@ -95,11 +96,41 @@ export function createStoreCore(file: string = statePath()): StoreCore {
   async function backupSidecar(): Promise<void> {
     const backup = `${file}.backup-${Date.now()}`
     await copyFile(file, backup)
-    console.warn('[dsh-skill-hub] unreadable sidecar backed up to ' + backup)
+    console.warn('[dsh-skill-shelf] unreadable sidecar backed up to ' + backup)
+  }
+
+  /**
+   * dsh-skill-hub → dsh-skill-shelf 数据迁移（只复制，不删除）。
+   *
+   * 新路径读不到时，检查旧路径；存在则**复制**到新路径再继续读新路径。
+   * 旧文件原样保留，失败的复制不影响冷读流程。
+   */
+  async function migrateFromLegacyPath(): Promise<void> {
+    if (!file.endsWith('dsh-skill-shelf.json')) return
+    const legacy = file.replace(/dsh-skill-shelf\.json$/, 'dsh-skill-hub.json')
+    if (legacy === file) return
+    try {
+      await readFile(legacy)
+    } catch {
+      return // 旧文件不存在：全新安装。
+    }
+    try {
+      // 目标已存在就不覆盖：说明之前已迁移过或用户在用新路径。
+      await readFile(file)
+      return
+    } catch { /* ENOENT → 需要迁移 */ }
+    try {
+      await mkdir(dirname(file), { recursive: true })
+      await copyFile(legacy, file)
+      console.info('[dsh-skill-shelf] migrated sidecar ' + legacy + ' -> ' + file + ' (legacy kept)')
+    } catch (error) {
+      console.warn('[dsh-skill-shelf] sidecar migration failed (legacy kept):', errorText(error instanceof Error ? error.message : String(error)))
+    }
   }
 
   async function load(): Promise<void> {
     let raw: string
+    await migrateFromLegacyPath()
     try {
       raw = await readFile(file, 'utf8')
     } catch (error) {
@@ -110,7 +141,7 @@ export function createStoreCore(file: string = statePath()): StoreCore {
       }
       writeBlock = 'sidecar state is unreadable; refusing to overwrite it (backed up). Upgrade the plugin or restore the backup.'
       await backupSidecar().catch(() => undefined)
-      console.warn('[dsh-skill-hub] ' + writeBlock, error instanceof Error ? error.message : error)
+      console.warn('[dsh-skill-shelf] ' + writeBlock, error instanceof Error ? error.message : error)
       return
     }
 
@@ -120,7 +151,7 @@ export function createStoreCore(file: string = statePath()): StoreCore {
     } catch (error) {
       writeBlock = 'sidecar state is not valid JSON; refusing to overwrite it (backed up). Restore the backup or delete the file to start fresh.'
       await backupSidecar().catch(() => undefined)
-      console.warn('[dsh-skill-hub] ' + writeBlock, error instanceof Error ? error.message : error)
+      console.warn('[dsh-skill-shelf] ' + writeBlock, error instanceof Error ? error.message : error)
       return
     }
 
@@ -128,7 +159,7 @@ export function createStoreCore(file: string = statePath()): StoreCore {
     if (migrated === null) {
       writeBlock = 'sidecar state uses a newer schema than this plugin supports; refusing to overwrite it (backed up). Upgrade the plugin.'
       await backupSidecar().catch(() => undefined)
-      console.warn('[dsh-skill-hub] ' + writeBlock)
+      console.warn('[dsh-skill-shelf] ' + writeBlock)
       return
     }
 

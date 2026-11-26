@@ -65,6 +65,6 @@ describe('plugin display metadata', () => {
   it('declares the dsh range the peer dependencies already express', () => {
     // `engines.dsh`, once present, alone decides compatibility, so it must stay
     // as wide as the peer ranges: a narrower floor would refuse older hosts.
-    expect(manifest.engines.dsh).toBe('>=0.1.7-alpha.1 <0.3.0-0')
+    expect(manifest.engines.dsh).toBe('>=0.1.7-alpha.1 <0.3.0-0 || >=0.2.0-rc.1 <0.2.0 || >=0.2.1-alpha.2 <0.2.1 || >=0.2.2-alpha.2 <0.2.2 || >=0.2.3-alpha.2 <0.2.3')
   })
 })

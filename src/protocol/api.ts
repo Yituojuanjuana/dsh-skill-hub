@@ -1,10 +1,10 @@
 /**
- * Root path of the skill-hub API family. The host also registers this as its
+ * Root path of the skill-shelf API family. The host also registers this as its
  * 404 catch-all prefix, so a mistyped path answers with a plain 404 naming the
  * path instead of falling through to the SPA fallback (which answers 401 and
  * reads like an auth problem).
  */
-export const SKILL_HUB_API_ROOT = '/api/skill-hub'
+export const SKILL_HUB_API_ROOT = '/api/skill-shelf'
 
 /**
  * 写接口的 CSRF 标记头。
@@ -17,64 +17,64 @@ export const SKILL_HUB_API_ROOT = '/api/skill-hub'
  *
  * 只对 POST 生效 —— GET 不改状态，加上它只会让只读接口更难调。
  */
-export const SKILL_HUB_WRITE_HEADER = 'x-dsh-skill-hub'
+export const SKILL_HUB_WRITE_HEADER = 'x-dsh-skill-shelf'
 export const SKILL_HUB_WRITE_VALUE = '1'
 
 /**
- * Browser-facing base paths of the skill-hub API family.
+ * Browser-facing base paths of the skill-shelf API family.
  *
  * Naming rule: a path's segments mirror its scope. Market sources own the
  * `/market/source/*` subtree — add, delete, ref, versions, check, sync — so
  * the update check and the sync that acts on its result sit side by side.
  */
 export const SKILL_HUB_API = {
-  catalog: '/api/skill-hub/catalog',
-  skill: '/api/skill-hub/skill',
-  skillDelete: '/api/skill-hub/skill/delete',
-  toggle: '/api/skill-hub/toggle',
-  toggleBatch: '/api/skill-hub/toggle-batch',
-  create: '/api/skill-hub/create',
-  config: '/api/skill-hub/config',
-  market: '/api/skill-hub/market',
-  marketSource: '/api/skill-hub/market/source',
-  marketSourceDelete: '/api/skill-hub/market/source/delete',
-  marketSourceRef: '/api/skill-hub/market/source/ref',
-  marketCheck: '/api/skill-hub/market/source/check',
-  marketSync: '/api/skill-hub/market/source/sync',
-  repo: '/api/skill-hub/repo',
-  repoImport: '/api/skill-hub/repo/import',
-  repoImportProgress: '/api/skill-hub/repo/import/progress',
-  repoImportCancel: '/api/skill-hub/repo/import/cancel',
-  update: '/api/skill-hub/update',
-  updateApply: '/api/skill-hub/update/apply',
-  groups: '/api/skill-hub/groups',
-  tag: '/api/skill-hub/tag',
-  tagDelete: '/api/skill-hub/tag/delete',
-  tagMembers: '/api/skill-hub/tag/members',
-  tagReorder: '/api/skill-hub/tag/reorder',
-  collectionReorder: '/api/skill-hub/collections/reorder',
-  sourceGroupReorder: '/api/skill-hub/source-groups/reorder',
-  sources: '/api/skill-hub/sources',
-  sourceCheck: '/api/skill-hub/sources/check',
-  sourceSync: '/api/skill-hub/sources/sync',
-  sourceDelete: '/api/skill-hub/sources/delete',
-  sourceRestore: '/api/skill-hub/sources/restore',
-  sourceTrashClear: '/api/skill-hub/sources/trash/clear',
-  diagnosticFix: '/api/skill-hub/diagnostic/fix',
-  marketSourceVersions: '/api/skill-hub/market/source/versions',
-  marketStats: '/api/skill-hub/market/stats',
-  marketSkillsSh: '/api/skill-hub/market/skills-sh',
-  marketSkillsShInstall: '/api/skill-hub/market/skills-sh/install',
-  marketSkillsShDetail: '/api/skill-hub/market/skills-sh/detail',
-  foreign: '/api/skill-hub/foreign',
-  foreignImport: '/api/skill-hub/foreign/import',
-  importZip: '/api/skill-hub/import/zip',
-  permanentStats: '/api/skill-hub/permanent-stats',
-  evolution: '/api/skill-hub/evolution',
-  evolutionRun: '/api/skill-hub/evolution/run',
-  evolutionDecide: '/api/skill-hub/evolution/decide',
-  evolutionClear: '/api/skill-hub/evolution/clear',
-  evolutionReparse: '/api/skill-hub/evolution/reparse',
+  catalog: '/api/skill-shelf/catalog',
+  skill: '/api/skill-shelf/skill',
+  skillDelete: '/api/skill-shelf/skill/delete',
+  toggle: '/api/skill-shelf/toggle',
+  toggleBatch: '/api/skill-shelf/toggle-batch',
+  create: '/api/skill-shelf/create',
+  config: '/api/skill-shelf/config',
+  market: '/api/skill-shelf/market',
+  marketSource: '/api/skill-shelf/market/source',
+  marketSourceDelete: '/api/skill-shelf/market/source/delete',
+  marketSourceRef: '/api/skill-shelf/market/source/ref',
+  marketCheck: '/api/skill-shelf/market/source/check',
+  marketSync: '/api/skill-shelf/market/source/sync',
+  repo: '/api/skill-shelf/repo',
+  repoImport: '/api/skill-shelf/repo/import',
+  repoImportProgress: '/api/skill-shelf/repo/import/progress',
+  repoImportCancel: '/api/skill-shelf/repo/import/cancel',
+  update: '/api/skill-shelf/update',
+  updateApply: '/api/skill-shelf/update/apply',
+  groups: '/api/skill-shelf/groups',
+  tag: '/api/skill-shelf/tag',
+  tagDelete: '/api/skill-shelf/tag/delete',
+  tagMembers: '/api/skill-shelf/tag/members',
+  tagReorder: '/api/skill-shelf/tag/reorder',
+  collectionReorder: '/api/skill-shelf/collections/reorder',
+  sourceGroupReorder: '/api/skill-shelf/source-groups/reorder',
+  sources: '/api/skill-shelf/sources',
+  sourceCheck: '/api/skill-shelf/sources/check',
+  sourceSync: '/api/skill-shelf/sources/sync',
+  sourceDelete: '/api/skill-shelf/sources/delete',
+  sourceRestore: '/api/skill-shelf/sources/restore',
+  sourceTrashClear: '/api/skill-shelf/sources/trash/clear',
+  diagnosticFix: '/api/skill-shelf/diagnostic/fix',
+  marketSourceVersions: '/api/skill-shelf/market/source/versions',
+  marketStats: '/api/skill-shelf/market/stats',
+  marketSkillsSh: '/api/skill-shelf/market/skills-sh',
+  marketSkillsShInstall: '/api/skill-shelf/market/skills-sh/install',
+  marketSkillsShDetail: '/api/skill-shelf/market/skills-sh/detail',
+  foreign: '/api/skill-shelf/foreign',
+  foreignImport: '/api/skill-shelf/foreign/import',
+  importZip: '/api/skill-shelf/import/zip',
+  permanentStats: '/api/skill-shelf/permanent-stats',
+  evolution: '/api/skill-shelf/evolution',
+  evolutionRun: '/api/skill-shelf/evolution/run',
+  evolutionDecide: '/api/skill-shelf/evolution/decide',
+  evolutionClear: '/api/skill-shelf/evolution/clear',
+  evolutionReparse: '/api/skill-shelf/evolution/reparse',
 } as const
 
 /**
@@ -82,7 +82,7 @@ export const SKILL_HUB_API = {
  * `SKILL_HUB_API.permanentStats`). Kept as a named export because that is the
  * name the client half imports for its fetch call.
  */
-export const SKILL_USAGE_API = '/api/skill-hub/permanent-stats'
+export const SKILL_USAGE_API = '/api/skill-shelf/permanent-stats'
 
 /** Permanent usage counter: one row per skill, bucketed by local day/week. */
 export interface PermanentStat {

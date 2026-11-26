@@ -131,7 +131,7 @@ export async function replaceInPlace(target: string, download: () => Promise<unk
       await rm(target, { recursive: true, force: true }).catch(() => undefined)
       await rename(backup, target).catch((rollbackError) => {
         // 回滚失败会让技能只剩点前缀的备份：必须留痕。
-        console.warn('[dsh-skill-hub] restoring ' + target + ' from ' + backup + ' failed:', errorText(rollbackError))
+        console.warn('[dsh-skill-shelf] restoring ' + target + ' from ' + backup + ' failed:', errorText(rollbackError))
       })
     }
     throw error

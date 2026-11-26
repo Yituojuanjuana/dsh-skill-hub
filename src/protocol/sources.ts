@@ -52,7 +52,7 @@ export interface TrashEntry {
   note?: string
 }
 
-/** GET /api/skill-hub/sources */
+/** GET /api/skill-shelf/sources */
 export interface SourcesResponse {
   ok: true
   /** 全部来源记录（按 repo 排序）。 */
@@ -65,7 +65,7 @@ export interface SourcesResponse {
   trash: TrashEntry[]
 }
 
-/** POST /api/skill-hub/sources/check — 检查指定（或全部）来源的上游更新。 */
+/** POST /api/skill-shelf/sources/check — 检查指定（或全部）来源的上游更新。 */
 export interface SourceCheckRequest {
   /** 仅检查该 repo；缺省检查全部。 */
   repo?: string
@@ -96,20 +96,20 @@ export interface SourceCheckResult {
   localModified?: string[]
 }
 
-/** POST /api/skill-hub/sources/check */
+/** POST /api/skill-shelf/sources/check */
 export interface SourceCheckResponse {
   ok: true
   results: SourceCheckResult[]
 }
 
-/** POST /api/skill-hub/sources/sync — 按上游重新下载所选技能并更新快照。 */
+/** POST /api/skill-shelf/sources/sync — 按上游重新下载所选技能并更新快照。 */
 export interface SourceSyncRequest {
   repo: string
   /** 要同步的技能名；缺省同步该来源全部技能。 */
   skills?: string[]
 }
 
-/** POST /api/skill-hub/sources/sync */
+/** POST /api/skill-shelf/sources/sync */
 export interface SourceSyncResponse {
   ok: true
   repo: string
@@ -123,14 +123,14 @@ export interface SourceSyncResponse {
   failed: Array<{ name: string; error: string }>
 }
 
-/** POST /api/skill-hub/sources/delete — 跟进上游删除，本地移入回收站。 */
+/** POST /api/skill-shelf/sources/delete — 跟进上游删除，本地移入回收站。 */
 export interface SourceDeleteRequest {
   repo: string
   /** 要删除的技能名（移入 .trash）。 */
   skills: string[]
 }
 
-/** POST /api/skill-hub/sources/delete */
+/** POST /api/skill-shelf/sources/delete */
 export interface SourceDeleteResponse {
   ok: true
   /** 已移入回收站的技能。 */
@@ -138,19 +138,19 @@ export interface SourceDeleteResponse {
   failed: Array<{ name: string; error: string }>
 }
 
-/** POST /api/skill-hub/sources/restore — 从回收站恢复一个技能。 */
+/** POST /api/skill-shelf/sources/restore — 从回收站恢复一个技能。 */
 export interface SourceRestoreRequest {
   name: string
 }
 
-/** POST /api/skill-hub/sources/restore */
+/** POST /api/skill-shelf/sources/restore */
 export interface SourceRestoreResponse {
   ok: true
   name: string
   path: string
 }
 
-/** POST /api/skill-hub/sources/trash/clear — 永久删除回收站里的全部技能。 */
+/** POST /api/skill-shelf/sources/trash/clear — 永久删除回收站里的全部技能。 */
 export interface SourceTrashClearResponse {
   ok: true
   /** 已永久删除的技能名。 */

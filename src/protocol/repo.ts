@@ -42,7 +42,7 @@ export function isValidRepoRoot(value: unknown): value is RepoRoot {
   return typeof value === 'string' && (value === '' || REPO_ROOT_RE.test(value))
 }
 
-/** GET /api/skill-hub/repo — discover importable skills in a GitHub repo. */
+/** GET /api/skill-shelf/repo — discover importable skills in a GitHub repo. */
 export interface RepoDiscoverResponse {
   ok: true
   repo: string
@@ -59,7 +59,7 @@ export interface RepoDiscoverResponse {
   truncated?: boolean
 }
 
-/** POST /api/skill-hub/repo/import — install selected repo skills. */
+/** POST /api/skill-shelf/repo/import — install selected repo skills. */
 export interface RepoImportRequest {
   repo: string
   /** Selected SKILL.md paths from the discover response. */
@@ -68,7 +68,7 @@ export interface RepoImportRequest {
   ref?: string
 }
 
-/** POST /api/skill-hub/repo/import — now creates an async job (B方案) */
+/** POST /api/skill-shelf/repo/import — now creates an async job (B方案) */
 export interface RepoImportResponse {
   ok: true
   jobId: string
@@ -76,7 +76,7 @@ export interface RepoImportResponse {
   totalBytes: number
 }
 
-/** GET /api/skill-hub/repo/import/progress?jobId=xxx */
+/** GET /api/skill-shelf/repo/import/progress?jobId=xxx */
 export interface RepoImportProgressResponse {
   ok: true
   jobId: string
@@ -105,7 +105,7 @@ export interface RepoImportProgressResponse {
   error?: string
 }
 
-/** POST /api/skill-hub/repo/import/cancel */
+/** POST /api/skill-shelf/repo/import/cancel */
 export interface RepoImportCancelRequest {
   jobId: string
 }
@@ -116,7 +116,7 @@ export interface RepoImportCancelResponse {
   status: 'running' | 'done' | 'cancelled' | 'error'
 }
 
-/** GET /api/skill-hub/update — check the plugin's own latest published version. */
+/** GET /api/skill-shelf/update — check the plugin's own latest published version. */
 export interface UpdateCheckResponse {
   ok: true
   /** Installed plugin version (from the bundled host build). */
@@ -143,7 +143,7 @@ export interface UpdateCheckResponse {
   error?: string
 }
 
-/** POST /api/skill-hub/update/apply — install one exact version into this profile. */
+/** POST /api/skill-shelf/update/apply — install one exact version into this profile. */
 export interface UpdateApplyRequest {
   /** Exact `x.y.z`; the server refuses anything else. */
   version: string

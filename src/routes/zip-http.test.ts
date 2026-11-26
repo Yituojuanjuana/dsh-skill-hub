@@ -56,14 +56,14 @@ function makeZip(files: Array<{ path: string; data: string }>): Buffer {
   return Buffer.concat([...chunks, directory, eocd])
 }
 
-describe('POST /api/skill-hub/import/zip over real HTTP', () => {
+describe('POST /api/skill-shelf/import/zip over real HTTP', () => {
   let dir: string
   let home: string
   let base: string
   let close: () => Promise<void>
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-hub-zip-http-'))
+    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-shelf-zip-http-'))
     home = join(dir, 'home')
     await mkdir(join(home, 'skills'), { recursive: true })
     const deps: SkillHubRouteDeps = {

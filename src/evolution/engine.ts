@@ -790,7 +790,7 @@ export class EvolutionEngine {
     if (scanned.length > 0) {
       const scannedPipeline = runPipeline('', { ...sources }, this.now(), scanned)
       proposals = mergeProposals(proposals, scannedPipeline.proposals)
-      this.deps.log?.('[dsh-skill-hub] evolution scan produced ' + String(scannedPipeline.proposals.length) + ' optimize proposal(s) from '
+      this.deps.log?.('[dsh-skill-shelf] evolution scan produced ' + String(scannedPipeline.proposals.length) + ' optimize proposal(s) from '
         + String(scanned.length) + ' candidate skill(s)')
     }
 
@@ -820,11 +820,11 @@ export class EvolutionEngine {
       }
     }
     if (pipeline.droppedRejected.length > 0) {
-      this.deps.log?.('[dsh-skill-hub] evolution dedup dropped ' + String(pipeline.droppedRejected.length) + ' proposal(s): '
+      this.deps.log?.('[dsh-skill-shelf] evolution dedup dropped ' + String(pipeline.droppedRejected.length) + ' proposal(s): '
         + pipeline.droppedRejected.join(', '))
     }
     if (pipeline.droppedInvalid.length > 0) {
-      this.deps.log?.('[dsh-skill-hub] evolution field validation dropped ' + String(pipeline.droppedInvalid.length) + ': '
+      this.deps.log?.('[dsh-skill-shelf] evolution field validation dropped ' + String(pipeline.droppedInvalid.length) + ': '
         + pipeline.droppedInvalid.join(', '))
     }
     return { markdown, proposals, sessions: sessions.length, messages: totalMessages }

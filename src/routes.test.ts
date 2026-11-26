@@ -154,7 +154,7 @@ describe('skill-hub routes', () => {
   let deps: SkillHubRouteDeps
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-hub-routes-'))
+    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-shelf-routes-'))
     home = join(dir, 'home')
     await mkdir(join(home, 'skills'), { recursive: true })
     store = new SkillHubStore(statePath(home))
@@ -425,10 +425,10 @@ describe('skill-hub routes', () => {
     // 项目技能来自宿主 registry：stub 返回带 path 的条目（override 的 key）。
     deps.skills = {
       snapshot: async () => ({
-        skills: [{ name: 'proj-toggle', description: 'p', invocation: { modelInvocable: true, userInvocable: true }, source: 'project-dsh', provider: 'skill-hub', path: skillFile } as never],
+        skills: [{ name: 'proj-toggle', description: 'p', invocation: { modelInvocable: true, userInvocable: true }, source: 'project-dsh', provider: 'skill-shelf', path: skillFile } as never],
         complete: true,
       }),
-      get: async () => ({ name: 'proj-toggle', description: 'p', invocation: { modelInvocable: true, userInvocable: true }, source: 'project-dsh', provider: 'skill-hub', path: skillFile, content: 'body' } as never),
+      get: async () => ({ name: 'proj-toggle', description: 'p', invocation: { modelInvocable: true, userInvocable: true }, source: 'project-dsh', provider: 'skill-shelf', path: skillFile, content: 'body' } as never),
     }
 
     const off = new FakeResponse()
@@ -461,7 +461,7 @@ describe('skill-hub routes', () => {
     }))
     deps.skills = {
       snapshot: async () => ({ skills: [], complete: true }),
-      get: async () => ({ name: 'proj-toggle', description: 'p', invocation: { modelInvocable: true, userInvocable: true }, source: 'project-dsh', provider: 'skill-hub', path: skillFile, content: 'body' } as never),
+      get: async () => ({ name: 'proj-toggle', description: 'p', invocation: { modelInvocable: true, userInvocable: true }, source: 'project-dsh', provider: 'skill-shelf', path: skillFile, content: 'body' } as never),
     }
 
     await routeFor(SKILL_HUB_API.toggle).handler(fakeReq('POST', SKILL_HUB_API.toggle, { name: 'proj-toggle', enabled: false, cwd: project }), new FakeResponse() as never)
@@ -600,10 +600,10 @@ describe('skill-hub routes', () => {
     skills.snapshot = async (options?: { cwd?: string }) => {
       const user = summary({ name: 'shared-user' })
       if (options?.cwd === '/ws/a') {
-        return { skills: [user, summary({ name: 'ws-a-skill', source: 'project-dsh', provider: 'skill-hub' })], complete: true }
+        return { skills: [user, summary({ name: 'ws-a-skill', source: 'project-dsh', provider: 'skill-shelf' })], complete: true }
       }
       if (options?.cwd === '/ws/b') {
-        return { skills: [user, summary({ name: 'ws-b-skill', source: 'project-agents', provider: 'skill-hub' })], complete: false }
+        return { skills: [user, summary({ name: 'ws-b-skill', source: 'project-agents', provider: 'skill-shelf' })], complete: false }
       }
       return { skills: [user], complete: true }
     }
@@ -637,7 +637,7 @@ describe('skill-hub routes', () => {
     }), 'utf8')
     skills.snapshot = async (options?: { cwd?: string }) => ({
       skills: options?.cwd === wsA || options?.cwd === wsB
-        ? [summary({ name: 'dup', source: 'project-dsh', provider: 'skill-hub' })]
+        ? [summary({ name: 'dup', source: 'project-dsh', provider: 'skill-shelf' })]
         : [],
       complete: true,
     })
@@ -657,9 +657,9 @@ describe('skill-hub routes', () => {
     }), 'utf8')
     skills.snapshot = async () => ({
       skills: [
-        summary({ name: 'shared-user', source: 'user-dsh', provider: 'skill-hub' }),
+        summary({ name: 'shared-user', source: 'user-dsh', provider: 'skill-shelf' }),
         summary({ name: 'two-homes', source: 'custom', provider: 'openviking' }),
-        summary({ name: 'two-homes', source: 'user-dsh', provider: 'skill-hub' }),
+        summary({ name: 'two-homes', source: 'user-dsh', provider: 'skill-shelf' }),
       ],
       complete: true,
     })
@@ -679,8 +679,8 @@ describe('skill-hub routes', () => {
     skills.snapshot = async (options?: { cwd?: string }) => ({
       skills: options?.cwd === '/ws/a'
         ? [
-            summary({ name: 'dup-project', source: 'project-dsh', provider: 'skill-hub' }),
-            summary({ name: 'dup-project', source: 'project-agents', provider: 'skill-hub' }),
+            summary({ name: 'dup-project', source: 'project-dsh', provider: 'skill-shelf' }),
+            summary({ name: 'dup-project', source: 'project-agents', provider: 'skill-shelf' }),
           ]
         : [],
       complete: true,
@@ -2503,14 +2503,14 @@ describe('skill-hub routes', () => {
 
 })
 
-describe('skill-hub API surface', () => {
+describe('skill-shelf API surface', () => {
   let dir: string
   let home: string
   let store: SkillHubStore
   let deps: SkillHubRouteDeps
 
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-hub-api-'))
+    dir = await mkdtemp(join(tmpdir(), 'dsh-skill-shelf-api-'))
     home = join(dir, 'home')
     await mkdir(join(home, 'skills'), { recursive: true })
     store = new SkillHubStore(statePath(home))
@@ -2534,9 +2534,9 @@ describe('skill-hub API surface', () => {
   it('pairs the market update check with the sync that acts on it', () => {
     // 曾经的坑：check 在 /market/check，sync 在 /market/source/sync，
     // 写客户端时很容易把同步写成 /market/sync（未命中路径还会回 401）。
-    expect(SKILL_HUB_API.marketCheck).toBe('/api/skill-hub/market/source/check')
+    expect(SKILL_HUB_API.marketCheck).toBe('/api/skill-shelf/market/source/check')
     for (const path of [SKILL_HUB_API.marketCheck, SKILL_HUB_API.marketSync]) {
-      expect(path.startsWith('/api/skill-hub/market/source/')).toBe(true)
+      expect(path.startsWith('/api/skill-shelf/market/source/')).toBe(true)
     }
   })
 
@@ -2547,8 +2547,8 @@ describe('skill-hub API surface', () => {
     expect(catchAll[0].path).toBe(SKILL_HUB_API_ROOT)
     // 未知路径给出写明路径的 404，而不是让请求落到宿主 fallback 的 401。
     const res = new FakeResponse()
-    await catchAll[0].handler(fakeReq('GET', '/api/skill-hub/market/sync'), res as never)
+    await catchAll[0].handler(fakeReq('GET', '/api/skill-shelf/market/sync'), res as never)
     expect(res.status).toBe(404)
-    expect((res.json() as ErrorResponse).error).toContain('/api/skill-hub/market/sync')
+    expect((res.json() as ErrorResponse).error).toContain('/api/skill-shelf/market/sync')
   })
 })

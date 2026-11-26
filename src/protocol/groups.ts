@@ -18,7 +18,7 @@ export interface CollectionGroup {
   skillNames: string[]
 }
 
-/** GET /api/skill-hub/groups */
+/** GET /api/skill-shelf/groups */
 export interface GroupsResponse {
   ok: true
   /** 用户自定义 tag 分组（按拖拽顺序）。 */
@@ -33,7 +33,7 @@ export interface GroupsResponse {
   collectionOrder?: string[]
 }
 
-/** POST /api/skill-hub/tag — 新建（缺省 id）或重命名（带 id）。 */
+/** POST /api/skill-shelf/tag — 新建（缺省 id）或重命名（带 id）。 */
 export interface TagSaveRequest {
   /** 已有 tag 的 id；缺省表示新建。 */
   id?: string
@@ -41,61 +41,61 @@ export interface TagSaveRequest {
   name: string
 }
 
-/** POST /api/skill-hub/tag */
+/** POST /api/skill-shelf/tag */
 export interface TagSaveResponse {
   ok: true
   /** 变更后的全部 tag。 */
   tags: SkillTag[]
 }
 
-/** POST /api/skill-hub/tag/delete */
+/** POST /api/skill-shelf/tag/delete */
 export interface TagDeleteRequest {
   id: string
 }
 
-/** POST /api/skill-hub/tag/delete */
+/** POST /api/skill-shelf/tag/delete */
 export interface TagDeleteResponse {
   ok: true
   tags: SkillTag[]
 }
 
-/** POST /api/skill-hub/tag/members — 直接设置某 tag 的完整成员列表（幂等）。 */
+/** POST /api/skill-shelf/tag/members — 直接设置某 tag 的完整成员列表（幂等）。 */
 export interface TagMembersRequest {
   id: string
   /** 目标成员技能名；后端只保留目录中存在的名字。 */
   skillNames: string[]
 }
 
-/** POST /api/skill-hub/tag/members */
+/** POST /api/skill-shelf/tag/members */
 export interface TagMembersResponse {
   ok: true
   tags: SkillTag[]
 }
 
-/** POST /api/skill-hub/tag/reorder — 拖拽重排角色分组 */
+/** POST /api/skill-shelf/tag/reorder — 拖拽重排角色分组 */
 export interface TagReorderRequest {
   /** 按新顺序排列的 tag id 列表（需包含全部 id） */
   orderedIds: string[]
 }
-/** POST /api/skill-hub/tag/reorder */
+/** POST /api/skill-shelf/tag/reorder */
 export interface TagReorderResponse {
   ok: true
   tags: SkillTag[]
 }
 
-/** POST /api/skill-hub/collections/reorder — 拖拽重排来源集合 */
+/** POST /api/skill-shelf/collections/reorder — 拖拽重排来源集合 */
 export interface CollectionReorderRequest {
   /** 按新顺序排列的集合名列表（需包含全部 name） */
   orderedNames: string[]
 }
-/** POST /api/skill-hub/collections/reorder */
+/** POST /api/skill-shelf/collections/reorder */
 export interface CollectionReorderResponse {
   ok: true
   collections: CollectionGroup[]
   order: string[]
 }
 
-/** POST /api/skill-hub/source-groups/reorder — 拖拽重排来源顶层分组（project / collections / personal） */
+/** POST /api/skill-shelf/source-groups/reorder — 拖拽重排来源顶层分组（project / collections / personal） */
 export interface SourceGroupReorderRequest {
   /** 按新顺序排列的顶层分组 key 列表（project / col:xxx / uncategorized-source） */
   orderedKeys: string[]

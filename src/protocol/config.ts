@@ -109,7 +109,7 @@ export type HubSettingsValue = {
  * `ctx.configForms.get(HUB_ENTRY_ID)` while the host half writes through
  * `ctx.settings.update(HUB_ENTRY_ID, …)`.
  */
-export const HUB_ENTRY_ID = 'skill-hub'
+export const HUB_ENTRY_ID = 'skill-shelf'
 
 /**
  * Hub config defaults — the single source every layer reads: the cordis
@@ -165,7 +165,7 @@ export function redactGithubToken<T extends { githubToken?: string }>(value: T):
 /** HEX color validation shared by host routes and the settings card. */
 export const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i
 
-/** GET /api/skill-hub/config */
+/** GET /api/skill-shelf/config */
 export interface ConfigResponse {
   ok: true
   /** 已安装插件自身的版本号（package.json version），设置卡标题旁显示。 */
@@ -179,7 +179,7 @@ export interface ConfigResponse {
 }
 
 /**
- * POST /api/skill-hub/config — a partial patch; omitted fields keep their values.
+ * POST /api/skill-shelf/config — a partial patch; omitted fields keep their values.
  *
  * Only the fields the handler actually parses belong here; the settings
  * namespace owns the rest of {@link HubSettingsValue}, not this route.

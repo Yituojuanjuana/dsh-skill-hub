@@ -224,7 +224,7 @@ export interface EvolutionRunRecord {
   skipped?: string
 }
 
-/** GET /api/skill-hub/evolution — 当前提案与运行状态。 */
+/** GET /api/skill-shelf/evolution — 当前提案与运行状态。 */
 export interface EvolutionResponse {
   ok: true
   /** 元代理开关是否打开。 */
@@ -249,7 +249,7 @@ export interface EvolutionResponse {
   lastSkip?: string
 }
 
-/** POST /api/skill-hub/evolution/run — 启动一次后台分析。 */
+/** POST /api/skill-shelf/evolution/run — 启动一次后台分析。 */
 export interface EvolutionRunRequest {
   /** 只分析这个会话；缺省取最近的若干个。 */
   sessionId?: string
@@ -273,7 +273,7 @@ export interface EvolutionRunResponse {
   elapsedMs?: number
 }
 
-/** POST /api/skill-hub/evolution/decide — 人工处理一条提案。 */
+/** POST /api/skill-shelf/evolution/decide — 人工处理一条提案。 */
 export interface EvolutionDecideRequest {
   id: string
   /** accepted = 同意并落地；rejected = 驳回（必须给原因）；deferred = 暂缓。 */
@@ -315,13 +315,13 @@ export interface EvolutionRejection {
   kind?: 'new-skill' | 'optimize' | 'reclaim'
 }
 
-/** POST /api/skill-hub/evolution/clear — 清空提案。 */
+/** POST /api/skill-shelf/evolution/clear — 清空提案。 */
 export interface EvolutionClearResponse {
   ok: true
 }
 
 /**
- * POST /api/skill-hub/evolution/reparse — 用已存的模型输出重新解析。
+ * POST /api/skill-shelf/evolution/reparse — 用已存的模型输出重新解析。
  *
  * 不调用模型、不读会话，纯本地文本处理。
  */
@@ -339,7 +339,7 @@ export interface EvolutionReparseResponse {
   hasMarkdown?: boolean
 }
 
-/** POST /api/skill-hub/evolution/apply — 把已通过的提案落地为技能文件。 */
+/** POST /api/skill-shelf/evolution/apply — 把已通过的提案落地为技能文件。 */
 export interface EvolutionApplyRequest {
   id: string
   root?: 'user-dsh' | 'user-agents'
