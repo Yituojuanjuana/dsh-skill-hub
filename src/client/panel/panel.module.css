@@ -667,3 +667,6 @@ body:not([data-ds-dark-theme]) .panel {
 .errorCardDetails summary { cursor: pointer; }
 .errorCardPre { margin: 6px 0 0; max-height: 220px; overflow: auto; padding: 8px; border-radius: 6px; background: var(--hub-surface); font-size: var(--hub-fs-11); line-height: 1.5; white-space: pre-wrap; }
 .errorCardActions { display: flex; gap: 8px; margin-top: 10px; }
+/* 详情弹窗外壳里的错误卡片：外壳本身没有内边距（详情视图自带），
+   所以卡片自己补一圈，别贴到弹窗边缘。 */
+.detailModal > .errorCard { margin: 16px; }

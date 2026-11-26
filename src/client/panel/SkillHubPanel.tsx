@@ -140,30 +140,50 @@ export function SkillHubPanel(props: SkillHubPanelProps): React.JSX.Element {
   if (detail !== null) {
     const disabledRecord = detail.source !== undefined && isProjectSource(detail.source)
       ? undefined
-      : catalog?.disabled.find((record) => {
+      // `?.` 要护两层：catalog 可能还没加载完，而 `disabled` 虽然类型上必填，
+      // 运行期仍可能缺失（旧版服务端返回、或乐观更新后的半成品快照）。
+      // 这行是详情路径独有的读法，缺一层就会把整个详情打穿。
+      : catalog?.disabled?.find((record) => {
           if (detail.path === undefined) return record.name === detail.name
           // 台账 path 就是发现文件本身（停用不再改名），直接比即可。
           return record.path === detail.path
         })
     return (
       <div className={css.detailOverlay} role='presentation' onMouseDown={(event) => { if (event.target === event.currentTarget) setDetail(null) }}>
+        {/*
+          详情也要进边界 —— 它才是刚白屏过的那条路径。
+
+          位置在 `detailOverlay` **里**、`detailModal` 内部：遮罩与弹窗外壳
+          （白底、圆角、`role='dialog'` / `aria-modal`）都留在边界外面，所以
+          炸掉时页面上仍是一层完整遮罩 + 一个正常弹窗外壳，卡片落在壳里，
+          而不是一块裸卡片浮在页面外；`onMouseDown` 关详情的逃生路也还在。
+
+          scope 带上技能名，错误卡片上就能直接看出是哪条技能炸的。
+          onRetry 的语义在详情场景下是「退出去」：关掉详情回列表，顺带刷新目录，
+          而不是重新加载 catalog 把人卡在同一个坏详情里。
+        */}
         <div className={css.detailModal} role='dialog' aria-modal='true' aria-label={tt('detail.title')}>
-          <SkillDetailView
-            detail={detail}
-            hubConfig={hubConfig}
-            uses={uses}
-            sourcesState={sourcesState}
-            sourceCheck={sourceCheck}
-            checkingSource={checkingSource}
-            syncingSource={syncingSource}
-            disabled={disabledRecord !== undefined}
-            onEnable={disabledRecord !== undefined ? () => { void enableDisabled(disabledRecord).then(() => { setDetail(null) }) } : undefined}
-            onBack={() => { setDetail(null) }}
-            onCheck={(repo) => { void checkSources(repo) }}
-            onSync={requestSync}
-            onFollowDelete={requestDelete}
-            modal
-          />
+          <PanelBoundary
+            scope={'detail:' + detail.name}
+            onRetry={() => { setDetail(null); void hub.reloadCatalog() }}
+          >
+            <SkillDetailView
+              detail={detail}
+              hubConfig={hubConfig}
+              uses={uses}
+              sourcesState={sourcesState}
+              sourceCheck={sourceCheck}
+              checkingSource={checkingSource}
+              syncingSource={syncingSource}
+              disabled={disabledRecord !== undefined}
+              onEnable={disabledRecord !== undefined ? () => { void enableDisabled(disabledRecord).then(() => { setDetail(null) }) } : undefined}
+              onBack={() => { setDetail(null) }}
+              onCheck={(repo) => { void checkSources(repo) }}
+              onSync={requestSync}
+              onFollowDelete={requestDelete}
+              modal
+            />
+          </PanelBoundary>
         </div>
       </div>
     )
