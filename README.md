@@ -13,7 +13,7 @@
   <img src="https://raw.githubusercontent.com/cheshireez/dsh-skill-shelf/main/promo/real-skill-hub.png" alt="dsh-skill-shelf panel" width="640">
 </p>
 
-In-GUI skill hub for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — manage the full `ctx.skills` catalog from the Web GUI. Beyond browsing, toggling and market installs, it puts the weight on two things: **audit before install** (hidden control characters, encoding disguises and size caps are refused before they land; remote-execution pipes and credential paths are flagged for human review) and **budget after install** (the name + description characters of the first progressive-disclosure layer, so you learn at 8000 that a skill would install but never trigger).
+In-GUI skill shelf for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — manage the full `ctx.skills` catalog from the Web GUI. Beyond browsing, toggling and market installs, it puts the weight on two things: **audit before install** (hidden control characters, encoding disguises and size caps are refused before they land; remote-execution pipes and credential paths are flagged for human review) and **budget after install** (the name + description characters of the first progressive-disclosure layer, so you learn at 8000 that a skill would install but never trigger).
 
 > Host runs in the dsh process via official SDKs only; browser renders through official slots. No dsh source changes.
 
@@ -21,18 +21,18 @@ In-GUI skill hub for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-
 
 ```bash
 dsh plugin --profile web add dsh-skill-shelf
-# restart dsh web → Settings → Skills Hub → Market → scan → import
+# restart dsh web → Settings → Skill Shelf → Market → scan → import
 ```
 
 Requires `Node ^22.19 || >=24` + dsh web `>=0.1.7-alpha.1 <0.3`. dsh `0.2.2` and later require `Node >=24.9`.
 
-Two surfaces — the hub panel lives at **Settings → Skills Hub**, and this plugin's own configuration card sits on the plugin's page in the **Plugins manager** (sidebar → 插件 → dsh-skill-shelf). The card is registered by the plugin itself into the `plugins.bundle.config` slot — dsh has no auto-generated config page — and covers the master switch, announce-to-agent, dot colors, the GitHub token and which usage figures are shown.
+Two surfaces — the hub panel lives at **Settings → Skill Shelf**, and this plugin's own configuration card sits on the plugin's page in the **Plugins manager** (sidebar → 插件 → dsh-skill-shelf). The card is registered by the plugin itself into the `plugins.bundle.config` slot — dsh has no auto-generated config page — and covers the master switch, announce-to-agent, dot colors, the GitHub token and which usage figures are shown.
 
 ## Features
 
-**Settings → Skills Hub** — 4 tabs: **General** (all skills, viewed all / by source / by location / by role), **Workspace** (project skills for the selected workspace), **Market** (install + update), **Trash** (restorable removed skills).
+**Settings → Skill Shelf** — 4 tabs: **General** (all skills, viewed all / by source / by location / by role), **Workspace** (project skills for the selected workspace), **Market** (install + update), **Trash** (restorable removed skills).
 
-The same hub is available as a **960px sidebar panel** (left rail → Plugins area → Skills Hub), so skills can be browsed without leaving the conversation.
+The same hub is available as a **960px sidebar panel** (left rail → Plugins area → Skill Shelf), so skills can be browsed without leaving the conversation.
 
 - **Browse** — every root of the `ctx.skills` registry: project / user / bundled + third-party providers. Search across name, description, `displayName`; filter by source, status (enabled / disabled), and invocation (model / user); sort by usage (the default), name, or added time. Every row has a `⋯` menu for detail / toggle / delete, so actions do not depend on edit mode. Same-name skills from different sources get a duplicate badge instead of silently hiding.
 - **Content audit** — enabled skills' bodies (`SKILL.md`) are checked too: raw ESC control characters, Unicode tag characters, bidirectional controls, and encoding disguises (NUL bytes / UTF-16 / invalid UTF-8 in a text file) — these make "reviewed" not equal "seen" and are refused outright — plus zero-width characters, `curl … | sh` remote execution, SSH/cloud-credential/keychain paths, over-long descriptions, and the 2 MiB per-file / 10 MiB per-skill / 500-file limits. Only findings with no legitimate use block the install; the rest are warnings for a human to judge. Pure local static matching: no model call, no network. A market import scans the whole bundle (including `scripts/`); the standing check only reads `SKILL.md` — it runs on every 5-second poll, and walking every directory would slow the panel down.
@@ -79,7 +79,7 @@ GitHub repo ──scan/import──▶ ~/.dsh/skills
      └─check/sync/delete── ctx.skills ◀─ provider
                                 │ snapshot/get
                                 ▼
-                    /api/skill-shelf/* ──▶ Panel (Settings → Skills Hub)
+                    /api/skill-shelf/* ──▶ Panel (Settings → Skill Shelf)
 ```
 
 Host uses only `ctx.skills.snapshot/get`, `ctx.webServer.register`, `ctx.systemPrompt.section`. Routes sit behind dsh's own `/api` trust fence (loopback / the listener's bind address / `--trusted-host`), JSON; **write routes (POST) additionally require an `x-dsh-skill-shelf: 1` header** — a cross-site page cannot forge a custom header, and a same-origin request skips the CORS preflight so it costs no extra round trip. The provider registers in the global skill layer and once more into every live agent's skill layer (nearer than the preset layer), so an invocation override can outrank the host's native entries.
@@ -138,7 +138,7 @@ Display metadata for the **Plugins manager** page ships beside the code and is r
 - Empty source group — its skills were deleted, or their paused records were lost (sidecar restored/hand-edited). Startup first migrates any legacy `.disabled` file into a policy override, then reconciles records **and prunes records whose file is gone**. Source groups with no visible member are no longer rendered.
 - A skill cannot be created / stays "paused" — the paused record pointed at a file that no longer exists. Startup drops the stale record so the name is free again; enabling a paused skill simply clears the override and the record.
 - Dots missing in `/` menu — dsh internals changed; catalog still works.
-- Settings card missing — open the plugin in the Plugins manager (sidebar → 插件 → dsh-skill-shelf) and expand the 「技能中枢」 card at the top of the page (collapsed by default). On dsh older than `0.1.7-alpha.1` this plugin does not load at all (the settings API it targets does not exist there).
+- Settings card missing — open the plugin in the Plugins manager (sidebar → 插件 → dsh-skill-shelf) and expand the 「技能书架」 card at the top of the page (collapsed by default). On dsh older than `0.1.7-alpha.1` this plugin does not load at all (the settings API it targets does not exist there).
 
 ## Community
 

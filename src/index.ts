@@ -3,7 +3,7 @@
  * skill catalog from the official ctx.skills registry, skill detail,
  * enable/disable toggle, new-skill scaffold) plus a system-prompt
  * announcement. The browser half (./client) renders the sidebar entry and
- * the skill hub panel. Everything rides official NPM SDK packages — no dsh
+ * the skill shelf panel. Everything rides official NPM SDK packages — no dsh
  * source changes.
  */
 
@@ -75,7 +75,7 @@ export interface Config {
   showUseTime: Volatile<boolean>
   /** Show group-header usage summaries (count + last used). Default true. */
   showGroupSummary: Volatile<boolean>
-  /** 侧边栏是否显示技能中枢入口。Default true。 */
+  /** 侧边栏是否显示技能书架入口。Default true。 */
   showSidebarCard: Volatile<boolean>
   /** 模型可调圆点颜色（#rrggbb）；缺省用面板默认色。 */
   dotModelColor: Volatile<string | undefined>
@@ -94,7 +94,7 @@ export interface Config {
  * every wire read.
  */
 const ConfigFields = {
-  enabled: z.boolean().default(HUB_CONFIG_DEFAULTS.enabled).description('关闭后技能中枢的路由、入口与公告全部下线。'),
+  enabled: z.boolean().default(HUB_CONFIG_DEFAULTS.enabled).description('关闭后技能书架的路由、入口与公告全部下线。'),
   announceToAgent: z.boolean().default(HUB_CONFIG_DEFAULTS.announceToAgent).description('在系统提示中加入本插件说明，用户提到技能管理时 Agent 知道如何协作。'),
   dotModelColor: z.string().pattern(HEX_COLOR_RE).description('技能行与聊天「/」菜单中「模型可调」圆点的颜色（#rrggbb）。'),
   dotUserColor: z.string().pattern(HEX_COLOR_RE).description('技能行与聊天「/」菜单中「仅用户可调」圆点的颜色（#rrggbb）。'),
@@ -102,7 +102,7 @@ const ConfigFields = {
   showUseTime: z.boolean().default(HUB_CONFIG_DEFAULTS.showUseTime).description('在技能名行显示最近调用时间。'),
   evolution: z.boolean().default(HUB_CONFIG_DEFAULTS.evolution).description('启用技能进化元代理：分析历史轨迹，产出新建/优化提案（只提案，落地需人工审核）。'),
   showGroupSummary: z.boolean().default(HUB_CONFIG_DEFAULTS.showGroupSummary).description('在分组标题后汇总调用次数与最近调用时间。'),
-  showSidebarCard: z.boolean().default(HUB_CONFIG_DEFAULTS.showSidebarCard).description('在左侧栏显示「技能中枢」入口卡片；关闭后侧边栏不再出现该入口（设置页里仍可打开面板）。'),
+  showSidebarCard: z.boolean().default(HUB_CONFIG_DEFAULTS.showSidebarCard).description('在左侧栏显示「技能书架」入口卡片；关闭后侧边栏不再出现该入口（设置页里仍可打开面板）。'),
   githubToken: z.string().role('secret').description('市场/来源走 GitHub API：匿名每小时 60 次，填 token 后 5000 次。留空即匿名（或跟随 GITHUB_TOKEN 环境变量）。'),
 }
 
@@ -267,10 +267,10 @@ function registerAgentSkillPolicy(
 
 /** Model-facing announcement: plugin presence, capabilities, and limits. */
 export const SKILL_HUB_GUIDANCE =
-  "本机已安装 dsh-skill-shelf 插件（DSH Web GUI 技能中枢）：管理主页在 设置 →「技能中枢」（通用 / 工作区 / 市场 / 回收站），配置卡片在插件管理页（折叠，点标题展开）。能力：全量技能目录的浏览与搜索（项目 / 用户 / 内置及第三方）、按来源 / 目录 / 角色整组启停、市场安装、来源跟踪与同步、跨 agent 与 ZIP 导入、调用统计、诊断与内容审计。限制：只有用户级技能能写能删；所有开关都只写 sidecar 覆盖（关闭模型自动调用，「/技能名」仍可用，源文件不动），内置与运行时技能只读，即时生效无需重启。用户提到「技能管理 / 技能列表 / 技能开关 / 技能同步 / 技能市场 / 更新技能 / 新建技能」时即指本插件，请据此协作。"
+  "本机已安装 dsh-skill-shelf 插件（DSH Web GUI 技能书架）：管理主页在 设置 →「技能书架」（通用 / 工作区 / 市场 / 回收站），配置卡片在插件管理页（折叠，点标题展开）。能力：全量技能目录的浏览与搜索（项目 / 用户 / 内置及第三方）、按来源 / 目录 / 角色整组启停、市场安装、来源跟踪与同步、跨 agent 与 ZIP 导入、调用统计、诊断与内容审计。限制：只有用户级技能能写能删；所有开关都只写 sidecar 覆盖（关闭模型自动调用，「/技能名」仍可用，源文件不动），内置与运行时技能只读，即时生效无需重启。用户提到「技能管理 / 技能列表 / 技能开关 / 技能同步 / 技能市场 / 更新技能 / 新建技能」时即指本插件，请据此协作。"
 
 /**
- * Mount the skill hub routes and announcement.
+ * Mount the skill shelf routes and announcement.
  * @param ctx - host plugin context carrying webServer/skills/systemPrompt/settings.
  */
 export function apply(ctx: Context, config?: Config): void {

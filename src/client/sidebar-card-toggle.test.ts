@@ -72,8 +72,8 @@ describe('settings card exposes the field', () => {
 
   it('locale has both zh and en keys', () => {
     const loc = readFileSync(join(HERE, 'locales', 'settings.ts'), 'utf8')
-    expect(loc).toContain("'settings.showSidebarCard': '侧边栏显示技能中枢'")
-    expect(loc).toContain("'settings.showSidebarCard': 'Show Skill Hub in sidebar'")
+    expect(loc).toContain("'settings.showSidebarCard': '侧边栏显示技能书架'")
+    expect(loc).toContain("'settings.showSidebarCard': 'Show Skill Shelf in sidebar'")
   })
 })
 

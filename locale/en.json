@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "Skill Hub",
-    "description": "Browse, search and switch every local skill from one panel: Settings → Skills Hub (General / Workspace / Market / Trash), or the 960 px sidebar panel. Each row shows day / week / total call counts from an append-only local ledger at ~/.dsh/skill-usage-manager/usage-ledger.jsonl that survives session deletion, and group headers sum them. Installs are content-audited first (hidden control characters, pipe-to-shell, credential paths); GitHub sources keep a commit pin, an update check and a restorable trash. Only ~/.dsh/skills and ~/.agents/skills are writable, and every toggle is a sidecar override, so skill source files never change. Pure local: no model calls; it contacts GitHub and skills.sh only for the checks and installs you start, and turning the plugin off removes the panel, the routes and the system-prompt note.",
+    "title": "Skill Shelf",
+    "description": "Browse, search and switch every local skill from one panel: Settings → Skill Shelf (General / Workspace / Market / Trash), or the 960 px sidebar panel. Each row shows day / week / total call counts from an append-only local ledger at ~/.dsh/skill-usage-manager/usage-ledger.jsonl that survives session deletion, and group headers sum them. Installs are content-audited first (hidden control characters, pipe-to-shell, credential paths); GitHub sources keep a commit pin, an update check and a restorable trash. Only ~/.dsh/skills and ~/.agents/skills are writable, and every toggle is a sidecar override, so skill source files never change. Pure local: no model calls; it contacts GitHub and skills.sh only for the checks and installs you start, and turning the plugin off removes the panel, the routes and the system-prompt note.",
     "detail": "DETAIL.md"
   }
 }

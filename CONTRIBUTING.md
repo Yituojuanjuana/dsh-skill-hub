@@ -87,8 +87,8 @@ npm run build       # tsc declarations + tsdown bundles (lib/index.js + lib/clie
 # after a change:
 npm run build
 # restart the dsh web process, then verify both surfaces (three entry points):
-#   Settings → Skills Hub        — the skill hub panel
-#   sidebar 插件 → 技能中枢       — the same panel, 960px sidebar mount
+#   Settings → Skill Shelf        — the skill shelf panel
+#   sidebar 插件 → 技能书架       — the same panel, 960px sidebar mount
 #   sidebar 插件 → dsh-skill-shelf  — the plugin's settings card
 ```
 

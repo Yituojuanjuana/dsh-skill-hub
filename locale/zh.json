@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "技能中枢",
-    "description": "在一个面板里浏览、搜索、开关本机全部技能：设置 →「技能中枢」（通用 / 工作区 / 市场 / 回收站），或侧边栏 960px 面板。每行显示 `~/.dsh/skill-usage-manager/usage-ledger.jsonl` 只追加台账统计的当日 / 本周 / 累计调用次数（删掉会话也不丢），分组标题同样汇总；装前先过内容审计（隐藏控制字符、管道执行、凭据路径），GitHub 来源带 commit 钉版、更新检查与可恢复回收站。只有 `~/.dsh/skills` 与 `~/.agents/skills` 可写，所有开关都只写 sidecar 覆盖，技能源文件不动。纯本地：不调用模型；只有你主动发起的检查与安装才联网 GitHub 与 skills.sh；关掉插件后面板、路由与系统提示说明全部下线。",
+    "title": "技能书架",
+    "description": "在一个面板里浏览、搜索、开关本机全部技能：设置 →「技能书架」（通用 / 工作区 / 市场 / 回收站），或侧边栏 960px 面板。每行显示 `~/.dsh/skill-usage-manager/usage-ledger.jsonl` 只追加台账统计的当日 / 本周 / 累计调用次数（删掉会话也不丢），分组标题同样汇总；装前先过内容审计（隐藏控制字符、管道执行、凭据路径），GitHub 来源带 commit 钉版、更新检查与可恢复回收站。只有 `~/.dsh/skills` 与 `~/.agents/skills` 可写，所有开关都只写 sidecar 覆盖，技能源文件不动。纯本地：不调用模型；只有你主动发起的检查与安装才联网 GitHub 与 skills.sh；关掉插件后面板、路由与系统提示说明全部下线。",
     "detail": "DETAIL.zh.md"
   }
 }

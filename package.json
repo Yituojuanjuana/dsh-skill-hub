@@ -1,6 +1,6 @@
 {
   "name": "dsh-skill-shelf",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Browse, search and switch every local skill in one dsh Web GUI panel, with day / week / total call counts from an append-only ledger, install-time content audit, GitHub sources with commit pins, local-edit detection, cross-agent and ZIP import, and a restorable trash.",
   "type": "module",
   "engines": {
@@ -84,7 +84,7 @@
     "capability": {
       "id": "skill-shelf-settings-panel",
       "kind": "ui",
-      "invocation": "Open Settings → Skills Hub (技能中枢), or the 960 px sidebar panel; GET /api/skill-shelf/catalog",
+      "invocation": "Open Settings → Skill Shelf (技能书架), or the 960 px sidebar panel; GET /api/skill-shelf/catalog",
       "expected": "The full local skill catalog (all roots) renders as groups with day / week / total call counts, and toggles persist an enabled/disabled row without a restart."
     },
     "evidence": {

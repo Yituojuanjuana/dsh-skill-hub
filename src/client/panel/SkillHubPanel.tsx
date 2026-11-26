@@ -1,5 +1,5 @@
 /**
- * The skill hub panel: catalog ranked by usage or grouped by role / location,
+ * The skill shelf panel: catalog ranked by usage or grouped by role / location,
  * search and filter in one row, per-group tri-state switches with conflict
  * dialogs, upstream source tracking (check / sync / follow upstream deletion
  * into a restorable trash), market sources, disabled re-enable, detail

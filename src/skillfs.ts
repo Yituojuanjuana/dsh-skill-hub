@@ -39,7 +39,7 @@ export * from './skillfs/zip.ts'
 async function writeSkillFile(dir: string, name: string, description: string, body: string): Promise<string> {
   const file = join(dir, 'SKILL.md')
   await mkdir(dir, { recursive: true })
-  const safeDescription = description.trim() === '' ? 'New dsh skill created from the skill hub.' : description.trim()
+  const safeDescription = description.trim() === '' ? 'New dsh skill created from the skill shelf.' : description.trim()
   const trimmedBody = body.trim()
   const content = [
     '---',

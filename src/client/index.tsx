@@ -3,7 +3,7 @@
  * web GUI.
  *
  * Registers the dsh-skill-shelf locale dictionaries and mounts:
- *  - a top-level Settings section (Settings → 技能中枢) hosting the skill hub
+ *  - a top-level Settings section (Settings → 技能书架) hosting the skill shelf
  *    panel: catalog, search, enable/disable, diagnostics, new-skill form;
  *  - the chat "/" menu skill dots, colored from the same config the panel reads;
  *  - a configuration card in the `plugins.bundle.config` slot, keyed by the
@@ -100,7 +100,7 @@ export type { SkillHubSettingsState } from './SkillHubSettingsCard.tsx'
 export type { HubKey } from './locales.ts'
 
 /**
- * Mount the settings card and the skill hub section.
+ * Mount the settings card and the skill shelf section.
  * @param ctx - client root context (slots, locale).
  */
 export function apply(ctx: ClientContext): void {

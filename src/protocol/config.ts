@@ -3,7 +3,7 @@ export interface ErrorResponse {
   error: string
 }
 
-/** The skill hub's own runtime configuration, edited from the settings card. */
+/** The skill shelf's own runtime configuration, edited from the settings card. */
 export interface HubConfig {
   /** Master switch: routes, provider, and announcement all go live with this. */
   enabled: boolean
@@ -19,7 +19,7 @@ export interface HubConfig {
   showUseTime?: boolean
   /** Show group-header usage summaries (count + last used). Default true. */
   showGroupSummary?: boolean
-  /** 侧边栏是否显示「技能中枢」入口卡片。Default true（保持现状）。 */
+  /** 侧边栏是否显示「技能书架」入口卡片。Default true（保持现状）。 */
   showSidebarCard?: boolean
   evolution?: boolean
   /**
@@ -90,7 +90,7 @@ export type HubSettingsValue = {
   showUseCount: boolean
   showUseTime: boolean
   showGroupSummary: boolean
-  /** 侧边栏是否显示技能中枢入口（默认 true）。 */
+  /** 侧边栏是否显示技能书架入口（默认 true）。 */
   showSidebarCard: boolean
   evolution: boolean
   /** 技能进化开关：开启后对话结束会在后台复盘。 */

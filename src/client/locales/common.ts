@@ -1,7 +1,7 @@
 /** 面板框架与通用：入口/视图切换/面板/图例/报错/更新检查/新建表单/诊断修复。从 locales.ts 按前缀拆出，键集合不变。 */
 export const zhCommon = {
   'drag.reorder': '拖拽调整顺序',
-  'entry.label': '技能中枢',
+  'entry.label': '技能书架',
   'view.general': '通用',
   'view.workspace': '工作区',
   'view.market': '市场',
@@ -103,7 +103,7 @@ export const zhCommon = {
   'view.byUsage': '按调用量',
   'view.flat': '平铺',
   'view.grouped': '分组',
-  'panel.title': '技能中枢',
+  'panel.title': '技能书架',
   'panel.count': '共 {count} 个技能',
   'panel.disabledCount': '已停用 {count}',
   'panel.new': '新建技能',
@@ -171,7 +171,7 @@ export const zhCommon = {
 
 export const enCommon: Record<keyof typeof zhCommon, string> = {
   'drag.reorder': 'Drag to reorder',
-  'entry.label': 'Skills Hub',
+  'entry.label': 'Skill Shelf',
   'view.general': 'General',
   'view.workspace': 'Workspace',
   'view.market': 'Market',
@@ -273,7 +273,7 @@ export const enCommon: Record<keyof typeof zhCommon, string> = {
   'view.byUsage': 'By usage',
   'view.flat': 'Flat',
   'view.grouped': 'Grouped',
-  'panel.title': 'Skill Hub',
+  'panel.title': 'Skill Shelf',
   'panel.count': '{count} skills total',
   'panel.disabledCount': '{count} disabled',
   'panel.new': 'New Skill',
