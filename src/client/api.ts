@@ -36,6 +36,7 @@ import {
   type EvolutionDecideResponse,
   type EvolutionClearResponse,
   type EvolutionReparseResponse,
+  type EvolutionTuningState,
   type MarketSyncRequest,
   type MarketSyncResponse,
   type RepoDiscoverResponse,
@@ -319,6 +320,14 @@ export class SkillHubApi {
   /**
    * 离线重新解析：用已存的模型输出重跑解析，不调用模型。
    */
+  /**
+   * 锁定 / 解锁 / 恢复默认自适应参数。
+   *
+   * 只改 tuning，不跑校准、不碰提案 —— 恢复默认不会让任何提案状态变化。
+   */
+  updateEvolutionTuning(patch: { lock?: string; unlock?: string; reset?: boolean }): Promise<{ ok: true; tuning: EvolutionTuningState }> {
+    return this.post<{ ok: true; tuning: EvolutionTuningState }>(SKILL_HUB_API.evolutionTuning, patch)
+  }
   reparseEvolution(): Promise<EvolutionReparseResponse> {
     return this.post<EvolutionReparseResponse>(SKILL_HUB_API.evolutionReparse, {}, 60_000)
   }

@@ -10,9 +10,11 @@ import type { EvolutionProposal, EvolutionResponse } from '../../protocol.ts'
 import type { SkillHubApi } from '../api.ts'
 import { errorMessage, tt } from '../helpers.ts'
 import { locationLabel } from './source-label.ts'
+import { TuningCard } from './TuningCard.tsx'
+import { TUNING_DEFAULTS } from '../../evolution/tuning.ts'
 import css from './panel.module.css'
 
-export type EvolutionApi = Pick<SkillHubApi, 'fetchEvolution' | 'runEvolution' | 'decideEvolution' | 'clearEvolution' | 'reparseEvolution' | 'deleteSkill'>
+export type EvolutionApi = Pick<SkillHubApi, 'fetchEvolution' | 'runEvolution' | 'decideEvolution' | 'clearEvolution' | 'reparseEvolution' | 'updateEvolutionTuning' | 'deleteSkill'>
 
 /** 相对时间。 */
 function relative(ms: number, now = Date.now()): string {
@@ -96,6 +98,20 @@ export const REJECT_CONFIG_RECLAIM: RejectDialogConfig = {
  * @param kind - 提案类型。
  * @returns 该类型对应的弹窗配置。
  */
+/**
+ * 暂缓弹窗的配置。
+ *
+ * 语义是「时机不对 / 节奏太快」，不是「提案错」。三条快捷理由都围绕这一点，
+ * 因为它们同时是自适应校准的输入：deferred 过半只会**降频**，不会提高门槛。
+ */
+export const DEFER_CONFIG: RejectDialogConfig = {
+  defaultKey: 'evolution.defaultDeferReason',
+  quickKeys: [
+    'evolution.deferReasonLowPriority',
+    'evolution.deferReasonBusy',
+    'evolution.deferReasonLater',
+  ],
+}
 export function rejectConfigFor(kind: EvolutionProposal['kind']): RejectDialogConfig {
   if (kind === 'reclaim') return REJECT_CONFIG_RECLAIM
   if (kind === 'optimize') return REJECT_CONFIG_OPTIMIZE
@@ -120,7 +136,8 @@ function ProposalCard(props: {
   busy: boolean
   onAccept: (root: 'user-dsh' | 'user-agents') => void
   onReject: (reason: string) => void
-  onDefer: () => void
+  /** 暂缓：带上理由，理由参与自适应校准。 */
+  onDefer: (reason: string) => void
   /** 一键移入回收站（仅回收建议提案使用）。 */
   onTrash: (skillName: string) => void
 }): JSX.Element {
@@ -128,6 +145,9 @@ function ProposalCard(props: {
   const [open, setOpen] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [reason, setReason] = useState('')
+  /** 暂缓弹窗开合与理由（暂缓也参与自适应校准）。 */
+  const [deferring, setDeferring] = useState(false)
+  const [deferReason, setDeferReason] = useState('')
   const pending = proposal.status === 'pending'
   const isNew = proposal.kind === 'new-skill'
   // 回收建议：操作区换成「移入回收站」，且不展示草稿区。
@@ -230,7 +250,15 @@ function ProposalCard(props: {
                 return next
               })
             }}>{tt('evolution.reject')}</button>
-            <button type='button' className={css.button + ' ' + css.evolutionButton} disabled={props.busy} onClick={props.onDefer}>{tt('evolution.defer')}</button>
+            <button type='button' className={css.button + ' ' + css.evolutionButton} disabled={props.busy} onClick={() => {
+              // 暂缓也要理由：它现在参与自适应校准（deferred 过半只降频、不收紧），
+              // 没有理由就学不到「为什么现在不做」。
+              setDeferring((value) => {
+                const next = !value
+                if (next && deferReason.trim() === '') setDeferReason(tt(DEFER_CONFIG.defaultKey as never))
+                return next
+              })
+            }}>{tt('evolution.defer')}</button>
           </>
         ) : null}
         <button type='button' className={css.button + ' ' + css.evolutionButton} onClick={() => { setOpen((value) => !value) }}>{open ? tt('evolution.collapse') : tt('evolution.expand')}</button>
@@ -266,6 +294,42 @@ function ProposalCard(props: {
               onClick={() => { props.onReject(reason.trim()) }}
             >{tt('evolution.rejectConfirm')}</button>
             <button type='button' className={css.button} onClick={() => { setRejecting(false) }}>{tt('common.cancel')}</button>
+          </div>
+        </div>
+      ) : null}
+
+      {deferring && pending ? (
+        <div className={css.evolutionRedraft}>
+          <label className={css.evolutionLabel} htmlFor={'defer-' + proposal.id}>{tt('evolution.deferReason')}</label>
+          {/* 快捷理由语义是「为什么现在不做」，与驳回（「为什么不成立」）不同。 */}
+          <div className={css.evolutionQuickReasons}>
+            {DEFER_CONFIG.quickKeys.map((item) => (
+              <button
+                key={item}
+                type='button'
+                className={css.evolutionQuickReason + (deferReason === tt(item as never) ? ' ' + css.evolutionQuickReasonActive : '')}
+                onClick={() => { setDeferReason(tt(item as never)) }}
+              >{tt(item as never)}</button>
+            ))}
+          </div>
+          <input
+            id={'defer-' + proposal.id}
+            className={css.input}
+            value={deferReason}
+            placeholder={tt('evolution.deferPlaceholder')}
+            onChange={(event) => { setDeferReason(event.target.value) }}
+          />
+          <div className={css.evolutionActions}>
+            <button
+              type='button'
+              className={css.button + ' ' + css.primary}
+              disabled={props.busy || deferReason.trim() === ''}
+              onClick={() => {
+                setDeferring(false)
+                props.onDefer(deferReason.trim())
+              }}
+            >{tt('evolution.deferConfirm')}</button>
+            <button type='button' className={css.button} onClick={() => { setDeferring(false) }}>{tt('common.cancel')}</button>
           </div>
         </div>
       ) : null}
@@ -406,6 +470,28 @@ export function EvolutionView(props: {
   }, [state?.elapsedMs])
   const elapsedSeconds = Math.max(0, Math.round((anchor.ms + (running ? now - anchor.at : 0)) / 1000))
 
+  /** 锁定 / 解锁一个参数（只影响校准是否跳过它）。 */
+  const toggleTuningLock = async (key: string, locked: boolean): Promise<void> => {
+    setError(undefined)
+    try {
+      await api.updateEvolutionTuning(locked ? { lock: key } : { unlock: key })
+      await reload()
+    } catch (failure) {
+      setError(errorMessage(failure))
+    }
+  }
+
+  /** 恢复默认参数并解除全部锁定。 */
+  const resetTuning = async (): Promise<void> => {
+    setError(undefined)
+    try {
+      await api.updateEvolutionTuning({ reset: true })
+      setNotice(tt('evolution.tuningReset'))
+      await reload()
+    } catch (failure) {
+      setError(errorMessage(failure))
+    }
+  }
   const decide = async (id: string, status: 'accepted' | 'rejected' | 'deferred', reason?: string): Promise<void> => {
     setBusyId(id)
     setNotice(undefined)
@@ -467,6 +553,16 @@ export function EvolutionView(props: {
 
   return (
     <div className={css.evolutionWrap}>
+      {state?.tuning !== undefined ? (
+        <TuningCard
+          tuning={state.tuning}
+          defaults={TUNING_DEFAULTS as unknown as Record<string, number>}
+          busy={busyId !== undefined}
+          onToggleLock={(key, locked) => { void toggleTuningLock(key, locked) }}
+          onReset={() => { void resetTuning() }}
+        />
+      ) : null}
+
       <header className={css.evolutionListBar}>
         <span className={css.evolutionTitle}>{tt('evolution.title')}</span>
         <span className={css.evolutionHint}>
@@ -529,7 +625,7 @@ export function EvolutionView(props: {
               busy={busyId === proposal.id}
               onAccept={() => { void decide(proposal.id, 'accepted', undefined) }}
               onReject={(reason) => { void decide(proposal.id, 'rejected', reason) }}
-              onDefer={() => { void decide(proposal.id, 'deferred') }}
+              onDefer={(deferReason) => { void decide(proposal.id, 'deferred', deferReason) }}
               onTrash={(skillName) => { void trashSkill(skillName, proposal.id) }}
             />
           ))}

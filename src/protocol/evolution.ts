@@ -194,6 +194,63 @@ export interface EvolutionRunResult {
 }
 
 /** 落盘的进化数据。 */
+/**
+ * 一条人工裁决记录（同意 / 驳回 / 暂缓）。
+ *
+ * 这是自适应参数校准的**唯一**数据来源。它与 `EvolutionRejection` 的区别：
+ * 后者只记驳回、只用于抑制同类再生；这里记全部三种动作，且带理由归桶，
+ * 好让「用户反复暂缓」「用户大量采纳」这类信号能被统计到。
+ */
+export interface EvolutionDecisionRecord {
+  id: string
+  kind: 'new-skill' | 'optimize' | 'reclaim'
+  skillName: string
+  action: 'accepted' | 'rejected' | 'deferred'
+  /** 用户填写的原始理由；accepted 时可为空。 */
+  reason: string
+  /** 理由归桶：快捷理由映射到固定桶，自由文本为 `freeform`（只计数不驱动）。 */
+  reasonBucket: string
+  at: number
+}
+
+/**
+ * 自适应参数校准状态（持久化）。
+ *
+ * 字段与 `evolution/tuning.ts` 的 `TuningState` 同形；在这里重复声明是为了
+ * 让 `protocol` 不依赖 `evolution` 的实现模块。
+ */
+export interface EvolutionTuningState {
+  params: Record<string, number>
+  updatedAt: number
+  basis: {
+    total: number
+    accepted: number
+    rejected: number
+    deferred: number
+    buckets: Record<string, number>
+  }
+  applied: string[]
+  adjustedAt: Record<string, number>
+  /** 被用户锁定的参数键：校准跳过它们。 */
+  locked: string[]
+}
+/**
+ * 校准状态的默认值（协议层版本，供路由占位使用）。
+ *
+ * 不引 evolution/tuning.ts：路由层不该依赖实现模块。真正的默认值
+ * 只有一处定义，这里只给出「全默认」的空壳。
+ */
+export function defaultTuningState(): EvolutionTuningState {
+  return {
+    params: {},
+    updatedAt: 0,
+    basis: { total: 0, accepted: 0, rejected: 0, deferred: 0, buckets: {} },
+    applied: [],
+    adjustedAt: {},
+    locked: [],
+  }
+}
+
 export interface EvolutionFile {
   version: number
   /** 最近一次完整提案文本。 */
@@ -206,6 +263,22 @@ export interface EvolutionFile {
   runs: EvolutionRunRecord[]
   /** 驳回记录：同类场景据此不再重复生成无效提案。 */
   rejections: EvolutionRejection[]
+  /**
+   * 统一裁决台账（同意 / 驳回 / 暂缓）。
+   *
+   * 与 `rejections` 并存而非替换：`rejections` 是去重用的「抑制名单」，
+   * 这份是校准用的「全量样本」—— 它还要记录**被采纳**和**被暂缓**的裁决，
+   * 那两类此前完全不落盘，于是自适应校准学不到任何东西。
+   *
+   * 旧文件没有该字段时按空数组降级读（见 `hydrateEvolutionFile`）。
+   */
+  decisions?: EvolutionDecisionRecord[]
+  /**
+   * 自适应参数校准的当前状态。
+   *
+   * 旧文件没有该字段时回落到 `defaultTuning()`，参数即默认值。
+   */
+  tuning?: EvolutionTuningState
   /**
    * 上一次的提案列表（重新解析前自动备份，支持回滚）。
    *
@@ -226,6 +299,8 @@ export interface EvolutionRunRecord {
 
 /** GET /api/skill-shelf/evolution — 当前提案与运行状态。 */
 export interface EvolutionResponse {
+  /** 自适应参数当前状态（旧数据无此字段时由服务端补默认值）。 */
+  tuning?: EvolutionTuningState
   ok: true
   /** 元代理开关是否打开。 */
   enabled: boolean

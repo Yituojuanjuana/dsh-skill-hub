@@ -40,6 +40,7 @@ export type {
 export { CATALOG_DESCRIPTION_MAX_LENGTH, computeAnnouncementBudget } from './protocol/catalog.ts'
 export type { ErrorResponse, HubConfig, HubSettingsValue, RedactedHubConfig, ConfigResponse, ConfigRequest } from './protocol/config.ts'
 export type {
+  EvolutionDecisionRecord,
   EvolutionProposal,
   EvolutionProposalKind,
   EvolutionPriority,
@@ -50,6 +51,7 @@ export type {
   EvolutionRunStatus,
   EvolutionFile,
   EvolutionRunRecord,
+  EvolutionTuningState,
   EvolutionResponse,
   EvolutionRunRequest,
   EvolutionRunResponse,

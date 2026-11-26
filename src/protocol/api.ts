@@ -75,6 +75,7 @@ export const SKILL_HUB_API = {
   evolutionDecide: '/api/skill-shelf/evolution/decide',
   evolutionClear: '/api/skill-shelf/evolution/clear',
   evolutionReparse: '/api/skill-shelf/evolution/reparse',
+  evolutionTuning: '/api/skill-shelf/evolution/tuning',
 } as const
 
 /**

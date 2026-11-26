@@ -12,10 +12,12 @@ import type {
   EvolutionProposal,
   EvolutionProposalKind,
   EvolutionProposalStatus,
+  EvolutionDecisionRecord,
   EvolutionRejection,
   EvolutionRunRecord,
 } from '../protocol/evolution.ts'
 import { dshHome } from '../store/paths.ts'
+import { clampParam, defaultTuning, MAX_DECISIONS, TUNING_DEFAULTS, type TuningKey, type TuningState } from './tuning.ts'
 
 /** 磁盘 schema 版本。 */
 export const EVOLUTION_STORE_VERSION = 1
@@ -31,7 +33,18 @@ export function evolutionPath(home = dshHome()): string {
 
 /** 空状态。 */
 function emptyFile(): EvolutionFile {
-  return { version: EVOLUTION_STORE_VERSION, markdown: '', ranAt: 0, proposals: [], runs: [], rejections: [] }
+  return {
+    version: EVOLUTION_STORE_VERSION,
+    markdown: '',
+    ranAt: 0,
+    proposals: [],
+    runs: [],
+    rejections: [],
+    // 新字段在这里也要给默认值：`hydrateEvolutionFile` 有三条早退分支会返回
+    // 这个对象（非对象 / 版本过新 / 无法解析），漏掉就会让调用方拿到 undefined。
+    decisions: [],
+    tuning: defaultTuning(),
+  }
 }
 
 /** 把任意值收窄成一条提案；形状不对就丢掉，不抛错。 */
@@ -68,6 +81,63 @@ function readProposal(value: unknown): EvolutionProposal | undefined {
 }
 
 /** 校验整份状态；不可读的部分降级为空。 */
+/**
+ * 把磁盘上的 `tuning` 收窄成合法状态。
+ *
+ * 三件事：缺项用默认值补齐、越界夹紧、未知键忽略。旧文件（没有该字段）
+ * 直接回落到 `defaultTuning()` —— 这就是「向后兼容旧数据」的落点。
+ * @param value - 磁盘上的原始值。
+ * @returns 合法的校准状态。
+ */
+function readTuning(value: unknown): TuningState {
+  const base = defaultTuning()
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return base
+  const v = value as Record<string, unknown>
+  const rawParams = typeof v.params === 'object' && v.params !== null && !Array.isArray(v.params)
+    ? v.params as Record<string, unknown>
+    : {}
+  const params = { ...base.params }
+  for (const key of Object.keys(TUNING_DEFAULTS) as TuningKey[]) {
+    const candidate = rawParams[key]
+    if (typeof candidate === 'number' && Number.isFinite(candidate)) params[key] = clampParam(key, candidate)
+  }
+  const rawBasis = typeof v.basis === 'object' && v.basis !== null ? v.basis as Record<string, unknown> : {}
+  const rawBuckets = typeof rawBasis.buckets === 'object' && rawBasis.buckets !== null && !Array.isArray(rawBasis.buckets)
+    ? rawBasis.buckets as Record<string, unknown>
+    : {}
+  const buckets: Record<string, number> = {}
+  for (const [key, val] of Object.entries(rawBuckets)) {
+    if (typeof val === 'number' && Number.isFinite(val)) buckets[key] = val
+  }
+  const keys = Object.keys(TUNING_DEFAULTS) as TuningKey[]
+  const locked = Array.isArray(v.locked)
+    ? (v.locked.filter((item): item is TuningKey => typeof item === 'string' && keys.includes(item as TuningKey)))
+    : []
+  const adjustedAt: Partial<Record<TuningKey, number>> = {}
+  if (typeof v.adjustedAt === 'object' && v.adjustedAt !== null && !Array.isArray(v.adjustedAt)) {
+    for (const [key, val] of Object.entries(v.adjustedAt as Record<string, unknown>)) {
+      if (keys.includes(key as TuningKey) && typeof val === 'number' && Number.isFinite(val)) {
+        adjustedAt[key as TuningKey] = val
+      }
+    }
+  }
+  return {
+    params,
+    updatedAt: typeof v.updatedAt === 'number' && Number.isFinite(v.updatedAt) ? v.updatedAt : 0,
+    basis: {
+      total: typeof rawBasis.total === 'number' && Number.isFinite(rawBasis.total) ? rawBasis.total : 0,
+      accepted: typeof rawBasis.accepted === 'number' && Number.isFinite(rawBasis.accepted) ? rawBasis.accepted : 0,
+      rejected: typeof rawBasis.rejected === 'number' && Number.isFinite(rawBasis.rejected) ? rawBasis.rejected : 0,
+      deferred: typeof rawBasis.deferred === 'number' && Number.isFinite(rawBasis.deferred) ? rawBasis.deferred : 0,
+      buckets,
+    },
+    applied: Array.isArray(v.applied)
+      ? (v.applied.filter((item): item is TuningKey => typeof item === 'string' && keys.includes(item as TuningKey)))
+      : [],
+    adjustedAt,
+    locked,
+  }
+}
 export function hydrateEvolutionFile(parsed: unknown): EvolutionFile {
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return emptyFile()
   const v = parsed as Record<string, unknown>
@@ -107,6 +177,40 @@ export function hydrateEvolutionFile(parsed: unknown): EvolutionFile {
         }]
       })
     : []
+  /**
+   * 裁决台账：旧文件没有该字段时降级为空数组。
+   *
+   * 每条都要重新校验形状 —— 这是磁盘上的不可信 JSON。
+   */
+  const decisions: EvolutionDecisionRecord[] = Array.isArray(v.decisions)
+    ? v.decisions.flatMap((item): EvolutionDecisionRecord[] => {
+        if (typeof item !== 'object' || item === null) return []
+        const d = item as Record<string, unknown>
+        if (typeof d.id !== 'string' || d.id === '') return []
+        if (typeof d.skillName !== 'string') return []
+        const kind = d.kind === 'new-skill' || d.kind === 'optimize' || d.kind === 'reclaim' ? d.kind : undefined
+        const action = d.action === 'accepted' || d.action === 'rejected' || d.action === 'deferred' ? d.action : undefined
+        if (kind === undefined || action === undefined) return []
+        return [{
+          id: d.id,
+          kind,
+          skillName: d.skillName,
+          action,
+          reason: typeof d.reason === 'string' ? d.reason : '',
+          reasonBucket: typeof d.reasonBucket === 'string' && d.reasonBucket !== '' ? d.reasonBucket : 'freeform',
+          at: Number(d.at) || 0,
+        }]
+      }).slice(0, MAX_DECISIONS)
+    : []
+
+  /**
+   * 校准状态：旧文件没有 `tuning` 时回落到默认值。
+   *
+   * 参数逐项校验：缺项用默认值补齐，越界用 `clampParam` 夹紧 —— 这样即使
+   * 磁盘上的值被人手改坏，也不会让过滤阈值跑到区间外。
+   */
+  const tuning = readTuning(v.tuning)
+
   return {
     version: EVOLUTION_STORE_VERSION,
     markdown: typeof v.markdown === 'string' ? v.markdown : '',
@@ -114,6 +218,8 @@ export function hydrateEvolutionFile(parsed: unknown): EvolutionFile {
     proposals,
     runs,
     rejections,
+    decisions,
+    tuning,
   }
 }
 

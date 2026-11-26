@@ -14,7 +14,9 @@ import {
   type EvolutionResponse,
   type EvolutionRunResponse,
 } from '../protocol.ts'
-import type { EvolutionRunResult, EvolutionRunStatus } from '../protocol/evolution.ts'
+import type {
+  EvolutionTuningState, EvolutionRunResult, EvolutionRunStatus } from '../protocol/evolution.ts'
+import { defaultTuningState } from '../protocol/evolution.ts'
 import { errorText } from '../error-text.ts'
 import { configOf, isWritableSource, readString, writeError, writeJson, type RouteSpec, type SkillHubRouteDeps } from './helpers.ts'
 
@@ -27,7 +29,16 @@ export interface EvolutionRouteDeps {
     proposals: EvolutionProposal[]
     runs: EvolutionResponse['runs']
     rejections: EvolutionResponse['rejections']
+    tuning: EvolutionTuningState
   }>
+  /**
+   * 锁定 / 解锁 / 恢复默认参数。
+   *
+   * 只改 tuning，不跑校准、不碰提案。
+   */
+  tuning(patch: { lock?: string; unlock?: string; reset?: boolean }): Promise<{ tuning: EvolutionTuningState }>
+  /** 按裁决历史重算参数（确定性，不经模型）。 */
+  recalibrate(): Promise<{ tuning: EvolutionTuningState }>
   /** 跑一次进化（会一直跑到结束；后台任务用）。 */
   run(sessionId?: string): Promise<EvolutionRunResult>
   /** 当前运行态（服务端真实状态，前端轮询读它）。 */
@@ -65,10 +76,12 @@ export interface EvolutionRouteDeps {
 /** 没有执行器时的占位：队列空、运行回「不可用」。 */
 export function unavailableEvolution(): EvolutionRouteDeps {
   return {
-    read: async () => ({ markdown: '', ranAt: 0, proposals: [], runs: [], rejections: [] }),
+    read: async () => ({ markdown: '', ranAt: 0, proposals: [], runs: [], rejections: [], tuning: defaultTuningState() }),
     run: async () => ({ markdown: '', proposals: [], sessions: 0, messages: 0, skipped: 'evolution unavailable in this profile' }),
     status: () => ({ running: false, elapsedMs: 0 }),
     decide: async () => ({ found: false }),
+    tuning: async () => ({ tuning: defaultTuningState() }),
+    recalibrate: async () => ({ tuning: defaultTuningState() }),
     clear: async () => undefined,
     reparse: async () => ({ ok: false, error: 'evolution unavailable in this profile', proposals: 0, elapsedMs: 0, hasMarkdown: false }),
   }
@@ -97,6 +110,8 @@ export function lazyEvolution(resolve: () => EvolutionRouteDeps | undefined): Ev
     decide: async (id, status, reason, root) => pick().decide(id, status, reason, root),
     clear: async () => pick().clear(),
     reparse: async () => pick().reparse(),
+    tuning: async (patch) => pick().tuning(patch),
+    recalibrate: async () => pick().recalibrate(),
   }
 }
 
@@ -233,6 +248,32 @@ export function evolutionRoutes(deps: SkillHubRouteDeps, evolution: EvolutionRou
           ...outcome.error === undefined ? {} : { error: outcome.error },
           ...outcome.dropped === undefined ? {} : { dropped: outcome.dropped },
         } satisfies EvolutionReparseResponse)
+      },
+    },
+    /**
+     * 自适应参数的锁定 / 恢复默认。
+     *
+     * 只写 `tuning.locked` 与 `tuning.params`，**不触发校准本身** —— 校准按
+     * 裁决历史在分析时跑，这里只是让用户能钉住某个参数或整体复位。
+     */
+    {
+      path: SKILL_HUB_API.evolutionTuning,
+      methods: ['POST'],
+      jsonBody: true,
+      serialize: true,
+      handler: async ({ res, body }) => {
+        const patch = (typeof body === 'object' && body !== null ? body : {}) as Record<string, unknown>
+        let outcome
+        try {
+          outcome = await evolution.tuning({
+            ...typeof patch.lock === 'string' ? { lock: patch.lock } : {},
+            ...typeof patch.unlock === 'string' ? { unlock: patch.unlock } : {},
+            ...patch.reset === true ? { reset: true } : {},
+          })
+        } catch (error) {
+          writeError(res, 500, errorText(error)); return
+        }
+        writeJson(res, 200, { ok: true, tuning: outcome.tuning })
       },
     },
   ]

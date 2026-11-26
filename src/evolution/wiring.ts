@@ -12,7 +12,8 @@ import { applyProposal } from './apply.ts'
 import { reparseMarkdown } from './reparse.ts'
 import { dshHome } from '../store/paths.ts'
 import type { EvolutionRouteDeps } from '../routes/evolution.ts'
-import type { EvolutionProposal, EvolutionRunRecord } from '../protocol/evolution.ts'
+import type { EvolutionDecisionRecord, EvolutionProposal, EvolutionRunRecord, EvolutionTuningState } from '../protocol/evolution.ts'
+import { bucketOf, computeTuning, defaultTuning, MAX_DECISIONS, type TuningKey } from './tuning.ts'
 
 /** `ctx.sessionQuery` 里用到的两个方法（结构化视图，便于测试替身）。 */
 export interface SessionQueryLike {
@@ -336,12 +337,14 @@ export function wireEvolution(deps: EvolutionWiringDeps): EvolutionWiring {
     routes: {
       read: async () => {
         const state = await store.read()
-        return { markdown: state.markdown, ranAt: state.ranAt, proposals: state.proposals, runs: state.runs, rejections: state.rejections }
+        return { markdown: state.markdown, ranAt: state.ranAt, proposals: state.proposals, runs: state.runs, rejections: state.rejections, tuning: state.tuning ?? defaultTuning() }
       },
       run: async () => ({ markdown: '', proposals: [], sessions: 0, messages: 0, skipped: reason }),
       status: () => ({ running: false, elapsedMs: 0 }),
       reparse: async () => ({ ok: false, error: reason, proposals: 0, elapsedMs: 0, hasMarkdown: false }),
       decide: async () => ({ found: false }),
+      tuning: async () => ({ tuning: defaultTuning() }),
+      recalibrate: async () => ({ tuning: defaultTuning() }),
       clear: async () => undefined,
     },
     dispose: () => undefined,
@@ -382,7 +385,7 @@ export function wireEvolution(deps: EvolutionWiringDeps): EvolutionWiring {
     routes: {
       read: async () => {
         const state = await store.read()
-        return { markdown: state.markdown, ranAt: state.ranAt, proposals: state.proposals, runs: state.runs, rejections: state.rejections }
+        return { markdown: state.markdown, ranAt: state.ranAt, proposals: state.proposals, runs: state.runs, rejections: state.rejections, tuning: state.tuning ?? defaultTuning() }
       },
       run: async (sessionId) => {
         const result = await engine.run(sessionId)
@@ -423,6 +426,7 @@ export function wireEvolution(deps: EvolutionWiringDeps): EvolutionWiring {
           usage: await deps.listUsage?.().catch(() => []) ?? [],
           trash: await deps.listTrash?.().catch(() => []) ?? [],
           rejections: state.rejections.map((item) => ({ skillName: item.skillName, reason: item.reason })),
+    tuning: state.tuning ?? defaultTuning(),
         }
         const result = reparseMarkdown(state.markdown, sources, Date.now())
         if (!result.ok || result.proposals.length === 0) {
@@ -452,22 +456,68 @@ export function wireEvolution(deps: EvolutionWiringDeps): EvolutionWiring {
           hasMarkdown: true,
         }
       },
+      /**
+       * 锁定 / 解锁 / 恢复默认。
+       *
+       * 只改 `tuning` 这一块，不跑校准、不碰提案 —— 恢复默认不会让任何提案
+       * 状态变化，也不会写技能文件。
+       */
+      tuning: async (patch: { lock?: string; unlock?: string; reset?: boolean }) => {
+        let next: EvolutionTuningState | undefined
+        await store.update((current) => {
+          const base = current.tuning ?? defaultTuning()
+          let tuning = base
+          if (patch.reset === true) {
+            tuning = defaultTuning()
+          } else {
+            const locked = new Set(base.locked)
+            if (patch.lock !== undefined) locked.add(patch.lock as TuningKey)
+            if (patch.unlock !== undefined) locked.delete(patch.unlock as TuningKey)
+            tuning = { ...base, locked: [...locked] }
+          }
+          next = tuning
+          return { ...current, tuning }
+        })
+        return { tuning: next ?? defaultTuning() }
+      },
+
       decide: async (id, status, reason, root) => {
         const state = await store.read()
         const proposal = state.proposals.find((item) => item.id === id)
         if (proposal === undefined) return { found: false }
 
-        // rejected / deferred：只改状态 + 记原因（驳回原因用于抑制同类提案）。
+        /**
+         * 记一条裁决。
+         *
+         * 三种动作都要落盘：以前只有 rejected 留痕（且只用于去重），accepted
+         * 和 deferred 完全不记录，于是自适应校准没有任何样本可学。这里统一
+         * 写进 `decisions`，并按类型把理由归桶（自由文本归 freeform，只计数
+         * 不驱动参数）。
+         */
+        const recordDecision = (action: 'accepted' | 'rejected' | 'deferred'): EvolutionDecisionRecord => ({
+          id,
+          kind: proposal.kind,
+          skillName: proposal.skillName,
+          action,
+          reason: reason ?? '',
+          reasonBucket: bucketOf(proposal.kind, reason ?? ''),
+          at: Date.now(),
+        })
+
+        // rejected / deferred：只改状态 + 记原因。
         if (status !== 'accepted') {
           await store.update((current) => ({
             ...current,
             proposals: current.proposals.map((item) => item.id === id ? { ...item, status: status as EvolutionProposal['status'] } : item),
+            // 驳回记录仍单独保留：它是「同类不再重复生成」的抑制名单，
+            // 语义与全量裁决台账不同，两者不能合并。
             rejections: status === 'rejected' && reason !== undefined && reason !== ''
               ? [
                   { id, skillName: proposal.skillName, reason, at: Date.now(), kind: proposal.kind },
                   ...current.rejections,
                 ].slice(0, 200)
               : current.rejections,
+            decisions: [recordDecision(status), ...(current.decisions ?? [])].slice(0, MAX_DECISIONS),
           }))
           return { found: true }
         }
@@ -510,6 +560,8 @@ export function wireEvolution(deps: EvolutionWiringDeps): EvolutionWiring {
         await store.update((current) => ({
           ...current,
           proposals: current.proposals.map((item) => item.id === id ? { ...item, status: 'accepted' } : item),
+          // 采纳也要留痕 —— 「用户大量采纳」是校准里唯一能反向放宽门槛的信号。
+          decisions: [recordDecision('accepted'), ...(current.decisions ?? [])].slice(0, MAX_DECISIONS),
         }))
         // 落地后立刻让 provider 重建发现结果：不刷新的话，工作区页要等下一次
         // 5 秒轮询才会出现新技能，用户会以为「落地没成功」。
@@ -520,6 +572,36 @@ export function wireEvolution(deps: EvolutionWiringDeps): EvolutionWiring {
           ...outcome.path === undefined ? {} : { appliedPath: outcome.path },
           ...outcome.backupPath === undefined ? {} : { backupPath: outcome.backupPath },
         }
+      },
+      /**
+       * 按裁决历史重算参数（确定性，不经模型）。
+       *
+       * 只写 `tuning`，不碰提案、不碰技能文件。进化总开关关闭时直接返回当前
+       * 状态 —— 参数保留但不再变化。
+       */
+      recalibrate: async () => {
+        if (!deps.enabled()) return { tuning: (await store.read()).tuning ?? defaultTuning() }
+        let next: EvolutionTuningState | undefined
+        await store.update((current) => {
+          const base = current.tuning ?? defaultTuning()
+          const decisions = (current.decisions ?? []).map((item) => ({
+            ...item,
+            reasonBucket: item.reasonBucket as never,
+          }))
+          const out = computeTuning({ decisions: decisions as never, current: base })
+          if (out.applied.length === 0) { next = base; return current }
+          const tuning: EvolutionTuningState = {
+            params: out.params,
+            updatedAt: Date.now(),
+            basis: out.basis as never,
+            applied: out.applied,
+            adjustedAt: out.adjustedAt as never,
+            locked: base.locked,
+          }
+          next = tuning
+          return { ...current, tuning }
+        })
+        return { tuning: next ?? defaultTuning() }
       },
       clear: async () => {
         await store.update((current) => ({ ...current, markdown: '', proposals: [], ranAt: 0 }))
