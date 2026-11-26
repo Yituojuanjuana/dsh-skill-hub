@@ -19,6 +19,7 @@ import { errorMessage, tt } from '../helpers.ts'
 import { isProjectSource, type SortKey } from '../grouping.ts'
 import { dotStyle } from './format.ts'
 import { SkillDetailView } from './SkillDetailView.tsx'
+import { PanelBoundary } from './PanelErrorBoundary.tsx'
 import { LocationsView } from './LocationsView.tsx'
 import { SkillRows } from './SkillRows.tsx'
 import { FilterSearch } from './FilterSearch.tsx'
@@ -112,6 +113,23 @@ export function SkillHubPanel(props: SkillHubPanelProps): React.JSX.Element {
 
   // -------------------------------------------------------------- detail
 
+  /**
+   * 「全部分类」平铺专用的行源。
+   *
+   * **必须放在下面那个 `if (detail !== null) return` 之前。**
+   *
+   * 这个组件在详情打开时提前 return 整个弹窗，于是它后面的一切都不再执行。
+   * 把任何 hook 放到那之后，首屏（detail === null）会执行 N 个 hook，点开
+   * 详情后只执行 N-1 个 —— React 抛 "Rendered fewer hooks than expected"，
+   * 整棵组件树被卸载，用户看到的就是「点一下技能，面板整块白掉」。
+   *
+   * 这条规则对**所有** hook 成立：新增 hook 一律写在 early return 之前。
+   */
+  const scopedSorted = useMemo(
+    () => hub.sorted.filter((skill) => !isProjectSource(skill.source)),
+    [hub.sorted],
+  )
+
   useEffect(() => {
     if (detail === null) return
     const onKeyDown = (event: KeyboardEvent): void => { if (event.key === 'Escape') setDetail(null) }
@@ -194,18 +212,6 @@ export function SkillHubPanel(props: SkillHubPanelProps): React.JSX.Element {
   const rowSource = rolesView ? hub.searchedSorted : filtered
   const scopedFilteredBase = rowSource.filter((skill) => tab === 'workspace' ? isProjectSource(skill.source) : !isProjectSource(skill.source))
   const scopedFiltered = scopedFilteredBase
-  /**
-   * 「全部分类」平铺专用的行源。
-   *
-   * 修复：平铺分支以前用 `scopedFiltered`（源自未排序的 `filtered`），
-   * 于是切到「全部」时排序键失效、退回目录顺序。分组视图（按目录/按角色）
-   * 读的是 `hub.sorted`，所以只有平铺这一支漏了。这里改成从 `hub.sorted`
-   * 取，三种分类统一吃同一个排序结果。
-   */
-  const scopedSorted = useMemo(
-    () => hub.sorted.filter((skill) => !isProjectSource(skill.source)),
-    [hub.sorted],
-  )
   const visibleDisabledCount = scopedFiltered.filter((skill) => skill.modelOverride === true).length
   const shownCount = scopedFiltered.length
   /**
@@ -296,6 +302,17 @@ export function SkillHubPanel(props: SkillHubPanelProps): React.JSX.Element {
         onChange={(event) => { void importZip(event.target.files?.[0]) }}
       />
 
+      {/*
+        内容区的错误边界（兜底，不是修复）。
+
+        只包内容：标题栏和 tab 条留在外面，所以即使某个视图炸了，用户仍能
+        看到面板标题、仍能切到别的 tab 逃出去 —— 不会被整块白屏困住。
+        真正的 bug 修复在别处（例如 hook 顺序），这里只负责「不再静默白屏」。
+      */}
+      <PanelBoundary
+        scope={tab}
+        onRetry={() => { void hub.reloadCatalog() }}
+      >
       {showForeign ? (
         <ForeignImportDialog
           api={props.api}
@@ -485,6 +502,8 @@ export function SkillHubPanel(props: SkillHubPanelProps): React.JSX.Element {
           ) : null}
         </>
       ) : null}
+
+      </PanelBoundary>
 
       <PanelDialogs
         confirmDialog={confirmDialog}

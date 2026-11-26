@@ -657,3 +657,13 @@ body:not([data-ds-dark-theme]) .panel {
 .tuningChanged { color: var(--hub-accent-text); }
 .tuningRowLocked td { opacity: .55; }
 .tuningLock { display: inline-flex; align-items: center; gap: 4px; color: var(--hub-text-4); font-size: var(--hub-fs-11); cursor: pointer; }
+/* ---- 面板错误边界卡片 -----------------------------------------------------
+   把「整块白屏」换成一张可读的卡片。它只在渲染期异常时出现，是兜底不是修复。 */
+.errorCard { margin: 10px 0; padding: 12px 14px; border: 1px solid var(--hub-danger-border, #e5b4b4); border-radius: var(--hub-radius-md); background: var(--hub-danger-bg, #fdf3f3); }
+.errorCardTitle { display: flex; align-items: center; gap: 8px; color: var(--hub-danger-text, #b03030); font-size: var(--hub-fs-13); font-weight: 600; }
+.errorCardScope { padding: 0 6px; border-radius: 999px; background: color-mix(in srgb, var(--hub-danger-text, #b03030) 12%, transparent); font-size: var(--hub-fs-11); font-weight: 500; }
+.errorCardMessage { margin-top: 6px; color: var(--hub-text-2); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: var(--hub-fs-12); word-break: break-word; }
+.errorCardDetails { margin-top: 8px; color: var(--hub-text-3); font-size: var(--hub-fs-11); }
+.errorCardDetails summary { cursor: pointer; }
+.errorCardPre { margin: 6px 0 0; max-height: 220px; overflow: auto; padding: 8px; border-radius: 6px; background: var(--hub-surface); font-size: var(--hub-fs-11); line-height: 1.5; white-space: pre-wrap; }
+.errorCardActions { display: flex; gap: 8px; margin-top: 10px; }
