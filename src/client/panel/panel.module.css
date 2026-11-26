@@ -640,3 +640,20 @@ body:not([data-ds-dark-theme]) .panel {
 .evolutionEmpty strong { font-size: var(--hub-fs-13); color: var(--hub-text-2); font-weight: 600; }
 .evolutionEmpty p { margin: 0; font-size: var(--hub-fs-11); color: var(--hub-text-4); line-height: 1.55; max-width: 460px; }
 .sectionTitle { font-size: var(--hub-fs-12); font-weight: 600; color: var(--hub-text-2); margin-top: 4px; }
+
+/* ---- 自适应参数卡片 -------------------------------------------------------
+   只读展示校准结果。表格用 tabular-nums 让「原值 → 新值」的数字对齐。 */
+.tuningCard { margin: 0 0 10px; border: 1px solid var(--hub-border); border-radius: var(--hub-radius-md); background: var(--hub-surface); }
+.tuningHead { display: flex; align-items: center; gap: 8px; padding: 8px 12px; flex-wrap: wrap; }
+.tuningToggle { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: none; background: none; color: var(--hub-text); font-size: var(--hub-fs-13); font-weight: 600; cursor: pointer; }
+.tuningBadge { min-width: 18px; padding: 0 5px; border-radius: 999px; background: color-mix(in srgb, var(--hub-accent) 16%, transparent); color: var(--hub-accent-text); font-size: var(--hub-fs-10); font-weight: 600; text-align: center; }
+.tuningHint { flex: 1 1 auto; min-width: 0; color: var(--hub-text-4); font-size: var(--hub-fs-11); }
+.tuningBody { padding: 0 12px 10px; border-top: 1px solid var(--hub-border); }
+.tuningBasis { padding: 8px 0; color: var(--hub-text-4); font-size: var(--hub-fs-11); font-variant-numeric: tabular-nums; }
+.tuningTable { width: 100%; border-collapse: collapse; font-size: var(--hub-fs-12); font-variant-numeric: tabular-nums; }
+.tuningTable th { padding: 4px 8px 4px 0; text-align: left; font-weight: 600; color: var(--hub-text-3); font-size: var(--hub-fs-11); }
+.tuningTable td { padding: 4px 8px 4px 0; color: var(--hub-text-2); }
+.tuningDefault { color: var(--hub-text-4); }
+.tuningChanged { color: var(--hub-accent-text); }
+.tuningRowLocked td { opacity: .55; }
+.tuningLock { display: inline-flex; align-items: center; gap: 4px; color: var(--hub-text-4); font-size: var(--hub-fs-11); cursor: pointer; }
