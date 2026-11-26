@@ -11,7 +11,7 @@
 
 import { useMemo, type JSX } from 'react'
 import { tt } from '../helpers.ts'
-import { groupByLocation, groupSwitchView, type GroupSwitchState, type LocationGroup } from '../grouping.ts'
+import { groupByLocation, groupSwitchView, sortGroupsByRank, type GroupSwitchState, type LocationGroup } from '../grouping.ts'
 import { SkillRows } from './SkillRows.tsx'
 import { GroupSummary } from './GroupSummary.tsx'
 import { GroupSwitchButton } from './GroupSwitchButton.tsx'
@@ -26,7 +26,13 @@ export function LocationsView(props: { hub: SkillHubState }): JSX.Element {
   const { catalog, expandedGroups, viewNames, actionNames, batchBusy, busyNames, toggleGroupExpanded } = hub
   const duplicateNames = useMemo(() => new Set(catalog?.duplicateNames ?? []), [catalog])
   // `hub.sorted` already carries search + invocation + status + sort order.
-  const groups = groupByLocation(hub.sorted)
+  // groupByLocation 内部会按目录 rank 重排组间顺序 —— 那会盖掉用户选的排序键。
+  // 这里再用 sortGroupsByRank 按「各组最高排名成员」重排组间，组内顺序
+  // 因为分桶时保留了 hub.sorted 的次序，天然就是排序后的。
+  const groups = useMemo(
+    () => sortGroupsByRank(groupByLocation(hub.sorted), hub.sorted),
+    [hub.sorted],
+  )
   // The card title already names the root, so the per-row root badge is noise here.
   const rowProps = { uses: hub.uses, hubConfig: hub.hubConfig, busyNames, editMode: hub.editMode, tagBusy: hub.tagBusy, duplicateNames, statusFilter: hub.statusFilter, hideSourceBadge: true, toggle: hub.toggle, openDetail: hub.openDetail, requestDeleteSkill: hub.requestDeleteSkill, requestTrashSkill: hub.requestTrashSkill }
 

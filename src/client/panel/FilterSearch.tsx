@@ -32,9 +32,12 @@ export function FilterSearch(props: FilterSearchProps): JSX.Element {
   const apply = (): void => { onApply(draft.trim()) }
 
   return (
-    <span className={css.filterSearch}>
+    // 输入框与按钮同处一个 wrapper，共用**一个边框**：边框放在 wrapper 上，
+    // 内部 input 去掉自己的边框/背景，按钮绝对定位在右侧内嵌。
+    // 宽度与高度全部由 wrapper 决定，input 只留 padding-right 给按钮让位。
+    <span className={css.filterSearch + ' ' + (inputClassName ?? '')}>
       <input
-        className={css.search + ' ' + (inputClassName ?? '')}
+        className={css.filterSearchInput}
         value={draft}
         placeholder={tt(placeholderKey)}
         aria-label={tt('panel.search')}
@@ -45,7 +48,7 @@ export function FilterSearch(props: FilterSearchProps): JSX.Element {
       />
       <button
         type='button'
-        className={css.button + ' ' + css.filterSearchButton}
+        className={css.filterSearchButton}
         onClick={apply}
         aria-label={tt('panel.searchAction')}
         title={tt('panel.searchAction')}

@@ -12,7 +12,7 @@
 
 import { useMemo, type JSX } from 'react'
 import { tt } from '../helpers.ts'
-import { groupByRole, type GroupSwitchState } from '../grouping.ts'
+import { groupByRole, sortGroupsByRank, type GroupSwitchState } from '../grouping.ts'
 import { SkillRows } from './SkillRows.tsx'
 import { GroupSummary } from './GroupSummary.tsx'
 import { GroupSwitchButton } from './GroupSwitchButton.tsx'
@@ -25,7 +25,8 @@ export function RoleGroupsView(props: { hub: SkillHubState }): JSX.Element {
   const { hub } = props
   const { catalog, expandedGroups, viewNames, actionNames, batchBusy, busyNames, toggleGroupExpanded } = hub
   const duplicateNames = useMemo(() => new Set(catalog?.duplicateNames ?? []), [catalog])
-  const groups = useMemo(() => groupByRole(hub.sorted), [hub.sorted])
+  // 组间同样按各组最高排名成员排，别让固定 role 规则盖掉用户选的排序键。
+  const groups = useMemo(() => sortGroupsByRank(groupByRole(hub.sorted), hub.sorted), [hub.sorted])
   const rowProps = { uses: hub.uses, hubConfig: hub.hubConfig, busyNames, editMode: hub.editMode, tagBusy: hub.tagBusy, duplicateNames, statusFilter: hub.statusFilter, hideSourceBadge: true, toggle: hub.toggle, openDetail: hub.openDetail, requestDeleteSkill: hub.requestDeleteSkill, requestTrashSkill: hub.requestTrashSkill }
 
   /**

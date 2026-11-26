@@ -247,9 +247,14 @@
 
 /* Source filter row (分类 view). */
 .filterInline { flex: 0 1 auto; min-width: 0; max-width: 150px; }
-.filterSearch { display: inline-flex; align-items: stretch; gap: 6px; flex: 1 1 auto; min-width: 0; }
-.filterSearch .search { flex: 1 1 auto; min-width: 0; height: 38px; box-sizing: border-box; }
-.filterSearchButton { flex: 0 0 auto; min-width: 62px; height: 38px; box-sizing: border-box; white-space: nowrap; }
+/* 搜索框 + 内嵌按钮：一个 wrapper 一个边框，按钮绝对定位在右侧内沿。
+   窄屏靠 min-width 保底，按钮固定 60px 不被压扁，wrapper 可收缩换行。 */
+.filterSearch { position: relative; display: inline-flex; align-items: center; flex: 1 1 auto; min-width: 180px; height: 38px; box-sizing: border-box; border: 1px solid transparent; border-radius: var(--hub-radius-md); background: var(--hub-surface); transition: background .16s ease, border-color .16s ease, box-shadow .16s ease; }
+.filterSearch:focus-within { background: var(--hub-card-bg); border-color: color-mix(in srgb, var(--hub-accent) 45%, transparent); box-shadow: var(--hub-ring); }
+.filterSearchInput { flex: 1 1 auto; min-width: 0; height: 100%; padding: 0 68px 0 14px; border: none; outline: none; background: transparent; color: inherit; font-size: var(--hub-fs-13); box-sizing: border-box; }
+.filterSearchInput::placeholder { opacity: .45; }
+.filterSearchButton { position: absolute; right: 4px; top: 4px; bottom: 4px; width: 60px; min-width: 60px; padding: 0; border: none; border-radius: calc(var(--hub-radius-md) - 2px); background: var(--hub-hover); color: inherit; font-size: var(--hub-fs-12); cursor: pointer; white-space: nowrap; }
+.filterSearchButton:hover { background: var(--hub-active); }
 .filterBar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; row-gap: 6px; }
 .filterBar .formLabel { margin: 0; }
 

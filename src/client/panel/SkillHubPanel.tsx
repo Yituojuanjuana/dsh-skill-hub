@@ -12,7 +12,7 @@
  * sections) and the view routing. Hooks below own only its local UI state.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { IconSkillOutline16 } from '../icons.tsx'
 import type { SkillHubApi } from '../api.ts'
 import { errorMessage, tt } from '../helpers.ts'
@@ -194,6 +194,18 @@ export function SkillHubPanel(props: SkillHubPanelProps): React.JSX.Element {
   const rowSource = rolesView ? hub.searchedSorted : filtered
   const scopedFilteredBase = rowSource.filter((skill) => tab === 'workspace' ? isProjectSource(skill.source) : !isProjectSource(skill.source))
   const scopedFiltered = scopedFilteredBase
+  /**
+   * 「全部分类」平铺专用的行源。
+   *
+   * 修复：平铺分支以前用 `scopedFiltered`（源自未排序的 `filtered`），
+   * 于是切到「全部」时排序键失效、退回目录顺序。分组视图（按目录/按角色）
+   * 读的是 `hub.sorted`，所以只有平铺这一支漏了。这里改成从 `hub.sorted`
+   * 取，三种分类统一吃同一个排序结果。
+   */
+  const scopedSorted = useMemo(
+    () => hub.sorted.filter((skill) => !isProjectSource(skill.source)),
+    [hub.sorted],
+  )
   const visibleDisabledCount = scopedFiltered.filter((skill) => skill.modelOverride === true).length
   const shownCount = scopedFiltered.length
   /**
@@ -420,7 +432,7 @@ export function SkillHubPanel(props: SkillHubPanelProps): React.JSX.Element {
               不另造一套列表 —— 行尺寸、操作、状态徽标因此完全一致。 */}
           {tab === 'general' && generalView === 'all' ? (
             <div className={css.workspaceFlatList}>
-              <SkillRows skills={scopedFiltered} rowProps={generalRowProps} />
+              <SkillRows skills={scopedSorted} rowProps={generalRowProps} />
             </div>
           ) : null}
           {tab === 'general' && generalView === 'location' ? <LocationsView hub={hub} /> : null}

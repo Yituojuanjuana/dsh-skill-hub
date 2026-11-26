@@ -253,6 +253,30 @@ export interface RoleGroup {
  * Group skills into auto roles, in rule order, with `other` last. Empty roles
  * are dropped so the panel never renders a heading with nothing under it.
  */
+/**
+ * 组间排序口径：按**组内首个成员**在传入 skills 序列里的位置排。
+ *
+ * 调用方传入的是已按 sortKey 排好序的列表（hub.sorted），所以「组内首项」就是
+ * 该组里排名最高的技能。组间按各自最高排名的技能比较，等价于「把每组最好
+ * 的那一项拎出来比赛」，与用户的排序直觉一致；同名次按组 id 兜底，稳定不跳。
+ * @param groups - 已分组的组（成员顺序应保持传入 skills 的顺序）。
+ * @param ordered - 与分组同源的、已排序的技能序列，用于查首项名次。
+ * @returns 排好组间顺序的新数组（不改入参）。
+ */
+export function sortGroupsByRank<T extends { id: string; skills: readonly CatalogSkill[] }>(
+  groups: readonly T[],
+  ordered: readonly CatalogSkill[],
+): T[] {
+  const rank = new Map<string, number>()
+  ordered.forEach((skill, index) => { if (!rank.has(skill.name)) rank.set(skill.name, index) })
+  const firstRank = (group: T): number => {
+    let best = Number.POSITIVE_INFINITY
+    for (const skill of group.skills) best = Math.min(best, rank.get(skill.name) ?? Number.POSITIVE_INFINITY)
+    return best
+  }
+  return [...groups].sort((a, b) => firstRank(a) - firstRank(b) || a.id.localeCompare(b.id))
+}
+
 export function groupByRole(skills: readonly CatalogSkill[]): RoleGroup[] {
   const buckets = new Map<RoleId, CatalogSkill[]>()
   for (const skill of skills) {
