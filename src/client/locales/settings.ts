@@ -1,7 +1,7 @@
 /** 设置卡。从 locales.ts 按前缀拆出，键集合不变。 */
 export const zhSettings = {
   'settings.title': '技能书架',
-  'settings.description': '技能书架：按目录、角色或工作区分组浏览本地技能，也可平铺查看；记录调用量与最近调用，支持市场安装与来源同步。技能进化会从会话中挖掘提案，人工审核后可落地到对应项目工作区；回收站与诊断帮助你管理和修复技能。',
+  'settings.description': '技能书架：本地技能的浏览与治理面板。按目录、角色或工作区分组查看，也可平铺；台账记录每个技能的日 / 周 / 总调用量与成功率。导入前做内容审计，来源可同步并检测本地改动，移除的技能进可恢复的回收站，诊断能定位并修复加载问题。技能进化从会话中挖掘提案，经人工审核后可落地到对应项目工作区；侧栏入口可在设置里关闭。',
   'settings.enabled': '启用插件',
   'settings.enabledHint': '关闭后技能书架的路由、入口与公告全部下线。',
   'settings.announceToAgent': '向 Agent 公告',
@@ -39,9 +39,9 @@ export const zhSettings = {
 
 export const enSettings: Record<keyof typeof zhSettings, string> = {
   'settings.title': 'Skill Shelf',
-  'settings.description': 'Skill Shelf browses local skills grouped by directory, role, or workspace — or as a flat list. It tracks call counts and recent usage, and supports the marketplace and source sync. Skill evolution mines proposals from session history; after review they can be applied into the right project workspace. A recycle bin and diagnostics help you manage and repair skills.',
+  'settings.description': 'Skill Shelf is the browse-and-govern panel for local skills. View them grouped by directory, role, or workspace — or as a flat list — with a ledger tracking day / week / total call counts and success rate per skill. Imports are content-audited first; tracked sources can be synced with local-edit detection; removed skills go to a restorable trash; diagnostics locate and repair loading problems. Skill evolution mines proposals from session history and, after human review, applies them into the owning project workspace. The sidebar entry can be turned off in settings.',
   'settings.enabled': 'Enable plugin',
-  'settings.enabledHint': 'Disables the hub routes, entries, and announcement.',
+  'settings.enabledHint': 'Disables the Skill Shelf routes, entries, and announcement.',
   'settings.announceToAgent': 'Announce to agent',
   'settings.announceToAgentHint': 'Adds a system-prompt section so agents know how to collaborate when users mention skill management.',
   'settings.dotModelColor': 'Model-invocable dot color',

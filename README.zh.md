@@ -13,7 +13,7 @@
   <img src="https://raw.githubusercontent.com/cheshireez/dsh-skill-shelf/main/promo/real-skill-hub.png" alt="dsh-skill-shelf 面板" width="640">
 </p>
 
-面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的技能书架 —— 在 Web GUI 里管理 `ctx.skills` 全量目录。除了浏览、开关与市场安装，重心放在两件事上：**装之前先审内容**（隐藏字符、远程执行管道、凭据路径、体积上限，命中阻断级规则即拒绝落盘），**装之后算公告预算**（一层渐进加载注入的 name + description 字符数，超 8000 会提前告诉你「装了却永远不触发」）。
+面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的技能书架 —— 在 Web GUI 里浏览与治理 `ctx.skills` 全量目录：按目录 / 角色 / 工作区分组或平铺查看，日 / 周 / 总调用量与成功率来自本地台账，导入前做内容审计，来源可同步并检测本地改动，移除进可恢复回收站，诊断可定位并修复加载问题，技能进化提案经人工审核后落地到项目工作区。
 
 > 宿主只用官方 SDK，浏览器通过官方槽位渲染，不改 dsh 源码。
 

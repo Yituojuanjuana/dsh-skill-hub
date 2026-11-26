@@ -13,7 +13,7 @@
   <img src="https://raw.githubusercontent.com/cheshireez/dsh-skill-shelf/main/promo/real-skill-hub.png" alt="dsh-skill-shelf panel" width="640">
 </p>
 
-In-GUI skill shelf for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — manage the full `ctx.skills` catalog from the Web GUI. Beyond browsing, toggling and market installs, it puts the weight on two things: **audit before install** (hidden control characters, encoding disguises and size caps are refused before they land; remote-execution pipes and credential paths are flagged for human review) and **budget after install** (the name + description characters of the first progressive-disclosure layer, so you learn at 8000 that a skill would install but never trigger).
+In-GUI skill shelf for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — browse and govern the full `ctx.skills` catalog from the Web GUI: grouped by directory / role / workspace or as a flat list, with day / week / total call counts and success rate from a local ledger. Imports are content-audited first, tracked sources can be synced with local-edit detection, removals land in a restorable trash, diagnostics locate and repair loading problems, and evolution proposals are applied into the owning project workspace after human review.
 
 > Host runs in the dsh process via official SDKs only; browser renders through official slots. No dsh source changes.
 

@@ -1,47 +1,111 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="640" height="300" viewBox="0 0 640 300">
+  <!-- 背景与主面板 -->
   <rect width="640" height="300" rx="20" fill="#eef2f8"/>
-  <rect x="40" y="24" width="560" height="252" rx="16" fill="#ffffff" stroke="#d9e1ec" stroke-width="2"/>
-  <rect x="72" y="44" width="58" height="9" rx="4.5" fill="#4176e6"/>
-  <rect x="142" y="44" width="40" height="9" rx="4.5" fill="#dde4ee"/>
-  <rect x="194" y="44" width="32" height="9" rx="4.5" fill="#dde4ee"/>
-  <rect x="40" y="70" width="560" height="2" fill="#eef2f7"/>
-  <rect x="72" y="120" width="514" height="1" fill="#f0f3f8"/>
-  <rect x="72" y="170" width="514" height="1" fill="#f0f3f8"/>
-  <rect x="72" y="220" width="514" height="1" fill="#f0f3f8"/>
-  <rect x="72" y="87" width="20" height="20" rx="6" fill="#e8f0fb"/>
-  <rect x="78" y="93" width="8" height="8" rx="2" fill="#4176e6"/>
-  <rect x="104" y="88" width="150" height="8" rx="4" fill="#c5d1e0"/>
-  <rect x="104" y="100" width="196" height="6" rx="3" fill="#e2e8f0"/>
-  <rect x="470" y="98" width="7" height="8" rx="2" fill="#c9dcf5"/>
-  <rect x="481" y="93" width="7" height="13" rx="2" fill="#93b7e8"/>
-  <rect x="492" y="88" width="7" height="18" rx="2" fill="#4176e6"/>
-  <rect x="560" y="90" width="26" height="14" rx="7" fill="#4176e6"/>
-  <circle cx="579" cy="97" r="5" fill="#ffffff"/>
-  <rect x="72" y="137" width="20" height="20" rx="6" fill="#e8f0fb"/>
-  <rect x="78" y="143" width="8" height="8" rx="2" fill="#4176e6"/>
-  <rect x="104" y="138" width="118" height="8" rx="4" fill="#c5d1e0"/>
-  <rect x="104" y="150" width="164" height="6" rx="3" fill="#e2e8f0"/>
-  <rect x="470" y="150" width="7" height="6" rx="2" fill="#c9dcf5"/>
-  <rect x="481" y="147" width="7" height="9" rx="2" fill="#93b7e8"/>
-  <rect x="492" y="138" width="7" height="18" rx="2" fill="#4176e6"/>
-  <rect x="560" y="140" width="26" height="14" rx="7" fill="#cfdae8"/>
-  <circle cx="567" cy="147" r="5" fill="#ffffff"/>
-  <rect x="72" y="187" width="20" height="20" rx="6" fill="#e8f0fb"/>
-  <rect x="78" y="193" width="8" height="8" rx="2" fill="#4176e6"/>
-  <rect x="104" y="188" width="168" height="8" rx="4" fill="#c5d1e0"/>
-  <rect x="104" y="200" width="210" height="6" rx="3" fill="#e2e8f0"/>
-  <rect x="470" y="196" width="7" height="10" rx="2" fill="#c9dcf5"/>
-  <rect x="481" y="191" width="7" height="15" rx="2" fill="#93b7e8"/>
-  <rect x="492" y="188" width="7" height="18" rx="2" fill="#4176e6"/>
-  <rect x="560" y="190" width="26" height="14" rx="7" fill="#4176e6"/>
-  <circle cx="579" cy="197" r="5" fill="#ffffff"/>
-  <rect x="72" y="237" width="20" height="20" rx="6" fill="#e8f0fb"/>
-  <rect x="78" y="243" width="8" height="8" rx="2" fill="#4176e6"/>
-  <rect x="104" y="238" width="132" height="8" rx="4" fill="#c5d1e0"/>
-  <rect x="104" y="250" width="148" height="6" rx="3" fill="#e2e8f0"/>
-  <rect x="470" y="251" width="7" height="5" rx="2" fill="#c9dcf5"/>
-  <rect x="481" y="249" width="7" height="7" rx="2" fill="#93b7e8"/>
-  <rect x="492" y="244" width="7" height="12" rx="2" fill="#4176e6"/>
-  <rect x="560" y="240" width="26" height="14" rx="7" fill="#4176e6"/>
-  <circle cx="579" cy="247" r="5" fill="#ffffff"/>
+  <rect x="28" y="18" width="584" height="264" rx="16" fill="#ffffff" stroke="#d9e1ec" stroke-width="2"/>
+
+  <!-- 顶部标题条：标题块 + 右侧操作块 -->
+  <rect x="48" y="34" width="72" height="10" rx="5" fill="#4176e6"/>
+  <rect x="128" y="34" width="44" height="10" rx="5" fill="#dde4ee"/>
+  <rect x="530" y="30" width="18" height="18" rx="5" fill="#eef2f8"/>
+  <rect x="556" y="30" width="38" height="18" rx="9" fill="#4176e6"/>
+  <rect x="28" y="58" width="584" height="2" fill="#eef2f7"/>
+
+  <!-- 筛选行：分类 / 状态 / 调用方式 / 排序 四个下拉 + 搜索框（按钮内嵌右侧） -->
+  <rect x="48" y="68" width="78" height="22" rx="6" fill="#f7f9fc" stroke="#d9e1ec" stroke-width="1.5"/>
+  <rect x="58" y="76" width="42" height="6" rx="3" fill="#c5d1e0"/>
+  <rect x="112" y="77" width="6" height="6" rx="1.5" fill="#9fb0c6"/>
+  <rect x="134" y="68" width="66" height="22" rx="6" fill="#f7f9fc" stroke="#d9e1ec" stroke-width="1.5"/>
+  <rect x="144" y="76" width="34" height="6" rx="3" fill="#c5d1e0"/>
+  <rect x="188" y="77" width="6" height="6" rx="1.5" fill="#9fb0c6"/>
+  <rect x="208" y="68" width="86" height="22" rx="6" fill="#f7f9fc" stroke="#d9e1ec" stroke-width="1.5"/>
+  <rect x="218" y="76" width="48" height="6" rx="3" fill="#c5d1e0"/>
+  <rect x="280" y="77" width="6" height="6" rx="1.5" fill="#9fb0c6"/>
+  <rect x="302" y="68" width="66" height="22" rx="6" fill="#f7f9fc" stroke="#d9e1ec" stroke-width="1.5"/>
+  <rect x="312" y="76" width="34" height="6" rx="3" fill="#c5d1e0"/>
+  <rect x="356" y="77" width="6" height="6" rx="1.5" fill="#9fb0c6"/>
+  <!-- 搜索框与按钮合成一个整体：单一边框，按钮嵌在输入框内侧右端 -->
+  <rect x="382" y="68" width="186" height="22" rx="6" fill="#f7f9fc" stroke="#d9e1ec" stroke-width="1.5"/>
+  <rect x="394" y="76" width="92" height="6" rx="3" fill="#dde4ee"/>
+  <rect x="510" y="71" width="54" height="16" rx="4" fill="#4176e6"/>
+
+  <!-- 分组视图：两个分组头 + 组内行 -->
+  <rect x="48" y="102" width="10" height="10" rx="2" fill="#9fb0c6"/>
+  <rect x="64" y="104" width="54" height="7" rx="3.5" fill="#c5d1e0"/>
+  <rect x="124" y="105" width="18" height="5" rx="2.5" fill="#e2e8f0"/>
+
+  <!-- 组内技能行 1 -->
+  <rect x="66" y="120" width="16" height="16" rx="5" fill="#e8f0fb"/>
+  <rect x="71" y="125" width="6" height="6" rx="1.5" fill="#4176e6"/>
+  <rect x="90" y="121" width="112" height="7" rx="3.5" fill="#c5d1e0"/>
+  <rect x="90" y="132" width="150" height="5" rx="2.5" fill="#e2e8f0"/>
+  <!-- 日/周/总 三段统计 -->
+  <rect x="300" y="131" width="6" height="4" rx="1" fill="#c9dcf5"/>
+  <rect x="310" y="128" width="6" height="7" rx="1" fill="#93b7e8"/>
+  <rect x="320" y="124" width="6" height="11" rx="1" fill="#4176e6"/>
+  <rect x="334" y="126" width="30" height="7" rx="3.5" fill="#eef2f8"/>
+  <!-- 右侧最近调用时间占位 -->
+  <rect x="452" y="126" width="42" height="7" rx="3.5" fill="#e2e8f0"/>
+  <rect x="516" y="122" width="30" height="15" rx="7.5" fill="#4176e6"/>
+  <circle cx="538" cy="129.5" r="5.5" fill="#ffffff"/>
+
+  <!-- 组内技能行 2 -->
+  <rect x="66" y="148" width="16" height="16" rx="5" fill="#e8f0fb"/>
+  <rect x="71" y="153" width="6" height="6" rx="1.5" fill="#4176e6"/>
+  <rect x="90" y="149" width="96" height="7" rx="3.5" fill="#c5d1e0"/>
+  <rect x="90" y="160" width="126" height="5" rx="2.5" fill="#e2e8f0"/>
+  <rect x="300" y="159" width="6" height="4" rx="1" fill="#c9dcf5"/>
+  <rect x="310" y="156" width="6" height="7" rx="1" fill="#93b7e8"/>
+  <rect x="320" y="152" width="6" height="11" rx="1" fill="#4176e6"/>
+  <rect x="334" y="154" width="30" height="7" rx="3.5" fill="#eef2f8"/>
+  <rect x="452" y="154" width="34" height="7" rx="3.5" fill="#e2e8f0"/>
+  <rect x="516" y="150" width="30" height="15" rx="7.5" fill="#cfdae8"/>
+  <circle cx="523" cy="157.5" r="5.5" fill="#ffffff"/>
+
+  <!-- 分隔线：分组视图 → 工作区平铺视图 -->
+  <rect x="48" y="176" width="544" height="1.5" fill="#eef2f7"/>
+
+  <!-- 工作区平铺列表：一层列表，无嵌套分组头，开头一个工作区选择块 -->
+  <rect x="48" y="184" width="96" height="20" rx="6" fill="#f7f9fc" stroke="#d9e1ec" stroke-width="1.5"/>
+  <rect x="58" y="191" width="52" height="6" rx="3" fill="#4176e6"/>
+  <rect x="116" y="192" width="6" height="6" rx="1.5" fill="#9fb0c6"/>
+  <rect x="156" y="190" width="40" height="8" rx="4" fill="#eef2f8"/>
+
+  <!-- 平铺行 1 -->
+  <rect x="48" y="210" width="16" height="16" rx="5" fill="#e8f0fb"/>
+  <rect x="53" y="215" width="6" height="6" rx="1.5" fill="#4176e6"/>
+  <rect x="72" y="211" width="126" height="7" rx="3.5" fill="#c5d1e0"/>
+  <rect x="72" y="222" width="164" height="5" rx="2.5" fill="#e2e8f0"/>
+  <rect x="300" y="221" width="6" height="4" rx="1" fill="#c9dcf5"/>
+  <rect x="310" y="218" width="6" height="7" rx="1" fill="#93b7e8"/>
+  <rect x="320" y="214" width="6" height="11" rx="1" fill="#4176e6"/>
+  <rect x="334" y="216" width="30" height="7" rx="3.5" fill="#eef2f8"/>
+  <rect x="452" y="216" width="42" height="7" rx="3.5" fill="#e2e8f0"/>
+  <rect x="516" y="212" width="30" height="15" rx="7.5" fill="#4176e6"/>
+  <circle cx="538" cy="219.5" r="5.5" fill="#ffffff"/>
+
+  <!-- 平铺行 2 -->
+  <rect x="48" y="232" width="16" height="16" rx="5" fill="#e8f0fb"/>
+  <rect x="53" y="237" width="6" height="6" rx="1.5" fill="#4176e6"/>
+  <rect x="72" y="233" width="104" height="7" rx="3.5" fill="#c5d1e0"/>
+  <rect x="72" y="244" width="140" height="5" rx="2.5" fill="#e2e8f0"/>
+  <rect x="300" y="243" width="6" height="4" rx="1" fill="#c9dcf5"/>
+  <rect x="310" y="240" width="6" height="7" rx="1" fill="#93b7e8"/>
+  <rect x="320" y="236" width="6" height="11" rx="1" fill="#4176e6"/>
+  <rect x="334" y="238" width="30" height="7" rx="3.5" fill="#eef2f8"/>
+  <rect x="452" y="238" width="28" height="7" rx="3.5" fill="#e2e8f0"/>
+  <rect x="516" y="234" width="30" height="15" rx="7.5" fill="#cfdae8"/>
+  <circle cx="523" cy="241.5" r="5.5" fill="#ffffff"/>
+
+  <!-- 平铺行 3 -->
+  <rect x="48" y="254" width="16" height="16" rx="5" fill="#e8f0fb"/>
+  <rect x="53" y="259" width="6" height="6" rx="1.5" fill="#4176e6"/>
+  <rect x="72" y="255" width="118" height="7" rx="3.5" fill="#c5d1e0"/>
+  <rect x="72" y="266" width="152" height="5" rx="2.5" fill="#e2e8f0"/>
+  <rect x="300" y="265" width="6" height="4" rx="1" fill="#c9dcf5"/>
+  <rect x="310" y="262" width="6" height="7" rx="1" fill="#93b7e8"/>
+  <rect x="320" y="258" width="6" height="11" rx="1" fill="#4176e6"/>
+  <rect x="334" y="260" width="30" height="7" rx="3.5" fill="#eef2f8"/>
+  <rect x="452" y="260" width="36" height="7" rx="3.5" fill="#e2e8f0"/>
+  <rect x="516" y="256" width="30" height="15" rx="7.5" fill="#4176e6"/>
+  <circle cx="538" cy="263.5" r="5.5" fill="#ffffff"/>
 </svg>

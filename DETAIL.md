@@ -1,1 +1,1 @@
-![The Skill Shelf panel: four skills, each row showing its day, week and total call counts next to a switch](preview.svg)
+![The Skill Shelf UI: a filter row (category / status / invocation / sort, with the search button embedded inside the input), a grouped view above and a flat workspace list below, each row showing day / week / total call counts and last-used time](preview.svg)
