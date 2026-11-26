@@ -361,7 +361,7 @@ export function useMarketFlow(
    * 排序是**展示层**的事，不改上游返回的原始顺序 —— 换排序不需要重新搜索，
    * 因此这里只存一个键，在渲染时排序。
    */
-  const [skillsShSort, setSkillsShSort] = useState<'installs' | 'az'>('installs')
+  const [skillsShSort, setSkillsShSort] = useState<'installs' | 'az' | 'all'>('installs')
   const [skillsShState, setSkillsShState] = useState<{ status: 'idle' | 'loading' | 'ready' | 'error'; skills: MarketSkillsShEntry[]; message?: string }>({ status: 'idle', skills: [] })
 
   /**

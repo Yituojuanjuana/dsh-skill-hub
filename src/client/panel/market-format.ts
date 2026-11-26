@@ -27,18 +27,25 @@ export const SKILLS_SH_TOP_N = 20
 /**
  * 给 skills.sh 的搜索结果排序。
  *
- * 排序是纯展示层的事：不改上游返回的顺序，也不触发重新搜索。两档语义：
+ * 排序是纯展示层的事：不改上游返回的顺序，也不触发重新搜索。三档语义：
  * - `installs`：安装量从高到低，只留前 `SKILLS_SH_TOP_N` 条。安装量缺失的
  *   排最后 —— 没有数据不等于零安装，但按安装量排序时不该让它们占前排。
+ * - `all`：与 `installs` **同一个排序**，但**不做 20 条截断**。它回答的是
+ *   「哪些最热门」，只是不限量 —— 所以排序必须保留，不能退化成「原序」，
+ *   否则会和 `az` 语义重叠、让人以为排序坏了。
  * - `az`：按技能名 A-Z，全部保留（这是「我要找某个具体名字」的场景，
  *   砍到 20 条反而会把目标藏起来）。
  */
-export function sortSkillsSh<T extends { name: string; installs?: number }>(entries: readonly T[], sort: 'installs' | 'az'): T[] {
+export function sortSkillsSh<T extends { name: string; installs?: number }>(
+  entries: readonly T[],
+  sort: 'installs' | 'az' | 'all',
+): T[] {
   const list = [...entries]
   if (sort === 'az') {
     list.sort((a, b) => a.name.localeCompare(b.name, 'en'))
     return list
   }
+  // installs 与 all 共用同一条降序：安装量缺失（undefined）排最后。
   list.sort((a, b) => (b.installs ?? -1) - (a.installs ?? -1))
-  return list.slice(0, SKILLS_SH_TOP_N)
+  return sort === 'all' ? list : list.slice(0, SKILLS_SH_TOP_N)
 }

@@ -95,10 +95,13 @@ export function MarketView(props: { hub: SkillHubState }): JSX.Element {
               <select
                 className={css.select}
                 value={skillsShSort}
-                onChange={(event) => { setSkillsShSort(event.target.value as 'installs' | 'az') }}
+                onChange={(event) => { setSkillsShSort(event.target.value as 'installs' | 'az' | 'all') }}
                 title={tt('market.skillsShSortHint')}
               >
                 <option value='installs'>{tt('market.skillsShSortInstalls')}</option>
+                {/* 「全部」紧挨着「前 20」：这两项排序口径相同、只差截断，
+                    放一起最容易比较。 */}
+                <option value='all'>{tt('market.skillsShSortAll')}</option>
                 <option value='az'>{tt('market.skillsShSortAz')}</option>
               </select>
               <input
@@ -126,6 +129,10 @@ export function MarketView(props: { hub: SkillHubState }): JSX.Element {
               {skillsShState.status === 'ready' && skillsShState.skills.length === 0 ? <div className={css.empty}>{tt('market.skillsShEmpty')}</div> : null}
               {skillsShState.status === 'ready' && skillsShState.skills.length > 0 && skillsShSort === 'installs' ? (
                 <p className={css.hintLine + ' ' + css.hintPadded}>{tt('market.skillsShTopNote', { count: SKILLS_SH_TOP_N })}</p>
+              ) : null}
+              {/* 「全部」时说明一共多少条 —— 没有截断，用户需要知道总量。 */}
+              {skillsShState.status === 'ready' && skillsShState.skills.length > 0 && skillsShSort === 'all' ? (
+                <p className={css.hintLine + ' ' + css.hintPadded}>{tt('market.skillsShAllNote', { count: skillsShState.skills.length })}</p>
               ) : null}
               {sortedSkillsSh.map((entry) => {
                 const key = entry.source + '/' + entry.skillId
