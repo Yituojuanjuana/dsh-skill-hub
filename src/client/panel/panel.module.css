@@ -258,12 +258,44 @@
 .filterBar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; row-gap: 6px; }
 .filterBar .formLabel { margin: 0; }
 
-/* Group-header usage totals (日/周/总) share one declaration with the per-row
-   .permStat below: same size, same 500 weight, same muted gray + .8 opacity, so
-   a card's three numbers read exactly like the rows it summarizes. */
+/* ---------------------------------------------------------------------------
+   Inline meta information — ONE declaration block, shared by every place a
+   day/week/total triple or a relative timestamp appears:
+
+     .permStat       per-row 日/周/总 (expanded group rows)
+     .useTimeInline  per-row relative last-used time
+     .installedAt    per-row install time (right-aligned)
+     .groupStat      group-card 日/周/总 totals
+     .groupTime      group-card relative last-used time
+
+   Why one block: these used to drift. `.groupStat` carried no typography at all,
+   so it inherited `.groupTitle`'s 13px/600 while the timestamp next to it was
+   11px — the same line rendered at two sizes. Sharing the block means adding a
+   property here reaches all five; only *position* is per-rule (below).
+
+   The value matches the row-level meta tier exactly: 11px, weight 500,
+   text-4 at .8 opacity, tabular figures so digits line up column to column. */
+.permStat,
+.useTimeInline,
+.installedAt,
 .groupStat,
+.groupTime {
+  font-size: var(--hub-fs-11);
+  font-weight: 500;
+  color: var(--hub-text-4);
+  opacity: .8;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Position only — never typography — for the five selectors above. */
+.permStat { display: inline-block; margin-left: 6px; }
+/* Group-card totals sit after the "name · 54" text. `.groupTitle` already puts a
+   6px flex gap between that text and `.groupTitleInner`, so an extra margin here
+   would double the separator into 12px and make "54  日 0" read as one blob. */
+.groupStat { display: inline-block; margin-left: 0; }
+/* Call-success rate stays a notch dimmer than the counts beside it. */
 .permRate { color: var(--hub-text-3); }
-.permStat { display: inline-block; margin-left: 6px; font-size: var(--hub-fs-11); font-weight: 500; color: var(--hub-text-4); opacity: .8; white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* 按调用量分档的卡片列表：与按目录/按角色的卡片保持同一节奏。 */
 .tierList { display: flex; flex-direction: column; gap: 10px; }
 /* 工作区下拉：占据可用宽度，与搜索框同高，避免路径被截断。 */
@@ -278,28 +310,13 @@
 .workspaceEmptyState { display: flex; align-items: center; justify-content: center; min-height: 180px; margin-top: 10px; border: 1px dashed var(--hub-border); border-radius: var(--hub-radius-md); color: var(--hub-text-4); font-size: var(--hub-fs-13); }
 /* Relative last-used time: right-aligned on the name row, above the description. */
 .useTime { margin-left: auto; font-size: var(--hub-fs-11); color: var(--hub-text-4); white-space: nowrap; }
-/* 最近调用 / 安装时间：与调用量 (.permStat) 同一套字体样式 —— 同字号、同字重、
-   同灰度、同 opacity、同 tabular-nums，三处元信息在视觉上是一个整体。
-   只保留位置差异：最近调用紧跟调用量，安装时间靠右。 */
-.useTimeInline,
-.installedAt {
-  display: inline-block;
-  font-size: var(--hub-fs-11);
-  font-weight: 500;
-  color: var(--hub-text-4);
-  opacity: .8;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-.useTimeInline { margin-left: 6px; }
+/* 最近调用 / 安装时间：字体样式已由上方那条共用声明块统一提供（字号、字重、
+   灰度、opacity、tabular-nums）。这里只留位置差异：最近调用紧跟调用量，
+   安装时间靠右。不要再往这两个选择器里写 font-* —— 那正是上次漂移的来源。 */
+.useTimeInline { display: inline-block; margin-left: 6px; }
 /* 安装时间靠右：margin-left:auto 吃掉行内剩余空间。`margin-right:0` 抵消
    .rowName 的 flex gap，否则它会离右边缘差一个 gap 的距离，看起来没对齐。 */
-.installedAt { margin-left: auto; margin-right: 0; flex: none; }
-/* Per-row 日/周/总 totals: shares the .groupStat declaration above so the card
-   header and the rows stay typographically identical. */
-
-
-
+.installedAt { display: inline-block; margin-left: auto; margin-right: 0; flex: none; }
 /* ---- v0.3: tri-state switches, dialogs, source headers ---- */
 
 /* Tri-state group switch: mixed = half-filled (thumb centered, soft accent).
