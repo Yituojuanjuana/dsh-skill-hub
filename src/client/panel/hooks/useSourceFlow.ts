@@ -119,6 +119,17 @@ export function useSourceFlow(
     setDeleteSkillDialog(name)
   }, [])
 
+  /**
+   * 移入回收站。
+   *
+   * 与删除完全同一条路径（同一个确认框、同一个 API）—— 区别只在入口文案。
+   * 保留独立名字是为了让「工作区菜单里的回收」有明确语义，
+   * 也方便以后单独调整确认话术。
+   */
+  const requestTrashSkill = useCallback((name: string): void => {
+    setDeleteSkillDialog(name)
+  }, [])
+
   /** 执行删除确认后的回收站迁移。 */
   const runDeleteSkill = useCallback(async (): Promise<void> => {
     const name = deleteSkillDialog
@@ -168,7 +179,7 @@ export function useSourceFlow(
     deleteSkillDialog, deleteGroupDialog, confirmClearTrash,
     setConfirmDialog, setDeleteSkillDialog, setDeleteGroupDialog, setConfirmClearTrash,
     loadSources, checkSources, requestSync, requestDelete, runConfirmed,
-    restoreTrash, clearTrash, requestDeleteSkill, runDeleteSkill,
+    restoreTrash, clearTrash, requestDeleteSkill, requestTrashSkill, runDeleteSkill,
     requestDeleteGroup, runDeleteGroup,
   }
 }

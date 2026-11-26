@@ -9,7 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { SkillHubApi } from '../api.ts'
-import { isProjectSource, PRIVATE_SOURCE } from '../grouping.ts'
+import type { PermanentStat } from '../../protocol.ts'
 import { useMetaFlow } from './hooks/useMetaFlow.ts'
 import { useCatalogFlow } from './hooks/useCatalogFlow.ts'
 import { useGroupFlow } from './hooks/useGroupFlow.ts'
@@ -21,10 +21,18 @@ import { markAutoChecked, POLL_MS, shouldAutoCheck, SLOW_POLL_MS, type FlowNotic
 export type SkillHubState = ReturnType<typeof useSkillHub>
 
 /** 一级视图：通用 / 工作区 / 市场 / 回收站。 */
-export type SkillTab = 'general' | 'workspace' | 'market' | 'trash'
+export type SkillTab = 'general' | 'workspace' | 'market' | 'evolution' | 'trash'
 
-/** 通用页二级查看方式：全部 / 按来源 / 按角色。 */
-export type GeneralView = 'all' | 'source' | 'location' | 'scene'
+/** 通用页二级查看方式：按调用量 / 按位置 / 按角色。 */
+/**
+ * 通用页的分类方式。
+ *
+ * - ll      ：不做分类，全部技能平铺一层
+ * - location ：按目录分类（默认）
+ * - scene    ：按角色分类
+ * - usage    ：按调用量分组（已从分类段移除入口，类型保留以免破坏既有引用）
+ */
+export type GeneralView = 'all' | 'location' | 'scene' | 'usage'
 
 export function useSkillHub(api: SkillHubApi) {
   // ------------------------------------------------------- shared notices
@@ -46,17 +54,22 @@ export function useSkillHub(api: SkillHubApi) {
   // ------------------------------------------------------------ view state
   // 纯视图状态：不触发数据加载，只影响渲染。
   const [tab, setTab] = useState<SkillTab>('general')
-  const [generalView, setGeneralView] = useState<GeneralView>('source')
-  const [sourceFilter, setSourceFilter] = useState('all')
-  /** 分组视图里收起的分组（key 为 tag:<id>、col:<name> 或 project 树键）。技能总数 >80 时首次加载自动折叠 personal。 */
-  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set())
+  // 默认「按目录」：调用量已经并入每行的日/周/总，「按调用量」这个独立视图
+  // 只是把同一批技能按次数重排一遍，和「按目录」比没有额外信息。
+  const [generalView, setGeneralView] = useState<GeneralView>('location')
+  /**
+   * 分组视图里**展开**的分组（key 为 tag:<id>、col:<name>、role:<id> 或 project 树键）。
+   * 默认空集合 = 所有卡片收起：技能多的时候先看分组标题比先看一屏行有用，
+   * 展开哪个由用户自己点。
+   */
+  const [expandedGroups, setExpandedGroups] = useState<ReadonlySet<string>>(new Set())
   /** 项目级三级树里已细分（按 .dsh/.agents）的项目键。 */
   const [subdividedProjects, setSubdividedProjects] = useState<ReadonlySet<string>>(new Set())
   const [showLegend, setShowLegend] = useState(false)
   const [editMode, setEditMode] = useState(false)
 
-  const toggleGroupCollapse = useCallback((key: string): void => {
-    setCollapsedGroups((previous) => {
+  const toggleGroupExpanded = useCallback((key: string): void => {
+    setExpandedGroups((previous) => {
       const next = new Set(previous)
       if (next.has(key)) next.delete(key)
       else next.add(key)
@@ -73,28 +86,42 @@ export function useSkillHub(api: SkillHubApi) {
     })
   }, [])
 
-  /** 整组折叠/展开：传 null 全部展开，传键列表全部折叠（视图侧自己算键）。 */
-  const setAllGroupsCollapsed = useCallback((keys: readonly string[] | null): void => {
-    setCollapsedGroups(keys === null ? new Set() : new Set(keys))
+  /** 整组展开/收起：传 null 全部收起，传键列表全部展开（视图侧自己算键）。 */
+  const setAllGroupsExpanded = useCallback((keys: readonly string[] | null): void => {
+    setExpandedGroups(keys === null ? new Set() : new Set(keys))
   }, [])
 
+  /** 兼容旧调用点：技能数很多时不再需要「先折叠个人」，默认本来就是收起的。 */
   const collapsePersonal = useCallback((): void => {
-    setCollapsedGroups((previous) => new Set(previous).add('uncategorized-source'))
-  }, [])
-
-  const clearSourceFilter = useCallback((): void => {
-    setSourceFilter('all')
+    setExpandedGroups((previous) => {
+      if (!previous.has('uncategorized-source')) return previous
+      const next = new Set(previous)
+      next.delete('uncategorized-source')
+      return next
+    })
   }, [])
 
   // ------------------------------------------------------------ meta first
   // 更新检查/统计/配置只依赖 api，最先组装。
   const meta = useMetaFlow(api)
 
+  /**
+   * 行列表在各自 view 文件里从 `hub.uses` 组装 rowProps。会话日志统计已移除，
+   * 调用量唯一来源是永久账本，所以这里直接把 permanent 挂上去。
+   */
+  const uses = useMemo<ReadonlyMap<string, { count: number; lastUsed?: number; permanent?: PermanentStat }>>(() => {
+    const merged = new Map<string, { count: number; lastUsed?: number; permanent?: PermanentStat }>()
+    for (const [name, permanent] of meta.permanentUses) {
+      merged.set(name, { count: permanent.total, lastUsed: permanent.lastUsed > 0 ? permanent.lastUsed : undefined, permanent })
+    }
+    return merged
+  }, [meta.permanentUses])
+
   // ---------------------------------------------------------------- catalog
-  const catalogFlow = useCatalogFlow(api, meta.uses, shared, collapsePersonal, clearSourceFilter)
+  const catalogFlow = useCatalogFlow(api, uses, shared, collapsePersonal)
 
   // ----------------------------------------------------------------- groups
-  const groupFlow = useGroupFlow(api, shared, catalogFlow.batchToggleNames, catalogFlow.actionNames)
+  const groupFlow = useGroupFlow(api, shared)
 
   // ----------------------------------------------------------------- sources
   const sourceFlow = useSourceFlow(api, shared, catalogFlow.load, groupFlow.loadGroups)
@@ -110,36 +137,20 @@ export function useSkillHub(api: SkillHubApi) {
     sourceFlow.sourceCheck,
   )
 
-  // ------------------------------------------------------------- derived
-  /**
-   * skillName → origin repo（无来源记录的技能不在此映射中，筛选中视为 private）。
-   * 必须 memo：`groupsState?.origins ?? {}` 的字面量兜底每次渲染都是新引用，
-   * 会让 `sourceOptions` 与各视图的 `useMemo` 全部重算。
-   */
-  const origins = useMemo(() => groupFlow.groupsState?.origins ?? {}, [groupFlow.groupsState])
-  /** 来源筛选选项：来源记录中的仓库（排序）+ 末尾的「个人」；没有技能的仓库不列。 */
-  const sourceOptions = useMemo(() => {
-    const skills = (catalogFlow.catalog?.skills ?? []).filter((skill) => !isProjectSource(skill.source))
-    const repos = [...new Set(skills.map((skill) => origins[skill.name]).filter((repo): repo is string => repo !== undefined))].sort()
-    // 项目级技能（有 workspace 归属）不算「个人」。
-    const hasPrivate = skills.some((skill) => origins[skill.name] === undefined)
-    return [...repos, ...(hasPrivate ? [PRIVATE_SOURCE] : [])]
-  }, [catalogFlow.catalog, origins])
-
   // 初始全量加载 + 双速轮询：目录是「活视图」（文件变化要 5 秒内可见），
   // 统计/分组/来源/配置变化慢，60 秒一次足够；写操作本身会触发即时刷新。
   // 更新检查、来源检查、市场检查全部改为手动按钮触发，打开面板不再自动
   // 打三路 GitHub 请求。
   useEffect(() => {
     void catalogFlow.load()
-    void meta.loadUses()
+    void meta.loadPermanentUses()
     void groupFlow.loadGroups()
     void sourceFlow.loadSources()
     void meta.loadConfig()
     const fast = window.setInterval(() => { void catalogFlow.load() }, POLL_MS)
-    const slow = window.setInterval(() => { void meta.loadUses(); void groupFlow.loadGroups(); void sourceFlow.loadSources(); void meta.loadConfig() }, SLOW_POLL_MS)
+    const slow = window.setInterval(() => { void meta.loadPermanentUses(); void groupFlow.loadGroups(); void sourceFlow.loadSources(); void meta.loadConfig() }, SLOW_POLL_MS)
     return () => { window.clearInterval(fast); window.clearInterval(slow) }
-  }, [catalogFlow.load, meta.loadUses, groupFlow.loadGroups, sourceFlow.loadSources, meta.loadConfig])
+  }, [catalogFlow.load, meta.loadPermanentUses, groupFlow.loadGroups, sourceFlow.loadSources, meta.loadConfig])
 
   // ------------------------------------------------- daily auto-check
   // 打开面板时每天最多自动检查一次（自身更新 + 全部来源 + 全部市场源），
@@ -165,7 +176,7 @@ export function useSkillHub(api: SkillHubApi) {
     busyNames: catalogFlow.busyNames, batchBusy,
     showForm: catalogFlow.showForm, formName: catalogFlow.formName, formDesc: catalogFlow.formDesc, formBody: catalogFlow.formBody,
     formRoot: catalogFlow.formRoot, formWorkspace: catalogFlow.formWorkspace, workspaces: catalogFlow.workspaces, formBusy: catalogFlow.formBusy, formMessage: catalogFlow.formMessage,
-    uses: meta.uses, hubConfig: meta.hubConfig, tab, generalView, sourceFilter,
+    uses, permanentUses: meta.permanentUses, hubConfig: meta.hubConfig, tab, generalView,
     invocationFilter: catalogFlow.invocationFilter, statusFilter: catalogFlow.statusFilter, sortKey: catalogFlow.sortKey,
     marketState: marketFlow.marketState, marketCheck: marketFlow.marketCheck,
     marketStats: marketFlow.marketStats, branchChoice: marketFlow.branchChoice, branchBusy: marketFlow.branchBusy,
@@ -173,19 +184,20 @@ export function useSkillHub(api: SkillHubApi) {
     syncBusy: marketFlow.syncBusy, newSourceName: marketFlow.newSourceName,
     skillsShQuery: marketFlow.skillsShQuery, skillsShState: marketFlow.skillsShState,
     skillsShInstalling: marketFlow.skillsShInstalling,
+    skillsShSort: marketFlow.skillsShSort, sortedSkillsSh: marketFlow.sortedSkillsSh,
+    skillsShDetail: marketFlow.skillsShDetail, skillsShDetailLoading: marketFlow.skillsShDetailLoading,
+    skillsShDetailError: marketFlow.skillsShDetailError,
+    setSkillsShSort: marketFlow.setSkillsShSort, loadSkillsShDetail: marketFlow.loadSkillsShDetail,
     groupsState: groupFlow.groupsState, sourcesState: sourceFlow.sourcesState,
     sourceCheck: sourceFlow.sourceCheck, checkingSource: sourceFlow.checkingSource,
     syncingSource: sourceFlow.syncingSource,
-    conflictDialog: groupFlow.conflictDialog, confirmDialog: sourceFlow.confirmDialog,
+    confirmDialog: sourceFlow.confirmDialog,
     deleteSkillDialog: sourceFlow.deleteSkillDialog, deleteGroupDialog: sourceFlow.deleteGroupDialog,
     confirmClearTrash: sourceFlow.confirmClearTrash, updateAllDialog: marketFlow.updateAllDialog,
-    editingTag: groupFlow.editingTag, editName: groupFlow.editName, membersDraft: groupFlow.membersDraft,
-    newTagName: groupFlow.newTagName, tagBusy,
-    editSearch: groupFlow.editSearch, collapsedGroups, subdividedProjects, showLegend, editMode,
+    tagBusy, expandedGroups, subdividedProjects, showLegend, editMode,
     versionDialog: marketFlow.versionDialog, versionBusy: marketFlow.versionBusy,
     // derived
     actionNames: catalogFlow.actionNames, viewNames: catalogFlow.viewNames,
-    origins, sourceOptions,
     filtered: catalogFlow.filtered, sorted: catalogFlow.sorted, searchedSorted: catalogFlow.searchedSorted,
     shortenedCount: catalogFlow.shortenedCount,
     // actions + setters
@@ -194,31 +206,26 @@ export function useSkillHub(api: SkillHubApi) {
     setFormDesc: catalogFlow.setFormDesc, setFormBody: catalogFlow.setFormBody, setFormRoot: catalogFlow.setFormRoot, setFormWorkspace: catalogFlow.setFormWorkspace,
     setFormMessage: catalogFlow.setFormMessage,
     setRepoSelected: marketFlow.setRepoSelected, setTab, setGeneralView,
-    setSourceFilter, setInvocationFilter: catalogFlow.setInvocationFilter, setStatusFilter: catalogFlow.setStatusFilter, setSortKey: catalogFlow.setSortKey,
+    setInvocationFilter: catalogFlow.setInvocationFilter, setStatusFilter: catalogFlow.setStatusFilter, setSortKey: catalogFlow.setSortKey,
     setBranchChoice: marketFlow.setBranchChoice, setMarketSyncDialog: marketFlow.setMarketSyncDialog,
-    setNewSourceName: marketFlow.setNewSourceName, setConflictDialog: groupFlow.setConflictDialog,
+    setNewSourceName: marketFlow.setNewSourceName,
     setSkillsShQuery: marketFlow.setSkillsShQuery,
     setConfirmDialog: sourceFlow.setConfirmDialog,
     setDeleteSkillDialog: sourceFlow.setDeleteSkillDialog, setDeleteGroupDialog: sourceFlow.setDeleteGroupDialog,
     setConfirmClearTrash: sourceFlow.setConfirmClearTrash, setUpdateAllDialog: marketFlow.setUpdateAllDialog,
-    setEditingTag: groupFlow.setEditingTag, setEditName: groupFlow.setEditName,
-    setMembersDraft: groupFlow.setMembersDraft, setNewTagName: groupFlow.setNewTagName,
-    setEditSearch: groupFlow.setEditSearch, setShowLegend, setEditMode,
+    setShowLegend, setEditMode,
     setVersionDialog: marketFlow.setVersionDialog,
-    toggleGroupCollapse, toggleSubdivide, setAllGroupsCollapsed, checkUpdate: meta.checkUpdate, loadMarket: marketFlow.loadMarket,
+    toggleGroupExpanded, toggleSubdivide, setAllGroupsExpanded, checkUpdate: meta.checkUpdate, loadMarket: marketFlow.loadMarket,
     openDetail: catalogFlow.openDetail, toggle: catalogFlow.toggle, enableDisabled: catalogFlow.enableDisabled,
-    toggleGroup: groupFlow.toggleGroup, batchToggleNames: catalogFlow.batchToggleNames,
-    resolveConflict: groupFlow.resolveConflict,
+    batchToggleNames: catalogFlow.batchToggleNames,
     runConfirmed: sourceFlow.runConfirmed, checkSources: sourceFlow.checkSources,
     requestSync: sourceFlow.requestSync, requestDelete: sourceFlow.requestDelete,
     restoreTrash: sourceFlow.restoreTrash, clearTrash: sourceFlow.clearTrash,
     fixingPaths: catalogFlow.fixingPaths, fixDiagnostic: catalogFlow.fixDiagnostic,
     clearListFilters: catalogFlow.clearListFilters, openVersionDialog: marketFlow.openVersionDialog,
-    confirmVersionDialog: marketFlow.confirmVersionDialog, requestDeleteSkill: sourceFlow.requestDeleteSkill,
+    confirmVersionDialog: marketFlow.confirmVersionDialog, requestDeleteSkill: sourceFlow.requestDeleteSkill, requestTrashSkill: sourceFlow.requestTrashSkill,
     runDeleteSkill: sourceFlow.runDeleteSkill, requestDeleteGroup: sourceFlow.requestDeleteGroup,
-    runDeleteGroup: sourceFlow.runDeleteGroup, createTag: groupFlow.createTag,
-    deleteTag: groupFlow.deleteTag, saveTag: groupFlow.saveTag, reorderTags: groupFlow.reorderTags,
-    reorderSourceGroups: groupFlow.reorderSourceGroups,
+    runDeleteGroup: sourceFlow.runDeleteGroup,
     addSource: marketFlow.addSource, addMarketSource: marketFlow.addMarketSource,
     runSkillsShSearch: marketFlow.runSkillsShSearch, installSkillsSh: marketFlow.installSkillsSh,
     removeMarketSource: marketFlow.removeMarketSource, requestRemoveMarketSource: marketFlow.requestRemoveMarketSource,

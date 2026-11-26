@@ -13,6 +13,17 @@ describe('foreignRoots', () => {
     expect(dirs.some((dir) => dir.endsWith('.claude/skills'))).toBe(true)
   })
 
+  it('covers both Trae editions, which keep separate skill folders', () => {
+    const roots = foreignRoots('/home/u')
+    const agents = roots.map((root) => root.agent)
+    // Trae 国内版与海外版目录不同名，漏掉任一个都会让那批技能完全不可见。
+    expect(agents).toContain('trae-cn')
+    expect(agents).toContain('trae')
+    const joined = roots.map((root) => root.dir.replaceAll('\\', '/'))
+    expect(joined).toContain('/home/u/.trae-cn/skills')
+    expect(joined).toContain('/home/u/.trae/skills')
+  })
+
   it('includes the WorkBuddy user-level root ahead of the generic agents', () => {
     const dirs = foreignRoots('/home/u').map((root) => root.dir)
     expect(dirs).toContain('/home/u/.workbuddy/skills')

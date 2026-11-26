@@ -3,12 +3,12 @@
  * disable actions. Shared by the flat list and both grouped views.
  */
 
-import { memo, useState, type JSX } from 'react'
-import type { CatalogSkill, HubConfig } from '../../protocol.ts'
+import { memo, useLayoutEffect, useRef, useState, type JSX } from 'react'
+import type { CatalogSkill, HubConfig, PermanentStat } from '../../protocol.ts'
 import type { SkillStatusFilter } from './hooks/useCatalogFlow.ts'
 import { IconTrashOutline16 } from '../icons.tsx'
 import { isDisplayNameDistinct, tt } from '../helpers.ts'
-import { dotStyle, relativeTimeText } from './format.ts'
+import { dotStyle, formatDateTime, formatSuccessRate, relativeTimeText } from './format.ts'
 import { sourceLabel } from './source-label.ts'
 import css from './panel.module.css'
 
@@ -16,7 +16,9 @@ import css from './panel.module.css'
 export interface SkillRowProps {
   skill: CatalogSkill
   /** skillName → usage stats. */
-  uses: ReadonlyMap<string, { count: number; lastUsed?: number }>
+  uses: ReadonlyMap<string, { count: number; lastUsed?: number; permanent?: PermanentStat }>
+  /** skillName → permanent ledger stats (day/week/total). Optional for callers that enrich `uses`. */
+  permanentUses?: ReadonlyMap<string, PermanentStat>
   /** Effective hub config; null while it has not loaded. */
   hubConfig: HubConfig | null
   /** Names with an in-flight toggle/delete. */
@@ -34,14 +36,46 @@ export interface SkillRowProps {
   toggle: (skill: CatalogSkill, enabled: boolean) => Promise<void>
   openDetail: (name: string, workspace?: string) => Promise<void>
   requestDeleteSkill: (name: string) => void
+  /**
+   * 移入回收站（可恢复）。
+   *
+   * 与 requestDeleteSkill 走同一条后端路径，但语义是「归档」不是「删除」，
+   * 前端会弹一个明确的「可在回收站恢复」确认框。
+   */
+  requestTrashSkill: (name: string) => void
 }
 
 export function SkillRowImpl(props: SkillRowProps): JSX.Element {
-  const { skill, uses, hubConfig, busyNames, editMode, tagBusy, duplicateNames, hideSourceBadge, toggle, openDetail, requestDeleteSkill } = props
+  const { skill, uses, permanentUses, hubConfig, busyNames, editMode, tagBusy, duplicateNames, hideSourceBadge, toggle, openDetail, requestDeleteSkill, requestTrashSkill } = props
   const [menuOpen, setMenuOpen] = useState(false)
+  /**
+   * 菜单的实测坐标。
+   *
+   * 菜单不能用 `position: absolute` 挂在行内：行所在的 `.section` 卡片是
+   * `overflow: hidden`（为了让分组卡有圆角裁切），绝对定位的菜单会被卡片
+   * 下边缘直接切掉 —— 最后一项「禁用」就是这么消失的。改成 `position: fixed`
+   * 用视口坐标后，菜单脱离卡片裁切，卡片怎么改都不会再压住它。
+   */
+  const moreRef = useRef<HTMLButtonElement | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null)
+  // 调用量只认永久账本（插件自己记的日/周/总）。会话日志统计已移除，
+  // 这里不再读 `uses.count` / `uses.lastUsed`。
   const stat = uses.get(skill.name)
-  const count = stat?.count ?? 0
-  const lastUsed = stat?.lastUsed
+  const permStat = permanentUses?.get(skill.name) ?? stat?.permanent
+  // 打开时量一次按钮位置。菜单高约 3 行，视口底部放不下就翻到按钮上方 ——
+  // 否则最后几行的菜单会被窗口下边缘截断，和卡片裁切是同一类问题。
+  useLayoutEffect(() => {
+    if (!menuOpen) { setMenuPos(null); return }
+    const rect = moreRef.current?.getBoundingClientRect()
+    if (rect === undefined) return
+    const MENU_HEIGHT_ESTIMATE = 132
+    const opensUp = rect.bottom + 6 + MENU_HEIGHT_ESTIMATE > window.innerHeight
+    setMenuPos({
+      top: opensUp ? Math.max(8, rect.top - 6 - MENU_HEIGHT_ESTIMATE) : rect.bottom + 6,
+      right: Math.max(8, window.innerWidth - rect.right),
+    })
+  }, [menuOpen])
+
   const isDuplicate = duplicateNames.has(skill.name)
   const externalSource = hideSourceBadge !== true && skill.source.startsWith('agent-') ? sourceLabel(skill.source) : null
   /** 单一状态圆点：模型可调 → 蓝；否则用户可调 → 绿。与聊天 / 菜单同规则。 */
@@ -63,10 +97,20 @@ export function SkillRowImpl(props: SkillRowProps): JSX.Element {
           <span className={css.rowNameText}>{skill.name}</span>
           {externalSource !== null ? <span className={css.badge + ' ' + css.badgeSource} title={skill.source}>{externalSource}</span> : null}
           {isDisplayNameDistinct(skill.name, skill.displayName) ? <span className={css.displayName} title={skill.displayName}>{skill.displayName}</span> : null}
-          {count > 0 && hubConfig?.showUseCount !== false ? <span className={css.useCount}>{count}</span> : null}
+          {/* 调用量 + 成功率：日 / 周 / 总 ｜ 成功率。同一行，用 ｜ 分隔。 */}
+          {permStat !== undefined && hubConfig?.showUseCount !== false ? (
+            <span className={css.permStat} title={tt('row.permStatHint')}>
+              {tt('row.day') + ' ' + permStat.today + ' · ' + tt('row.week') + ' ' + permStat.week + ' · ' + tt('row.total') + ' ' + permStat.total}
+              {' ｜ '}
+              <span className={css.permRate} title={tt('row.successRateHint')}>{tt('row.successRate') + '：' + formatSuccessRate(permStat)}</span>
+            </span>
+          ) : null}
+          {/* 最近一次调用：直接跟在调用量后面，不再甩到行尾。 */}
+          {permStat !== undefined && permStat.lastUsed > 0 && hubConfig?.showUseTime !== false ? <span className={css.useTimeInline} title={tt('row.lastUsedHint')}>{relativeTimeText(permStat.lastUsed)}</span> : null}
           {dot}
           {isDuplicate ? <span className={css.badge + ' ' + css.statusError} title={tt('row.duplicateHint')}>{tt('row.duplicate')}</span> : null}
-          {lastUsed !== undefined && hubConfig?.showUseTime !== false ? <span className={css.useTime}>{relativeTimeText(lastUsed)}</span> : null}
+          {/* 安装时间靠右：与调用量/最近调用分属不同性质，放在行尾对齐成列。 */}
+          {skill.addedAt !== undefined && skill.addedAt > 0 ? <span className={css.installedAt} title={tt('row.installedHint') + ' ' + formatDateTime(skill.addedAt)}>{tt('row.installed')} {relativeTimeText(skill.addedAt)}</span> : null}
         </div>
           <div className={css.rowDesc} title={skill.description}>{skill.shortDescription ?? skill.description}</div>
         </div>
@@ -88,6 +132,7 @@ export function SkillRowImpl(props: SkillRowProps): JSX.Element {
         : <span className={css.badge + ' ' + css.badgeReadonly}>{tt('row.readonly')}</span>}
       <span className={css.menuAnchor} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setMenuOpen(false) }}>
         <button
+          ref={moreRef}
           type='button'
           className={css.opBtn + ' ' + css.moreButton}
           aria-label={tt('row.more')}
@@ -95,9 +140,13 @@ export function SkillRowImpl(props: SkillRowProps): JSX.Element {
           aria-expanded={menuOpen}
           onClick={(event) => { event.stopPropagation(); setMenuOpen((open) => !open) }}
         >⋯</button>
-        {menuOpen ? <div className={css.menu} role='menu'>
+        {menuOpen && menuPos !== null ? <div className={css.menu} role='menu' style={{ top: menuPos.top, right: menuPos.right }}>
           <button type='button' role='menuitem' className={css.menuItem} onClick={(event) => { event.stopPropagation(); setMenuOpen(false); void openDetail(skill.name, skill.workspace) }}>{tt('row.detail')}</button>
           {skill.writable || skill.toggleable === true ? <button type='button' role='menuitem' className={css.menuItem} disabled={busyNames.has(skill.name) || tagBusy} onClick={(event) => { event.stopPropagation(); setMenuOpen(false); void toggle(skill, skill.modelOverride === true) }}>{tt(skill.modelOverride === true ? 'row.enable' : 'row.disable')}</button> : null}
+          {/* 移入回收站：与「删除」走同一条后端路径（都是移到 .trash），
+              但显示条件放宽到 toggleable —— 项目级技能不是 dsh 可写根
+              （writable=false），却完全应该能被回收。已禁用的技能也可以。 */}
+          {skill.writable || skill.toggleable === true ? <button type='button' role='menuitem' className={css.menuItem} disabled={busyNames.has(skill.name) || tagBusy} onClick={(event) => { event.stopPropagation(); setMenuOpen(false); requestTrashSkill(skill.name) }}>{tt('row.moveToTrash')}</button> : null}
           {skill.writable ? <button type='button' role='menuitem' className={css.menuItem} disabled={busyNames.has(skill.name) || tagBusy} onClick={(event) => { event.stopPropagation(); setMenuOpen(false); requestDeleteSkill(skill.name) }}>{tt('row.delete')}</button> : null}
         </div> : null}
       </span>

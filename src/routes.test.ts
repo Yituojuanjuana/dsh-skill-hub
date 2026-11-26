@@ -8,7 +8,7 @@ import { hostTrustFence, makeRoutes, type SkillHubRouteDeps } from './routes.ts'
 import { hashSkillAt } from './skillfs.ts'
 import { lastMarketCheck, lastSourceCheck } from './routes/route-state.ts'
 import { SkillHubStore, statePath } from './store.ts'
-import { SKILL_HUB_API, SKILL_HUB_API_ROOT, SKILL_HUB_WRITE_HEADER, SKILL_HUB_WRITE_VALUE, ANNOUNCEMENT_CHAR_BUDGET, type CatalogResponse, type ConfigResponse, type ErrorResponse, type ForeignImportResponse, type ForeignListResponse, type HubConfig, type ZipImportResponse } from './protocol.ts'
+import { SKILL_HUB_API, SKILL_HUB_API_ROOT, SKILL_HUB_WRITE_HEADER, SKILL_HUB_WRITE_VALUE, CATALOG_DESCRIPTION_MAX_LENGTH, type CatalogResponse, type ConfigResponse, type ErrorResponse, type ForeignImportResponse, type ForeignListResponse, type HubConfig, type ZipImportResponse } from './protocol.ts'
 
 /** Minimal response double recording status/headers/body. */
 class FakeResponse {
@@ -313,6 +313,33 @@ describe('skill-hub routes', () => {
     expect(bad.status).toBe(400)
   })
 
+  it('reads a skills.sh skill description out of the package SKILL.md', async () => {
+    stubFetch([['skills.sh/api/download', jsonResponse({
+      files: [{ path: 'SKILL.md', contents: '---\nname: pdf\ndescription: Anything with PDF files.\n---\nbody' }],
+    })]])
+    const res = new FakeResponse()
+    await routeFor(SKILL_HUB_API.marketSkillsShDetail)
+      .handler(fakeReq('GET', SKILL_HUB_API.marketSkillsShDetail + '?source=anthropics/skills&skillId=pdf'), res as never)
+    expect(res.status).toBe(200)
+    expect(res.json()).toEqual({ ok: true, description: 'Anything with PDF files.' })
+
+    // 说明是装饰性信息：frontmatter 坏掉只回空串，不该把一次「看说明」变成错误。
+    stubFetch([['skills.sh/api/download', jsonResponse({
+      files: [{ path: 'SKILL.md', contents: '# no frontmatter' }],
+    })]])
+    const broken = new FakeResponse()
+    await routeFor(SKILL_HUB_API.marketSkillsShDetail)
+      .handler(fakeReq('GET', SKILL_HUB_API.marketSkillsShDetail + '?source=o/r&skillId=s'), broken as never)
+    expect(broken.status).toBe(200)
+    expect(broken.json()).toEqual({ ok: true, description: '' })
+
+    // 缺参数是调用方的问题，回 400，不发请求。
+    const missing = new FakeResponse()
+    await routeFor(SKILL_HUB_API.marketSkillsShDetail)
+      .handler(fakeReq('GET', SKILL_HUB_API.marketSkillsShDetail), missing as never)
+    expect(missing.status).toBe(400)
+  })
+
   it('installs one skills.sh skill end to end and refuses one that fails the audit', async () => {
     stubFetch([['skills.sh/api/download', jsonResponse({
       files: [{ path: 'SKILL.md', contents: '---\nname: sh-installed\ndescription: demo\n---\nbody' }, { path: 'notes.md', contents: 'n' }],
@@ -509,79 +536,14 @@ describe('skill-hub routes', () => {
     expect(unauth.json()).toEqual({ error: 'unauthorized: browser session required' })
   })
 
-  it('hostTrustFence: literal fallback without Connection, delegation with it, fail closed when it throws', () => {
+  it('hostTrustFence: loopback-only — accepts local GUI requests, rejects remote, reports missing once', () => {
     const remote = fakeReq('GET', '/', undefined, '10.0.0.5')
-    expect(hostTrustFence(() => undefined)(remote)).toBe(403)
-    expect(hostTrustFence(() => undefined)(fakeReq('GET', '/'))).toBeUndefined()
-
-    let calls = 0
-    const delegated = hostTrustFence(() => ({
-      requestRejection: () => { calls += 1; return 401 },
-    } as never))
-    expect(delegated(remote)).toBe(401)
-    expect(calls).toBe(1)
-
-    const broken = hostTrustFence(() => ({
-      requestRejection: () => { throw new Error('fence unavailable') },
-    } as never))
-    expect(broken(remote)).toBe(403)
-  })
-
-  it('hostTrustFence: a service appearing later un-latches the fallback, and onMissing fires once (issue #17)', () => {
-    const remote = fakeReq('GET', '/', undefined, '10.0.0.5')
-    let connection: import('@deepseek-ai/dsh-client-connection').HostConnectionHandle | undefined
     let misses = 0
-    const fence = hostTrustFence(
-      () => connection,
-      () => { misses += 1 },
-    )
-
-    // 启动早于 Connection：前几次请求走降级，且只报一次缺失。
+    const fence = hostTrustFence(() => undefined, () => { misses += 1 })
     expect(fence(remote)).toBe(403)
+    expect(fence(fakeReq('GET', '/'))).toBeUndefined()
     expect(fence(remote)).toBe(403)
     expect(misses).toBe(1)
-
-    // Connection 上线后同一 fence 立即切换，不锁死在降级分支。
-    connection = { requestRejection: () => undefined } as unknown as import('@deepseek-ai/dsh-client-connection').HostConnectionHandle
-    expect(fence(remote)).toBeUndefined()
-    expect(misses).toBe(1)
-
-    // 服务再次消失（理论上不该发生）不重复报警，判定回到降级。
-    connection = undefined
-    expect(fence(remote)).toBe(403)
-    expect(misses).toBe(1)
-  })
-
-  it('reports stats unavailable without a reader, or when all usage displays are off', async () => {
-    // 无 reader：面板显示空统计，不触发任何扫描。
-    const empty = new FakeResponse()
-    await routeFor(SKILL_HUB_API.stats).handler(fakeReq('GET', SKILL_HUB_API.stats), empty as never)
-    expect(empty.json()).toEqual({ ok: true, available: false, stats: [] })
-
-    // 有 reader 但三个展示开关全关：同样不调用 reader（kill-switch，issue #7）。
-    let calls = 0
-    deps.stats = async () => {
-      calls += 1
-      return [{ name: 'tdd', count: 1 }]
-    }
-    deps.config = () => ({ showUseCount: false, showUseTime: false, showGroupSummary: false }) as HubConfig
-    const off = new FakeResponse()
-    await routeFor(SKILL_HUB_API.stats).handler(fakeReq('GET', SKILL_HUB_API.stats), off as never)
-    expect(off.json()).toEqual({ ok: true, available: false, stats: [] })
-    expect(calls).toBe(0)
-
-    // 默认开任意一个即正常服务。
-    deps.config = () => ({ showUseCount: true }) as HubConfig
-    const on = new FakeResponse()
-    await routeFor(SKILL_HUB_API.stats).handler(fakeReq('GET', SKILL_HUB_API.stats), on as never)
-    expect(on.json()).toEqual({ ok: true, available: true, stats: [{ name: 'tdd', count: 1 }] })
-    expect(calls).toBe(1)
-
-    // reader 自带的来源标记会透出（无标记时不加字段）。
-    deps.stats.source = 'cold'
-    const sourced = new FakeResponse()
-    await routeFor(SKILL_HUB_API.stats).handler(fakeReq('GET', SKILL_HUB_API.stats), sourced as never)
-    expect(sourced.json()).toEqual({ ok: true, available: true, source: 'cold', stats: [{ name: 'tdd', count: 1 }] })
   })
 
   it('serves the catalog with writable flags and diagnostics', async () => {
@@ -605,11 +567,11 @@ describe('skill-hub routes', () => {
     expect(body.diagnostics[0].level).toBe('error')
     // 面板标题旁的插件版本徽标数据源：随 catalog 附带当前安装版本。
     expect(body.pluginVersion).toMatch(/^\d+\.\d+\.\d+$/)
-    // 公告预算：一层渐进加载注入的 name+description 总量必须能看见。
+    // 公告成本：一层渐进加载注入的 name+description 总量必须能看见。
     expect(body.announcement.skills).toBe(2)
     expect(body.announcement.chars).toBe('demo-skill'.length + 'demo'.length + 'bundled-x'.length + 'demo'.length)
-    expect(body.announcement.budget).toBe(ANNOUNCEMENT_CHAR_BUDGET)
-    expect(body.announcement.overBudget).toBe(false)
+    expect(body.announcement.descriptionMaxLength).toBe(CATALOG_DESCRIPTION_MAX_LENGTH)
+    expect(body.announcement.truncated).toBe(0)
   })
 
   it('forwards the cwd query to the registry snapshot', async () => {
@@ -1063,7 +1025,7 @@ describe('skill-hub routes', () => {
     const body = res.json() as ConfigResponse
     expect(body.ok).toBe(true)
     expect(body.pluginVersion).toMatch(/^\d+\.\d+\.\d+$/)
-    expect(body.config).toEqual({ enabled: false, announceToAgent: true, showUseCount: true, showUseTime: true, showGroupSummary: true, statsWindowDays: 14, statsScanMinutes: 5 })
+    expect(body.config).toEqual({ enabled: false, announceToAgent: true, showUseCount: true, showUseTime: true, showGroupSummary: true, showSidebarCard: true, evolution: false })
     expect(body.saved).toEqual({ enabled: false })
   })
 
@@ -1160,7 +1122,7 @@ describe('skill-hub routes', () => {
     const patches: Array<Partial<HubConfig>> = []
     const updateConfig = async (patch: Partial<HubConfig>): Promise<HubConfig> => {
       patches.push(patch)
-      return { enabled: true, announceToAgent: true, showUseCount: true, showUseTime: true, showGroupSummary: true, statsWindowDays: 14, statsScanMinutes: 5 }
+      return { enabled: true, announceToAgent: true, showUseCount: true, showUseTime: true, showGroupSummary: true }
     }
     const routes = makeRoutes({ ...deps, updateConfig })
     const set = new FakeResponse()
@@ -1486,19 +1448,20 @@ describe('skill-hub routes', () => {
     }
   })
 
-  // resolveHubConfig 收敛为单参数后，越界值仍必须回落到 schema 默认，
-  // 而不是被写进有效配置。
-  it('clamps the numeric stats knobs and fills the remaining defaults', async () => {
+  // resolveHubConfig 收敛为单参数后，缺失字段仍必须回落到 schema 默认，
+  // 而不是留下 undefined。
+  it('fills the remaining config defaults', async () => {
     const routes = makeRoutes({
       ...deps,
-      config: () => ({ enabled: true, announceToAgent: true, statsWindowDays: -5, statsScanMinutes: 0 }),
+      config: () => ({ enabled: true, announceToAgent: true }),
     })
     const res = new FakeResponse()
     await routes.find((r) => r.path === SKILL_HUB_API.config)?.handler(fakeReq('GET', SKILL_HUB_API.config), res as never)
     expect(res.status).toBe(200)
     const body = res.json() as ConfigResponse
-    expect(body.config.statsWindowDays).toBe(14)
-    expect(body.config.statsScanMinutes).toBe(5)
+    expect(body.config.showUseCount).toBe(true)
+    expect(body.config.showUseTime).toBe(true)
+    expect(body.config.showGroupSummary).toBe(true)
   })
 
   // ------------------------------------------------------- repo import (B方案 job+轮询)

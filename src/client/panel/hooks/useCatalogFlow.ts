@@ -14,7 +14,7 @@ import type {
 } from '../../../protocol.ts'
 import type { SkillHubApi } from '../../api.ts'
 import { errorMessage, tt } from '../../helpers.ts'
-import { filterSkillsByQuery, filterSkillsByStatus, sortSkills, type InvocationFilter, type SkillStatusFilter, type SortKey } from '../../grouping.ts'
+import { filterSkillsByQuery, filterSkillsByStatus, sortSkills, usageTotal, type InvocationFilter, type SkillStatusFilter, type SortKey } from '../../grouping.ts'
 import { runFlow, type FlowNotices, type UsesMap } from './shared.ts'
 
 export type { SkillStatusFilter }
@@ -25,8 +25,6 @@ export function useCatalogFlow(
   shared: FlowNotices,
   /** 技能总数 >80 时折叠 personal 分组（聚合根实现，状态归它）。 */
   collapsePersonal: () => void,
-  /** 清掉来源筛选（状态归聚合根，这里只在清空筛选项时调用）。 */
-  clearSourceFilter: () => void,
 ) {
   const [catalog, setCatalog] = useState<CatalogResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -51,6 +49,8 @@ export function useCatalogFlow(
   const [search, setSearch] = useState('')
   /** 工作区（项目）路径；空 = 只看用户级技能。 */
   const [workspace, setWorkspace] = useState('')
+  /** 工作区默认值是否已经初始化过（只生效一次，避免轮询覆盖用户选择）。 */
+  const workspaceInitialized = useRef(false)
   const [showForm, setShowForm] = useState(false)
   const [formName, setFormName] = useState('')
   const [formDesc, setFormDesc] = useState('')
@@ -61,8 +61,10 @@ export function useCatalogFlow(
   const [formMessage, setFormMessage] = useState<{ kind: 'error' | 'success'; text: string } | null>(null)
   const [fixingPaths, setFixingPaths] = useState<ReadonlySet<string>>(new Set())
   const [invocationFilter, setInvocationFilter] = useState<InvocationFilter>('all')
-  const [statusFilter, setStatusFilter] = useState<SkillStatusFilter>('all')
-  const [sortKey, setSortKey] = useState<SortKey>('name')
+  // 状态默认「启用」：面板主要用途是看当前生效的技能，
+  // 一进来就混进一堆停用项反而要先手动筛一次。
+  const [statusFilter, setStatusFilter] = useState<SkillStatusFilter>('enabled')
+  const [sortKey, setSortKey] = useState<SortKey>('uses')
 
   const autoCollapsedPersonal = useRef(false)
   /**
@@ -106,6 +108,15 @@ export function useCatalogFlow(
       if (serialized !== lastCatalogJson.current) {
         lastCatalogJson.current = serialized
         setCatalog(next)
+      }
+      // 首次加载时把「当前对话的工作区」设为默认选中项。
+      //
+      // 只在用户还没动过下拉（workspace === ''）时做一次，否则会覆盖用户的手动
+      // 选择。`workspaceInitialized` 保证只生效一次 —— 后续 5 秒轮询不该把用户
+      // 切走的视图又拉回来。
+      if (!workspaceInitialized.current && workspace === '' && typeof next.currentWorkspace === 'string' && next.currentWorkspace !== '') {
+        workspaceInitialized.current = true
+        setWorkspace(next.currentWorkspace)
       }
       // 停用技能已在 next.skills 里，台账 disabled[] 不能再加一遍。
       if (!autoCollapsedPersonal.current && next.skills.length > 80) {
@@ -267,17 +278,16 @@ export function useCatalogFlow(
    */
   const shortenedCount = useMemo(() => searched.filter((skill) => skill.shortDescription !== undefined).length, [searched])
   /** 排序后的技能列表（列表视图共用；调用次数未知按 0 处理）。 */
-  const sorted = useMemo(() => sortSkills(filtered, sortKey, (name) => uses.get(name)?.count), [filtered, sortKey, uses])
+  const sorted = useMemo(() => sortSkills(filtered, sortKey, (name) => usageTotal(uses.get(name))), [filtered, sortKey, uses])
   /** Same ordering without the status filter — the roles view's row source. */
-  const searchedSorted = useMemo(() => sortSkills(searched, sortKey, (name) => uses.get(name)?.count), [searched, sortKey, uses])
+  const searchedSorted = useMemo(() => sortSkills(searched, sortKey, (name) => usageTotal(uses.get(name))), [searched, sortKey, uses])
 
-  /** Clear the list filters (search + source + invocation + status) back to the full view. */
+  /** Clear the list filters (search + invocation + status) back to the full view. */
   const clearListFilters = useCallback((): void => {
     setSearch('')
-    clearSourceFilter()
     setInvocationFilter('all')
     setStatusFilter('all')
-  }, [clearSourceFilter])
+  }, [])
 
   return {
     catalog, loading, detail, detailLoading, busyNames, search, workspace,

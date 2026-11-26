@@ -38,8 +38,6 @@ describe('hydrateMigratedState — config', () => {
         enabled: true,
         announceToAgent: false,
         dotModelColor: '#abcdef',
-        statsWindowDays: 7,
-        statsScanMinutes: 3,
         githubToken: 'ghp_x',
         // 坏的
         editMode: 'yes',
@@ -54,15 +52,13 @@ describe('hydrateMigratedState — config', () => {
       enabled: true,
       announceToAgent: false,
       dotModelColor: '#abcdef',
-      statsWindowDays: 7,
-      statsScanMinutes: 3,
       githubToken: 'ghp_x',
     })
   })
 
   it('drops empty strings for string fields and non-finite numbers for number fields', () => {
     const state = hydrateMigratedState(doc({
-      config: { githubToken: '', dotModelColor: '', statsWindowDays: Number.NaN, statsScanMinutes: Number.POSITIVE_INFINITY },
+      config: { githubToken: '', dotModelColor: '' },
     }))
     expect(state.config).toEqual({})
   })
@@ -221,81 +217,6 @@ describe('hydrateMigratedState — trash', () => {
       trash: [{ name: 'a', path: '/t/a', movedAt: 1, tagIds: ['t1', 2, null, 't2'] }],
     }))
     expect(state.trashByPath.get('/t/a')?.tagIds).toEqual(['t1', 't2'])
-  })
-})
-
-describe('hydrateMigratedState — skillStats', () => {
-  it('drops the whole checkpoint when a required scalar is missing', () => {
-    for (const skillStats of [
-      null,
-      {},
-      { windowDays: 7, frozenBefore: 1, frozenSessions: {} },
-      { windowDays: 7, frozenBefore: 1, lastFullReconcile: 2 },
-      { windowDays: 'x', frozenBefore: 1, frozenSessions: {}, lastFullReconcile: 2 },
-      { windowDays: 7, frozenBefore: 1, frozenSessions: null, lastFullReconcile: 2 },
-    ]) {
-      expect(hydrateMigratedState(doc({ skillStats })).skillStats).toBeUndefined()
-    }
-  })
-
-  it('keeps a session whose createdAt is fine but drops its corrupt count entries', () => {
-    const state = hydrateMigratedState(doc({
-      skillStats: {
-        windowDays: 14,
-        frozenBefore: 100,
-        lastFullReconcile: 200,
-        frozenSessions: {
-          good: { createdAt: 1, counts: { tdd: { count: 2, lastUsed: 5 } } },
-          'bad-counts': { createdAt: 1, counts: { tdd: { count: 'many', lastUsed: 5 } } },
-          'no-createdAt': { counts: {} },
-          notObject: 'x',
-        },
-      },
-    }))
-    // 粒度是「桶内条目」：session 本身结构合法就保留，只清掉算不成数字的计数。
-    expect(state.skillStats?.frozenSessions).toEqual({
-      good: { createdAt: 1, counts: { tdd: { count: 2, lastUsed: 5 } } },
-      'bad-counts': { createdAt: 1, counts: {} },
-    })
-  })
-
-  it('drops corrupt lastTotals entries and keeps valid ones', () => {
-    const state = hydrateMigratedState(doc({
-      skillStats: {
-        windowDays: 14,
-        frozenBefore: 1,
-        lastFullReconcile: 2,
-        frozenSessions: {},
-        lastTotals: [
-          { name: 'a', count: 3, lastUsed: 9 },
-          { name: 'b', count: 1 },
-          { count: 5 },
-          { name: 'c', count: 'many' },
-          null,
-        ],
-      },
-    }))
-    expect(state.skillStats?.lastTotals).toEqual([{ name: 'a', count: 3, lastUsed: 9 }, { name: 'b', count: 1 }])
-  })
-
-  it('drops corrupt coldRevisions entries instead of trusting bad counts', () => {
-    const state = hydrateMigratedState(doc({
-      skillStats: {
-        windowDays: 14,
-        frozenBefore: 1,
-        lastFullReconcile: 2,
-        frozenSessions: {},
-        coldRevisions: {
-          good: { rev: 'r1', createdAt: 9, counts: { tdd: { count: 1, lastUsed: 2 } } },
-          'bad-rev': { rev: 42, createdAt: 9, counts: {} },
-          'bad-counts': { rev: 'r1', createdAt: 9, counts: { tdd: { count: 'many', lastUsed: 1 } } },
-        },
-      },
-    }))
-    expect(state.skillStats?.coldRevisions).toEqual({
-      good: { rev: 'r1', createdAt: 9, counts: { tdd: { count: 1, lastUsed: 2 } } },
-      'bad-counts': { rev: 'r1', createdAt: 9, counts: {} },
-    })
   })
 })
 

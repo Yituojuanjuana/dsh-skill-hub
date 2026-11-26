@@ -16,7 +16,7 @@ import { SkillHubApi } from './api.ts'
 import { errorMessage, tt } from './helpers.ts'
 import type { HubKey } from './locales.ts'
 import { ColorField, NumberField, PluginSettingsCard, SecretField, SwitchField } from './settings-card.tsx'
-import { booleanField, CardForm, colorField, numberField, secretField, type CardShell, type FieldState, type FormScope } from './settings-form.ts'
+import { booleanField, CardForm, colorField, secretField, type CardShell, type FieldState, type FormScope } from './settings-form.ts'
 // 复用卡片自己的样式表：更新提示 pill 与版本徽标必须同一套 token 与尺寸。
 import css from './settings-card.module.css'
 // Single source for the TS-side dot defaults (the panel CSS mirrors these).
@@ -31,8 +31,7 @@ export interface SkillHubSettingsState extends CardShell {
   showUseCount: FieldState
   showUseTime: FieldState
   showGroupSummary: FieldState
-  statsWindowDays: FieldState
-  statsScanMinutes: FieldState
+  showSidebarCard: FieldState
   githubToken: FieldState
 }
 
@@ -69,7 +68,7 @@ export class SkillHubSettingsCardController {
 
   /** @param scope - the hub settings scope the card edits (FormScope-compatible). */
   constructor(scope: FormScope) {
-    this.form = new CardForm(scope, [booleanField('enabled'), booleanField('announceToAgent'), colorField('dotModelColor'), colorField('dotUserColor'), booleanField('showUseCount'), booleanField('showUseTime'), booleanField('showGroupSummary'), numberField('statsWindowDays', { min: 0, max: 3650 }), numberField('statsScanMinutes', { min: 1, max: 1440 }), secretField('githubToken')])
+    this.form = new CardForm(scope, [booleanField('enabled'), booleanField('announceToAgent'), colorField('dotModelColor'), colorField('dotUserColor'), booleanField('showUseCount'), booleanField('showUseTime'), booleanField('showGroupSummary'), booleanField('showSidebarCard'), secretField('githubToken')])
     this.store = this.form.bind(() => this.projection())
   }
 
@@ -83,8 +82,7 @@ export class SkillHubSettingsCardController {
       showUseCount: this.form.field('showUseCount'),
       showUseTime: this.form.field('showUseTime'),
       showGroupSummary: this.form.field('showGroupSummary'),
-      statsWindowDays: this.form.field('statsWindowDays'),
-      statsScanMinutes: this.form.field('statsScanMinutes'),
+      showSidebarCard: this.form.field('showSidebarCard'),
       githubToken: this.form.field('githubToken'),
     }
   }
@@ -110,8 +108,8 @@ const FIELD_ROWS: readonly FieldRow[] = [
   { kind: 'switch', field: 'showUseCount', label: 'settings.showUseCount', hint: 'settings.showUseCountHint' },
   { kind: 'switch', field: 'showUseTime', label: 'settings.showUseTime', hint: 'settings.showUseTimeHint' },
   { kind: 'switch', field: 'showGroupSummary', label: 'settings.showGroupSummary', hint: 'settings.showGroupSummaryHint' },
-  { kind: 'number', field: 'statsWindowDays', id: 'skill-hub-stats-window-days', label: 'settings.statsWindowDays', hint: 'settings.statsWindowDaysHint' },
-  { kind: 'number', field: 'statsScanMinutes', id: 'skill-hub-stats-scan-minutes', label: 'settings.statsScanMinutes', hint: 'settings.statsScanMinutesHint' },
+  { kind: 'switch', field: 'showSidebarCard', label: 'settings.showSidebarCard', hint: 'settings.showSidebarCardHint' },
+  // 进化默认关闭：它会调模型，不能默认开。
   { kind: 'secret', field: 'githubToken', id: 'skill-hub-github-token', label: 'settings.githubToken', hint: 'settings.githubTokenHint', placeholder: 'settings.githubTokenPlaceholder' },
 ]
 

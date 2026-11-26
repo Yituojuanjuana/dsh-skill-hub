@@ -89,48 +89,61 @@ export interface DiagnosticEntry {
 }
 
 /**
- * 技能目录在 system prompt 里占用的公告预算。渐进加载的第一层只放
- * name + description，但技能多了这一层本身就会顶到客户端的上限而被截断，
- * 表现为「装了却不触发」—— 面板必须能看见这个数字。
+ * 技能目录在 system prompt 里占用的公告成本。渐进加载的第一层只放
+ * name + description，每个 token 都常驻在每一轮请求里 —— 面板要把这个
+ * 数字显示出来，但它不是「能不能触发」的开关（见下）。
  */
 export interface AnnouncementBudget {
   /** 参与公告的技能数（已启用且 modelInvocable）。 */
   skills: number
-  /** name + description + whenToUse 的总字符数。 */
+  /** name + 截断后的 description 总字符数，即 DSH 真正渲染的长度。 */
   chars: number
   /** 粗略 token 估算（按 3 字符/token）。 */
   approxTokens: number
-  /** 建议预算（字符），超出即 overBudget。 */
-  budget: number
-  overBudget: boolean
+  /** 单条描述的上限（字符），与 DSH 的 catalogDescriptionMaxLength 默认值一致。 */
+  descriptionMaxLength: number
+  /** 因超过单条上限而被截断的技能数。 */
+  truncated: number
 }
 
 /**
- * 技能目录的建议字符预算。取 8000：这是 Codex 在上下文窗口未知时对初始
- * 技能清单的硬上限，也是目前公开客户端里最保守的一档。超出后尾部条目会被
- * 静默丢弃（技能看起来装了，实际不触发）。
+ * DSH 渲染技能目录时对**单条** description 的上限，对应
+ * `dsh-tool-skill` 的 catalogDescriptionMaxLength（默认 500，最小 3）。
+ * 超出部分被替换为 "..."，但这只影响摘要长度，不影响条目是否出现。
  */
-export const ANNOUNCEMENT_CHAR_BUDGET = 8000
+export const CATALOG_DESCRIPTION_MAX_LENGTH = 500
 
 /**
- * 按「已启用且模型可调用」的技能估算公告成本。只统计一层渐进加载真正注入的
- * 字段（name + description + whenToUse），不含正文 —— 正文是激活后才载入的，
- * 不占常驻预算。
+ * 按「已启用且模型可调用」的技能估算公告成本。
+ *
+ * 口径对齐 DSH 的实际渲染（dsh-tool-skill/lib/index.js → renderCatalogEntries）：
+ * 每条只渲染 `- \`name\`: description`，description 先压平空白再按
+ * catalogDescriptionMaxLength 截断；`whenToUse` 不参与渲染。
+ *
+ * 注意这里**没有总量上限**：DSH 不做尾部丢弃，技能装多少就渲染多少，
+ * 超出 8000 字符只是多花常驻 token，不会让技能「不触发」。
  */
 export function computeAnnouncementBudget(skills: readonly CatalogSkill[]): AnnouncementBudget {
   let chars = 0
   let count = 0
+  let truncated = 0
   for (const skill of skills) {
     if (!skill.invocation.modelInvocable) continue
     count += 1
-    chars += skill.name.length + skill.description.length + (skill.whenToUse?.length ?? 0)
+    const description = skill.description.replace(/\s+/g, ' ').trim()
+    if (description.length > CATALOG_DESCRIPTION_MAX_LENGTH) truncated += 1
+    const rendered =
+      description.length <= CATALOG_DESCRIPTION_MAX_LENGTH
+        ? description
+        : `${description.slice(0, CATALOG_DESCRIPTION_MAX_LENGTH - 3)}...`
+    chars += skill.name.length + rendered.length
   }
   return {
     skills: count,
     chars,
     approxTokens: Math.ceil(chars / 3),
-    budget: ANNOUNCEMENT_CHAR_BUDGET,
-    overBudget: chars > ANNOUNCEMENT_CHAR_BUDGET,
+    descriptionMaxLength: CATALOG_DESCRIPTION_MAX_LENGTH,
+    truncated,
   }
 }
 
@@ -156,6 +169,8 @@ export interface CatalogResponse {
   disabled: DisabledSkill[]
   /** Known workspaces (dsh workspace.json); used by the create dialog. */
   workspaces?: Array<{ path: string; title: string }>
+  /** 当前对话所在的工作区路径；面板据此预选工作区下拉的默认项。 */
+  currentWorkspace?: string
   /** Graded diagnostics for the writable roots (provider-skipped files + loadable skills with issues). */
   diagnostics: DiagnosticEntry[]
   /** 技能目录占用的公告预算（见 AnnouncementBudget）。 */

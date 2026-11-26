@@ -1,4 +1,4 @@
-import type { DisabledSkill, HubConfig, MarketSourceRecord, MarketStatsSnapshot, SkillStatsCheckpoint, SkillTag, SourceRecord, TrashEntry } from '../protocol.ts'
+import type { DisabledSkill, HubConfig, MarketSourceRecord, MarketStatsSnapshot, SkillTag, SourceRecord, TrashEntry } from '../protocol.ts'
 import { isValidRepoRoot } from '../protocol/repo.ts'
 import { CONFIG_FIELDS, CONFIG_FIELD_TYPES } from '../protocol/config.ts'
 import { STORE_VERSION } from './paths.ts'
@@ -12,7 +12,6 @@ export interface MigratedStore {
   sources?: unknown
   marketSources?: unknown
   trash?: unknown
-  skillStats?: unknown
   marketStats?: unknown
   collectionOrder?: unknown
   sourceGroupOrder?: unknown
@@ -76,10 +75,8 @@ export function migrateStore(parsed: unknown): MigratedStore | null {
     ...(sources !== undefined ? { sources } : {}),
     ...(marketSources !== undefined ? { marketSources } : {}),
     ...(trash !== undefined ? { trash } : {}),
-    // v4 (skillStats) is a pure addition — older files simply lack the field,
+    // marketStats is a pure addition — older files simply lack the field,
     // and the loader validates its shape, so pass it through untouched.
-    // marketStats follows the same pattern (validated on load below).
-    ...(record.skillStats !== undefined ? { skillStats: record.skillStats } : {}),
     ...(record.marketStats !== undefined ? { marketStats: record.marketStats } : {}),
     ...(Array.isArray(record.collectionOrder) ? { collectionOrder: record.collectionOrder } : {}),
     ...(Array.isArray(record.sourceGroupOrder) ? { sourceGroupOrder: record.sourceGroupOrder } : {}),
@@ -95,7 +92,6 @@ export interface HydratedState {
   sourcesByRepo: Map<string, SourceRecord>
   marketSources: MarketSourceRecord[]
   trashByPath: Map<string, TrashEntry>
-  skillStats: SkillStatsCheckpoint | undefined
   marketStats: MarketStatsSnapshot | undefined
   collectionOrder: string[]
   sourceGroupOrder: string[]
@@ -137,7 +133,7 @@ export function hydrateMigratedState(migrated: MigratedStore): HydratedState {
   if (typeof saved === 'object' && saved !== null) {
     // Walk the shared field list instead of a hand-written subset: adding a
     // config field must never again mean a value is silently dropped during
-    // hydration (statsWindowDays / statsScanMinutes / githubToken were lost).
+    // hydration (githubToken was lost).
     for (const field of CONFIG_FIELDS) {
       const value = saved[field]
       const expected = CONFIG_FIELD_TYPES[field]
@@ -234,73 +230,6 @@ export function hydrateMigratedState(migrated: MigratedStore): HydratedState {
     }
   }
 
-  /**
-   * Validate the cold-path revision bucket: corrupt entries degrade to a
-   * re-read (the revision simply misses), never to bad counts.
-   */
-  function cleanColdRevisions(raw: unknown): { coldRevisions?: SkillStatsCheckpoint['coldRevisions'] } {
-    if (raw === null || typeof raw !== 'object') return {}
-    const revisions: NonNullable<SkillStatsCheckpoint['coldRevisions']> = {}
-    for (const [id, entry] of Object.entries(raw as Record<string, unknown>)) {
-      if (entry === null || typeof entry !== 'object') continue
-      const { rev, createdAt, counts } = entry as { rev?: unknown; createdAt?: unknown; counts?: unknown }
-      if (typeof rev !== 'string' || typeof createdAt !== 'number' || counts === null || typeof counts !== 'object') continue
-      const clean: Record<string, { count: number; lastUsed: number }> = {}
-      for (const [name, stat] of Object.entries(counts as Record<string, unknown>)) {
-        if (stat !== null && typeof stat === 'object'
-          && typeof (stat as { count?: unknown }).count === 'number'
-          && typeof (stat as { lastUsed?: unknown }).lastUsed === 'number') {
-          clean[name] = { count: (stat as { count: number }).count, lastUsed: (stat as { lastUsed: number }).lastUsed }
-        }
-      }
-      revisions[id] = { rev, createdAt, counts: clean }
-    }
-    return { coldRevisions: revisions }
-  }
-
-  let skillStats: SkillStatsCheckpoint | undefined = undefined
-  const savedStats = migrated.skillStats as Partial<SkillStatsCheckpoint> | null | undefined
-  if (savedStats !== null && typeof savedStats === 'object'
-    && typeof savedStats.frozenBefore === 'number' && typeof savedStats.lastFullReconcile === 'number'
-    && typeof savedStats.windowDays === 'number'
-    && typeof savedStats.frozenSessions === 'object' && savedStats.frozenSessions !== null) {
-    // Validate entry shapes too: a corrupt bucket degrades to a fresh
-    // checkpoint (one extra full reconciliation), never to bad counts.
-    const sessions: SkillStatsCheckpoint['frozenSessions'] = {}
-    for (const [id, entry] of Object.entries(savedStats.frozenSessions)) {
-      if (entry === null || typeof entry !== 'object' || typeof entry.createdAt !== 'number'
-        || typeof entry.counts !== 'object' || entry.counts === null) continue
-      const counts: Record<string, { count: number; lastUsed: number }> = {}
-      for (const [name, stat] of Object.entries(entry.counts)) {
-        if (stat !== null && typeof stat === 'object'
-          && typeof (stat as { count?: unknown }).count === 'number'
-          && typeof (stat as { lastUsed?: unknown }).lastUsed === 'number') {
-          counts[name] = { count: (stat as { count: number }).count, lastUsed: (stat as { lastUsed: number }).lastUsed }
-        }
-      }
-      sessions[id] = { createdAt: entry.createdAt, counts }
-    }
-    const rawTotals = (savedStats as { lastTotals?: unknown }).lastTotals
-    const lastTotals = Array.isArray(rawTotals)
-      ? rawTotals.filter((entry): entry is { name: string; count: number; lastUsed?: number } =>
-          entry !== null && typeof entry === 'object'
-          && typeof (entry as { name?: unknown }).name === 'string'
-          && typeof (entry as { count?: unknown }).count === 'number').map((entry) => ({
-            name: (entry as { name: string }).name,
-            count: (entry as { count: number }).count,
-            ...(typeof (entry as { lastUsed?: unknown }).lastUsed === 'number' ? { lastUsed: (entry as { lastUsed: number }).lastUsed } : {}),
-          }))
-      : undefined
-    skillStats = {
-      windowDays: savedStats.windowDays,
-      frozenBefore: savedStats.frozenBefore,
-      frozenSessions: sessions,
-      lastFullReconcile: savedStats.lastFullReconcile,
-      ...(lastTotals !== undefined ? { lastTotals } : {}),
-      ...cleanColdRevisions((savedStats as { coldRevisions?: unknown }).coldRevisions),
-    }
-  }
-
   let marketStats: MarketStatsSnapshot | undefined = undefined
   const savedMarketStats = migrated.marketStats as Partial<MarketStatsSnapshot> | null | undefined
   if (savedMarketStats !== null && typeof savedMarketStats === 'object'
@@ -322,5 +251,5 @@ export function hydrateMigratedState(migrated: MigratedStore): HydratedState {
   const sourceGroupOrder = cleanStringList(migrated.sourceGroupOrder)
   const invocationOverrides = cleanStringList(migrated.invocationOverrides)
 
-  return { entries, config, tagsById, sourcesByRepo, marketSources, trashByPath, skillStats, marketStats, collectionOrder, sourceGroupOrder, invocationOverrides }
+  return { entries, config, tagsById, sourcesByRepo, marketSources, trashByPath, marketStats, collectionOrder, sourceGroupOrder, invocationOverrides }
 }

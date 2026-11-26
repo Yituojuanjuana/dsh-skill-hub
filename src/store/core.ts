@@ -14,7 +14,6 @@ import type {
   HubConfig,
   MarketSourceRecord,
   MarketStatsSnapshot,
-  SkillStatsCheckpoint,
   SkillTag,
   SourceRecord,
   TrashEntry,
@@ -31,7 +30,6 @@ export interface StoreState {
   sourcesByRepo: Map<string, SourceRecord>
   marketSources: MarketSourceRecord[]
   trashByPath: Map<string, TrashEntry>
-  skillStats: SkillStatsCheckpoint | undefined
   marketStats: MarketStatsSnapshot | undefined
   collectionOrder: string[]
   sourceGroupOrder: string[]
@@ -61,7 +59,6 @@ function emptyState(): StoreState {
     sourcesByRepo: new Map<string, SourceRecord>(),
     marketSources: [],
     trashByPath: new Map<string, TrashEntry>(),
-    skillStats: undefined,
     marketStats: undefined,
     collectionOrder: [],
     sourceGroupOrder: [],
@@ -148,7 +145,6 @@ export function createStoreCore(file: string = statePath()): StoreCore {
       sourcesByRepo: hydrated.sourcesByRepo,
       marketSources: hydrated.marketSources,
       trashByPath: hydrated.trashByPath,
-      skillStats: hydrated.skillStats,
       marketStats: hydrated.marketStats,
       collectionOrder: hydrated.collectionOrder,
       sourceGroupOrder: hydrated.sourceGroupOrder,
@@ -182,8 +178,7 @@ export function createStoreCore(file: string = statePath()): StoreCore {
         ...(state.sourcesByRepo.size > 0 ? { sources: [...state.sourcesByRepo.values()] } : {}),
         ...(state.marketSources.length > 0 ? { marketSources: [...state.marketSources] } : {}),
         ...(state.trashByPath.size > 0 ? { trash: [...state.trashByPath.values()] } : {}),
-        ...(state.skillStats !== undefined ? { skillStats: state.skillStats } : {}),
-        ...(state.marketStats !== undefined ? { marketStats: state.marketStats } : {}),
+          ...(state.marketStats !== undefined ? { marketStats: state.marketStats } : {}),
         ...(state.collectionOrder.length > 0 ? { collectionOrder: [...state.collectionOrder] } : {}),
         ...(state.sourceGroupOrder.length > 0 ? { sourceGroupOrder: [...state.sourceGroupOrder] } : {}),
         ...(state.invocationOverrides.size > 0 ? { invocationOverrides: [...state.invocationOverrides] } : {}),

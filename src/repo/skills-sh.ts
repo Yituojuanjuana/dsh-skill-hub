@@ -15,6 +15,7 @@
  */
 
 import { normalizeBundlePath } from '../skillfs/paths.ts'
+import { parseFrontmatter } from '../skillfs/frontmatter.ts'
 
 const SEARCH_URL = 'https://skills.sh/api/search'
 const DOWNLOAD_URL = 'https://skills.sh/api/download'
@@ -261,4 +262,27 @@ export async function downloadSkillsShSkill(source: string, skillId: string, fet
   }
   if (!files.some((file) => file.path.toLowerCase() === 'skill.md')) throw new SkillsShError('skill package has no SKILL.md', 502)
   return { origin: repo + '/' + id, files }
+}
+
+/**
+ * 取一个技能的说明（frontmatter 的 description）。
+ *
+ * 搜索索引不提供说明，唯一来源是技能包里的 SKILL.md —— 所以这里必须下载整个
+ * 包。调用方要按需触发（用户点「说明」），不要预取，否则一次搜索会打出几十个
+ * 下载请求。
+ *
+ * 说明是**装饰性**信息：frontmatter 坏掉、没有 description、甚至 SKILL.md 缺失
+ * 都不该让用户看到一个错误弹窗。因此这里一律回空串，只有网络/上游层面的失败
+ * 才抛错（那才是用户需要知道并重试的）。
+ * @param source - `owner/repo`。
+ * @param skillId - 技能在该仓库里的目录名。
+ * @param fetchImpl - 注入点（测试用）。
+ */
+export async function fetchSkillsShDescription(source: string, skillId: string, fetchImpl: typeof fetch = fetch): Promise<string> {
+  const pkg = await downloadSkillsShSkill(source, skillId, fetchImpl)
+  const skillMd = pkg.files.find((file) => file.path.toLowerCase() === 'skill.md')
+  if (skillMd === undefined) return ''
+  const parsed = parseFrontmatter(skillMd.data.toString('utf8'))
+  if ('error' in parsed) return ''
+  return parsed.value.description
 }

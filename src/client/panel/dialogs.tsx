@@ -1,24 +1,13 @@
 /**
  * Shared dialog family for the panel: one overlay shell plus the specific
- * dialogs (group-close conflict, sync/delete confirm, branch picker, and
+ * dialogs (sync/delete confirm, branch picker, and
  * market sync selection). Every dialog closes on outside click and keeps
  * the same role/aria shell; the panel owns all dialog state.
  */
 
 import { useEffect, useState, type JSX, type ReactNode } from 'react'
-import type { CollectionGroup, SkillTag } from '../../protocol.ts'
 import { tt } from '../helpers.ts'
-import { groupNamesOf } from '../grouping.ts'
 import css from './panel.module.css'
-
-/** A group-close conflict waiting for the user's decision. */
-export interface ConflictDialogState {
-  /** Group key: 'tag:<id>' or 'col:<name>'. */
-  key: string
-  name: string
-  /** Conflicting skill names (enabled here and in other groups). */
-  conflicts: string[]
-}
 
 /** A destructive/sync confirmation waiting for the user's decision. */
 export interface ConfirmDialogState {
@@ -112,89 +101,6 @@ export function ConfirmDialog(props: {
         <button type='button' className={css.button + (danger === true ? ' ' + css.danger : ' ' + css.primary)} onClick={onConfirm}>
           {confirmLabel}
         </button>
-      </div>
-    </DialogShell>
-  )
-}
-
-/**
- * Role activation confirm. Switching a role pauses every enabled skill that is
- * not a member, which is destructive for anyone who only wanted the role's own
- * set on. This dialog lists those skills and lets the user spare any of them;
- * unchecked (default) means "pause it", so agreeing without reading keeps the
- * old all-or-nothing behaviour.
- */
-export function RoleActivateDialog(props: {
-  roleName: string
-  /** Members that will be turned on. */
-  enableCount: number
-  /** Enabled non-members the switch would pause. */
-  pausable: readonly string[]
-  /** Subset of `pausable` the user chose to keep enabled. */
-  keep: ReadonlySet<string>
-  onToggle: (name: string, keep: boolean) => void
-  onKeepAll: () => void
-  onKeepNone: () => void
-  onCancel: () => void
-  onConfirm: () => void
-}): JSX.Element {
-  const { roleName, enableCount, pausable, keep, onToggle, onKeepAll, onKeepNone, onCancel, onConfirm } = props
-  const kept = pausable.filter((name) => keep.has(name)).length
-  return (
-    <DialogShell onClose={onCancel}>
-      <h3 className={css.dialogTitle}>{tt('role.confirmTitle', { name: roleName })}</h3>
-      <p className={css.dialogText}>{tt('role.pickText', { on: enableCount, total: pausable.length, off: pausable.length - kept })}</p>
-      {pausable.length === 0 ? <p className={css.dialogText}>{tt('role.pickNone')}</p> : (
-        <>
-          <div className={css.dialogRowBar}>
-            <span className={css.dialogRowBarHint}>{tt('role.pickKeepHint')}</span>
-            <button type='button' className={css.opBtn} onClick={onKeepAll}>{tt('role.pickKeepAll')}</button>
-            <button type='button' className={css.opBtn} onClick={onKeepNone}>{tt('role.pickKeepNone')}</button>
-          </div>
-          <div className={css.dialogList + ' ' + css.dialogListTall}>
-            {pausable.map((name) => (
-              <label key={name} className={css.dialogRow}>
-                <input type='checkbox' checked={keep.has(name)}
-                  onChange={(event) => { onToggle(name, event.target.checked) }} />
-                <span className={css.rowNameText}>{name}</span>
-              </label>
-            ))}
-          </div>
-        </>
-      )}
-      <div className={css.dialogActions}>
-        <button type='button' className={css.button} onClick={onCancel}>{tt('form.cancel')}</button>
-        <button type='button' className={css.button + ' ' + css.primary} onClick={onConfirm}>{tt('role.confirm')}</button>
-      </div>
-    </DialogShell>
-  )
-}
-
-/** Group-close conflict: which skills stay on, and which other groups also enable them. */
-export function ConflictDialog(props: {
-  dialog: ConflictDialogState
-  tags: readonly SkillTag[]
-  collections: readonly CollectionGroup[]
-  onClose: () => void
-  onKeepOn: () => void
-  onCloseAll: () => void
-}): JSX.Element {
-  const { dialog, tags, collections, onClose, onKeepOn, onCloseAll } = props
-  return (
-    <DialogShell onClose={onClose}>
-      <h3 className={css.dialogTitle}>{tt('groups.conflictTitle')}</h3>
-      <p className={css.dialogText}>{tt('groups.conflictText')}</p>
-      <ul className={css.dialogList}>
-        {dialog.conflicts.map((name) => (
-          <li key={name}>
-            <span className={css.rowNameText}>{name}</span>
-            {' — ' + groupNamesOf(name, [...tags], [...collections]).join(', ')}
-          </li>
-        ))}
-      </ul>
-      <div className={css.dialogActions}>
-        <button type='button' className={css.button} onClick={onKeepOn}>{tt('groups.keepOn')}</button>
-        <button type='button' className={css.button + ' ' + css.primary} onClick={onCloseAll}>{tt('groups.closeAll')}</button>
       </div>
     </DialogShell>
   )

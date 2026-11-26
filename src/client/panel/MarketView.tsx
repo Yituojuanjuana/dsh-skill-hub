@@ -6,18 +6,23 @@
  * 行渲染在 MarketSourceRow，扫描卡片在 RepoScanCard，数字格式在 market-format。
  */
 
-import { Fragment, useEffect, useMemo, type JSX } from 'react'
+import { Fragment, useEffect, useMemo, useState, type JSX } from 'react'
 import { tt } from '../helpers.ts'
 import { MARKET_CATALOG } from '../market-catalog.ts'
 import { ConfirmDialog } from './dialogs.tsx'
 import type { SkillHubState } from './useSkillHub.ts'
 import { MarketSourceRow } from './MarketSourceRow.tsx'
 import { RepoScanCard } from './RepoScanCard.tsx'
+import { SKILLS_SH_TOP_N } from './market-format.ts'
 import css from './panel.module.css'
 
 export function MarketView(props: { hub: SkillHubState }): JSX.Element {
   const { hub } = props
-  const { marketState, marketCheck, sourceCheck, scanningRepo, newSourceName, setNewSourceName, tagBusy, batchBusy, addSource, addMarketSource, checkMarket, checkSources, updateAllDialog, setUpdateAllDialog, updateAll, removeMarketDialog, cancelRemoveMarketSource, confirmRemoveMarketSource, skillsShQuery, skillsShState, setSkillsShQuery, runSkillsShSearch, skillsShInstalling, installSkillsSh } = hub
+  const { marketState, marketCheck, sourceCheck, scanningRepo, newSourceName, setNewSourceName, tagBusy, batchBusy, addSource, addMarketSource, checkMarket, checkSources, updateAllDialog, setUpdateAllDialog, updateAll, removeMarketDialog, cancelRemoveMarketSource, confirmRemoveMarketSource, skillsShQuery, skillsShState, setSkillsShQuery, runSkillsShSearch, skillsShInstalling, installSkillsSh, skillsShSort, sortedSkillsSh, skillsShDetail, skillsShDetailLoading, skillsShDetailError, setSkillsShSort, loadSkillsShDetail } = hub
+  /** 搜索区块默认展开：它是发现入口，收起状态留给用户自己决定。 */
+  const [skillsShOpen, setSkillsShOpen] = useState(true)
+  /** 当前展开了说明的结果键（`source/skillId`）；同时只展开一条，避免长文撑爆列表。 */
+  const [skillsShDetailOpen, setSkillsShDetailOpen] = useState<string | null>(null)
   /** 市场操作的总忙态：扫描中或标签写入中都不该再触发新的源操作。 */
   const marketBusy = scanningRepo !== null || tagBusy || batchBusy
   /** 有可更新内容的 repo：来源技能更新与市场新 release 的并集。 */
@@ -71,6 +76,117 @@ export function MarketView(props: { hub: SkillHubState }): JSX.Element {
 
   return (
     <>
+      {/* skills.sh 搜索：放在市场列表**上方** —— 它是「发现」的入口，用户先找到
+          想要的技能，再去下面管理已添加的源。可收起，收起后只剩标题行。 */}
+      <section className={css.section}>
+        <div className={css.sectionTitle + ' ' + css.sectionHeadRow}>
+          <button
+            type='button'
+            className={css.disclosure}
+            aria-expanded={skillsShOpen}
+            onClick={() => { setSkillsShOpen((open) => !open) }}
+          >
+            <span className={css.chevron + (skillsShOpen ? '' : ' ' + css.chevronCollapsed)} />
+            <span className={css.sectionTitleFill}>{tt('market.skillsShTitle')}</span>
+          </button>
+        </div>
+            <div className={css.buttons + ' ' + css.actionsPadded}>
+              {/* 排序放在搜索框前面：它决定「搜完看到什么」，先选口径再搜更顺。 */}
+              <select
+                className={css.select}
+                value={skillsShSort}
+                onChange={(event) => { setSkillsShSort(event.target.value as 'installs' | 'az') }}
+                title={tt('market.skillsShSortHint')}
+              >
+                <option value='installs'>{tt('market.skillsShSortInstalls')}</option>
+                <option value='az'>{tt('market.skillsShSortAz')}</option>
+              </select>
+              <input
+                className={css.input + ' ' + css.grow}
+                value={skillsShQuery}
+                onChange={(event) => { setSkillsShQuery(event.target.value) }}
+                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void runSkillsShSearch() } }}
+                placeholder={tt('market.skillsShPlaceholder')}
+              />
+              <button
+                type='button'
+                className={css.button}
+                disabled={skillsShQuery.trim().length < 2 || skillsShState.status === 'loading'}
+                onClick={() => { void runSkillsShSearch() }}
+              >
+                {skillsShState.status === 'loading' ? tt('market.skillsShSearching') : tt('market.skillsShSearch')}
+              </button>
+            </div>
+            <p className={css.hintLine + ' ' + css.hintPadded}>{tt('market.skillsShHint')}</p>
+        {skillsShOpen ? (
+          <>
+              {skillsShState.status === 'error' ? (
+                <p className={css.hintLine + ' ' + css.hintPadded + ' ' + css.formErrorText}>{skillsShState.message}</p>
+              ) : null}
+              {skillsShState.status === 'ready' && skillsShState.skills.length === 0 ? <div className={css.empty}>{tt('market.skillsShEmpty')}</div> : null}
+              {skillsShState.status === 'ready' && skillsShState.skills.length > 0 && skillsShSort === 'installs' ? (
+                <p className={css.hintLine + ' ' + css.hintPadded}>{tt('market.skillsShTopNote', { count: SKILLS_SH_TOP_N })}</p>
+              ) : null}
+              {sortedSkillsSh.map((entry) => {
+                const key = entry.source + '/' + entry.skillId
+                const detail = skillsShDetail.get(key)
+                const detailOpen = skillsShDetailOpen === key
+                return (
+                  <div key={entry.id} className={css.row + ' ' + css.rowStatic}>
+                    <div className={css.rowMain}>
+                      <div className={css.rowName}>
+                        <a className={css.sourceLink} href={'https://github.com/' + entry.source} target='_blank' rel='noreferrer'>{entry.name}</a>
+                        {entry.installs !== undefined ? <span className={css.statusBadge}>{tt('market.skillsShInstalls', { count: entry.installs.toLocaleString() })}</span> : null}
+                      </div>
+                      <div className={css.rowDesc}>{entry.source} · {entry.skillId}</div>
+                      {detailOpen ? (
+                        <div className={css.skillDescBox}>
+                          {skillsShDetailLoading === key
+                            ? tt('market.skillsShDescLoading')
+                            : detail !== undefined && detail !== ''
+                              ? detail
+                              : tt('market.skillsShDescEmpty')}
+                        </div>
+                      ) : null}
+                      {detailOpen && skillsShDetailError !== null && detail === undefined ? (
+                        <p className={css.hintLine + ' ' + css.formErrorText}>{skillsShDetailError}</p>
+                      ) : null}
+                    </div>
+                    <span className={css.buttons}>
+                      {/* 说明：按需下载技能包读 SKILL.md，所以只在点开时取一次，之后走缓存。 */}
+                      <button
+                        type='button'
+                        className={css.opBtn}
+                        title={tt('market.skillsShDesc')}
+                        onClick={() => {
+                          if (detailOpen) { setSkillsShDetailOpen(null); return }
+                          setSkillsShDetailOpen(key)
+                          void loadSkillsShDetail(entry.source, entry.skillId)
+                        }}
+                      >
+                        {detailOpen ? tt('market.skillsShDescHide') : tt('market.skillsShDesc')}
+                      </button>
+                      {/* 只保留「安装」：「添加」与它表达的是同一件事（把这个技能弄进来），
+                          两个按钮并排只会让人犹豫。要跟随上游更新可以在下面手动加源。 */}
+                      <button
+                        type='button'
+                        className={css.opBtn}
+                        disabled={marketBusy || skillsShInstalling !== null}
+                        title={tt('market.skillsShInstall')}
+                        onClick={() => { void installSkillsSh(entry.source, entry.skillId) }}
+                      >
+                        {skillsShInstalling === key
+                          ? tt('market.skillsShInstalling')
+                          : tt('market.skillsShInstall')}
+                      </button>
+                    </span>
+                  </div>
+                )
+              })}
+          </>
+        ) : null}
+      </section>
+
       <section className={css.section}>
         <div className={css.sectionTitle + ' ' + css.sectionHeadRow}>
           <span className={css.sectionTitleFill}>{tt('market.title')}</span>
@@ -98,73 +214,6 @@ export function MarketView(props: { hub: SkillHubState }): JSX.Element {
         {marketState.status === 'error' ? <div className={css.empty}>{tt('market.loadFailed')}</div> : null}
         {marketState.status === 'ready' && rows.length === 0 ? <div className={css.empty}>{tt('market.noSources')}</div> : null}
         {marketState.status === 'ready' ? rows.map((row) => <Fragment key={row.key}>{row.element}</Fragment>) : null}
-      </section>
-      {/* skills.sh 搜索：独立区块。它是「发现」层 —— 结果不进市场源列表，
-          点「添加」之后才变成一条普通市场源，由同一个扫描卡片接管。 */}
-      <section className={css.section}>
-        <div className={css.sectionTitle + ' ' + css.sectionHeadRow}>
-          <span className={css.sectionTitleFill}>{tt('market.skillsShTitle')}</span>
-        </div>
-        <div className={css.buttons + ' ' + css.actionsPadded}>
-          <input
-            className={css.input + ' ' + css.grow}
-            value={skillsShQuery}
-            onChange={(event) => { setSkillsShQuery(event.target.value) }}
-            onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); void runSkillsShSearch() } }}
-            placeholder={tt('market.skillsShPlaceholder')}
-          />
-          <button
-            type='button'
-            className={css.button}
-            disabled={skillsShQuery.trim().length < 2 || skillsShState.status === 'loading'}
-            onClick={() => { void runSkillsShSearch() }}
-          >
-            {skillsShState.status === 'loading' ? tt('market.skillsShSearching') : tt('market.skillsShSearch')}
-          </button>
-        </div>
-        <p className={css.hintLine + ' ' + css.hintPadded}>{tt('market.skillsShHint')}</p>
-        {skillsShState.status === 'error' ? (
-          <p className={css.hintLine + ' ' + css.hintPadded + ' ' + css.formErrorText}>{skillsShState.message}</p>
-        ) : null}
-        {skillsShState.status === 'ready' && skillsShState.skills.length === 0 ? <div className={css.empty}>{tt('market.skillsShEmpty')}</div> : null}
-        {skillsShState.skills.map((entry) => {
-          const added = marketState.repos.some((record) => record.repo === entry.source)
-          return (
-            <div key={entry.id} className={css.row + ' ' + css.rowStatic}>
-              <div className={css.rowMain}>
-                <div className={css.rowName}>
-                  <a className={css.sourceLink} href={'https://github.com/' + entry.source} target='_blank' rel='noreferrer'>{entry.name}</a>
-                  {entry.installs !== undefined ? <span className={css.statusBadge}>{tt('market.skillsShInstalls', { count: entry.installs.toLocaleString() })}</span> : null}
-                </div>
-                <div className={css.rowDesc}>{entry.source} · {entry.skillId}</div>
-              </div>
-              <span className={css.buttons}>
-                {/* 直装：只装这一个技能，一步到位，但不跟踪上游更新（上游不给
-                    仓库内路径，无法登记来源）。要跟随仓库就点旁边的「加为源」。 */}
-                <button
-                  type='button'
-                  className={css.opBtn}
-                  disabled={marketBusy || skillsShInstalling !== null}
-                  title={tt('market.skillsShInstall')}
-                  onClick={() => { void installSkillsSh(entry.source, entry.skillId) }}
-                >
-                  {skillsShInstalling === entry.source + '/' + entry.skillId
-                    ? tt('market.skillsShInstalling')
-                    : tt('market.skillsShInstall')}
-                </button>
-                <button
-                  type='button'
-                  className={css.opBtn}
-                  disabled={added || marketBusy || skillsShInstalling !== null}
-                  title={added ? tt('market.skillsShAdded') : tt('market.skillsShAdd')}
-                  onClick={() => { void addSource(entry.source) }}
-                >
-                  {added ? tt('market.skillsShAdded') : tt('market.skillsShAdd')}
-                </button>
-              </span>
-            </div>
-          )
-        })}
       </section>
       {/* 扫描结果归属卡片：用同一 section 卡片包裹扫描中/错误/就绪，标题直接点明所属仓库，消除割裂感 */}
       <RepoScanCard hub={hub} />

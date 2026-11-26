@@ -3,15 +3,15 @@
  * skill's files actually live in (`~/.dsh/skills`, `~/.agents/skills`, the
  * Codex / Claude / CC Switch roots, …).
  *
- * Location is the third axis: the origin collections group skills by the
- * upstream repo they were installed from, roles are hand-curated, and this view
- * answers "what is installed where". Project skills stay in the workspace tab,
- * which groups them by workspace path instead.
+ * Location is one of the remaining axes: usage ranks skills by call count, roles
+ * group them by what they do, and this view answers "what is installed where".
+ * Project skills stay in the workspace tab, which groups them by workspace path
+ * instead.
  */
 
 import { useMemo, type JSX } from 'react'
 import { tt } from '../helpers.ts'
-import { filterBySource, groupByLocation, groupSwitchView, type GroupSwitchState, type LocationGroup } from '../grouping.ts'
+import { groupByLocation, groupSwitchView, type GroupSwitchState, type LocationGroup } from '../grouping.ts'
 import { SkillRows } from './SkillRows.tsx'
 import { GroupSummary } from './GroupSummary.tsx'
 import { GroupSwitchButton } from './GroupSwitchButton.tsx'
@@ -23,14 +23,12 @@ import css from './panel.module.css'
 
 export function LocationsView(props: { hub: SkillHubState }): JSX.Element {
   const { hub } = props
-  const { catalog, collapsedGroups, viewNames, actionNames, batchBusy, busyNames, toggleGroupCollapse } = hub
+  const { catalog, expandedGroups, viewNames, actionNames, batchBusy, busyNames, toggleGroupExpanded } = hub
   const duplicateNames = useMemo(() => new Set(catalog?.duplicateNames ?? []), [catalog])
-  // The upstream-origin filter applies here too (same as the source view);
   // `hub.sorted` already carries search + invocation + status + sort order.
-  const scoped = filterBySource(hub.sorted, hub.sourceFilter, hub.origins)
-  const groups = groupByLocation(scoped)
+  const groups = groupByLocation(hub.sorted)
   // The card title already names the root, so the per-row root badge is noise here.
-  const rowProps = { uses: hub.uses, hubConfig: hub.hubConfig, busyNames, editMode: hub.editMode, tagBusy: hub.tagBusy, duplicateNames, statusFilter: hub.statusFilter, hideSourceBadge: true, toggle: hub.toggle, openDetail: hub.openDetail, requestDeleteSkill: hub.requestDeleteSkill }
+  const rowProps = { uses: hub.uses, hubConfig: hub.hubConfig, busyNames, editMode: hub.editMode, tagBusy: hub.tagBusy, duplicateNames, statusFilter: hub.statusFilter, hideSourceBadge: true, toggle: hub.toggle, openDetail: hub.openDetail, requestDeleteSkill: hub.requestDeleteSkill, requestTrashSkill: hub.requestTrashSkill }
 
   /**
    * Whole-root toggle. This deliberately bypasses `toggleGroup`: that one
@@ -50,16 +48,16 @@ export function LocationsView(props: { hub: SkillHubState }): JSX.Element {
       {groups.map((group) => {
         const name = locationLabel(group.id)
         const key = 'loc:' + group.id
-        const collapsed = collapsedGroups.has(key)
+        const expanded = expandedGroups.has(key)
         const memberNames = group.skills.map((skill) => skill.name)
         const view = groupSwitchView(memberNames, viewNames)
         const hasWritable = memberNames.some((member) => actionNames.has(member))
         return (
           <GroupSection key={key}>
             <GroupHeader
-              title={<>{name} · {group.skills.length}<GroupSummary members={memberNames} uses={hub.uses} hubConfig={hub.hubConfig} /></>}
-              collapsed={collapsed}
-              onToggle={() => { toggleGroupCollapse(key) }}
+              title={<>{name} · {group.skills.length}<GroupSummary members={memberNames} permanentUses={hub.permanentUses} hubConfig={hub.hubConfig} /></>}
+              collapsed={!expanded}
+              onToggle={() => { toggleGroupExpanded(key) }}
               actions={
                 <GroupSwitchButton
                   state={view.state}
@@ -71,7 +69,7 @@ export function LocationsView(props: { hub: SkillHubState }): JSX.Element {
                 />
               }
             />
-            {!collapsed ? <SkillRows skills={group.skills} rowProps={rowProps} /> : null}
+            {expanded ? <SkillRows skills={group.skills} rowProps={rowProps} /> : null}
           </GroupSection>
         )
       })}

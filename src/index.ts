@@ -23,13 +23,20 @@ import type {} from '@deepseek-ai/dsh-session-query'
 import type {} from '@deepseek-ai/dsh-settings'
 import { CONFIG_FIELDS, HUB_CONFIG_DEFAULTS, HUB_ENTRY_ID, HEX_COLOR_RE, resolveHubConfig, type HubConfig } from './protocol.ts'
 import { SkillHubProvider } from './provider.ts'
-import { hostTrustFence, makeRoutes } from './routes.ts'
-import { createSkillStatsReader, asPersistenceSeam, type SessionPersistenceLike, type SessionQueryLike, type SkillStatsReader } from './stats.ts'
+import { hostTrustFence, lazyEvolution, makeRoutes } from './routes.ts'
+import { wireEvolution, routeFromContext } from './evolution/wiring.ts'
+import { BUSINESS_WORKSPACE_HINTS } from './evolution/engine.ts'
+import { workspaceEntries } from './routes/catalog-data.ts'
 import { SkillHubStore } from './store.ts'
 import { migrateRenamedDisabledSkills, reconcileDisabledSkills, pruneStaleDisabledSkills, pruneStaleTrash } from './reconcile.ts'
 import { cleanupLeftoverImportDirs, setGithubToken } from './repo.ts'
 import { dshHome } from './store/paths.ts'
+import { createSkillCallHandler, type SessionLikeEvent } from './counter/recorder.ts'
+import { appendEntry, readLedger } from './counter/ledger.ts'
+import { aggregate } from './counter/aggregate.ts'
+import { backfillFromSessionLogs } from './counter/backfill.ts'
 import { join } from 'node:path'
+import { writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 
 /** Stable cordis plugin name (matches cordis.patch.yml insert id). */
@@ -68,16 +75,15 @@ export interface Config {
   showUseTime: Volatile<boolean>
   /** Show group-header usage summaries (count + last used). Default true. */
   showGroupSummary: Volatile<boolean>
+  /** 侧边栏是否显示技能中枢入口。Default true。 */
+  showSidebarCard: Volatile<boolean>
   /** 模型可调圆点颜色（#rrggbb）；缺省用面板默认色。 */
   dotModelColor: Volatile<string | undefined>
   /** 用户可调圆点颜色（#rrggbb）；缺省用面板默认色。 */
   dotUserColor: Volatile<string | undefined>
   /** GitHub token；`role('secret')` 让 settings 层统一脱敏，缺省为匿名。 */
   githubToken: Volatile<string | undefined>
-  /** 统计滚动窗口天数：只统计最近 N 天的使用；0 = 全部历史。 */
-  statsWindowDays: Volatile<number>
-  /** 自动统计扫描间隔（分钟，最小 1）。 */
-  statsScanMinutes: Volatile<number>
+  /** 技能进化：对话结束后在后台复盘并提出技能建议。默认关闭。 */
 }
 
 /**
@@ -94,9 +100,9 @@ const ConfigFields = {
   dotUserColor: z.string().pattern(HEX_COLOR_RE).description('技能行与聊天「/」菜单中「仅用户可调」圆点的颜色（#rrggbb）。'),
   showUseCount: z.boolean().default(HUB_CONFIG_DEFAULTS.showUseCount).description('在技能名旁显示调用次数。'),
   showUseTime: z.boolean().default(HUB_CONFIG_DEFAULTS.showUseTime).description('在技能名行显示最近调用时间。'),
+  evolution: z.boolean().default(HUB_CONFIG_DEFAULTS.evolution).description('启用技能进化元代理：分析历史轨迹，产出新建/优化提案（只提案，落地需人工审核）。'),
   showGroupSummary: z.boolean().default(HUB_CONFIG_DEFAULTS.showGroupSummary).description('在分组标题后汇总调用次数与最近调用时间。'),
-  statsWindowDays: z.number().min(0).max(3650).default(HUB_CONFIG_DEFAULTS.statsWindowDays).description('只统计最近 N 天的使用次数；0 = 全部历史。'),
-  statsScanMinutes: z.number().min(1).max(1440).default(HUB_CONFIG_DEFAULTS.statsScanMinutes).description('后台扫描会话日志的间隔（分钟，最小 1）。'),
+  showSidebarCard: z.boolean().default(HUB_CONFIG_DEFAULTS.showSidebarCard).description('在左侧栏显示「技能中枢」入口卡片；关闭后侧边栏不再出现该入口（设置页里仍可打开面板）。'),
   githubToken: z.string().role('secret').description('市场/来源走 GitHub API：匿名每小时 60 次，填 token 后 5000 次。留空即匿名（或跟随 GITHUB_TOKEN 环境变量）。'),
 }
 
@@ -112,8 +118,8 @@ export const Config = z.object({
   showUseCount: ConfigFields.showUseCount.volatile(),
   showUseTime: ConfigFields.showUseTime.volatile(),
   showGroupSummary: ConfigFields.showGroupSummary.volatile(),
-  statsWindowDays: ConfigFields.statsWindowDays.volatile(),
-  statsScanMinutes: ConfigFields.statsScanMinutes.volatile(),
+  showSidebarCard: ConfigFields.showSidebarCard.volatile(),
+  evolution: ConfigFields.evolution.volatile(),
   githubToken: ConfigFields.githubToken.volatile(),
 })
 
@@ -298,6 +304,10 @@ export function apply(ctx: Context, config?: Config): void {
   const store = new SkillHubStore()
   let disposeRoutes: (() => void) | undefined
   let disposeSection: (() => void) | undefined
+  /** 技能进化元代理的接线；配置变化时重建。 */
+  let evolutionWiring: ReturnType<typeof wireEvolution> | undefined
+  /** 等 `sessionQuery`/`llm` 就绪的那个 fiber；重建时先拆它。 */
+  let evolutionFiber: { dispose: () => unknown } | undefined
   // The hub's own provider contributes user/project skills to the registry's
   // GLOBAL layer — the web app deliberately keeps that layer empty (presets
   // own per-scope discovery), and the GUI needs a session-independent view.
@@ -310,10 +320,6 @@ export function apply(ctx: Context, config?: Config): void {
   let providerInstance: SkillHubProvider | undefined
   /** One control per skill layer (global + each live agent): an override change must invalidate all of them. */
   const providerControls = new Set<SkillProviderControl>()
-  // Optional invocation-count source; only set once a session-query service
-  // is present (see the soft inject below). Absent deployments just omit the
-  // stats route's data rather than failing to load.
-  let stats: SkillStatsReader | undefined
 
   // The raw saved config layer (fields the user explicitly overrode); the
   // config route reports it so callers can mark overridden fields. Empty when
@@ -424,7 +430,8 @@ export function apply(ctx: Context, config?: Config): void {
       const ensureProvider = (control: SkillProviderControl): SkillHubProvider => {
         providerControls.add(control)
         if (providerInstance === undefined) {
-          providerInstance = new SkillHubProvider(control, dshHome(), overrides)
+          // global 层 = 管理面板视角：并入外部 Agent 技能根，一处看全本机技能。
+          providerInstance = new SkillHubProvider(control, dshHome(), overrides, undefined, true)
         }
         return providerInstance
       }
@@ -438,51 +445,175 @@ export function apply(ctx: Context, config?: Config): void {
       // outlived its fibre would make the new fibre's registerProvider throw
       // "already registered in this scope" — the update then rolls back
       // (issue #24).
+      //
+      // agent 层**不并入外部根**：这一层比 preset 更近，把别的 agent 的技能
+      // 塞进来会遮蔽 preset 原生技能，而它们又不可写——结果就是「面板看得见、
+      // 模型调不动」。agent 层只服务 dsh 自己的根（用于 invocation 覆盖）。
+      const ensureAgentProvider = (control: SkillProviderControl): SkillHubProvider => {
+        providerControls.add(control)
+        return new SkillHubProvider(control, dshHome(), overrides, undefined, true)
+      }
       disposeAgentProviders = ctx.effect(() => {
-        const dispose = registerAgentSkillPolicy(ctx, ensureProvider)
+        const dispose = registerAgentSkillPolicy(ctx, ensureAgentProvider)
         return () => {
           dispose()
         }
       }, 'dsh-skill-hub: agent providers')
     }
-    ctx.logger.info(`[dsh-skill-hub] surfaces synced: enabled=${value.enabled} announceToAgent=${value.announceToAgent}`)
     if (disposeRoutes !== undefined) {
       disposeRoutes()
       disposeRoutes = undefined
     }
+    // 路由必须等 `webServer` 真的就绪后再注册。
+    //
+    // 旧写法在 `ctx.effect` 里一次性 `ctx.get('webServer')`：插件按组合顺序启动，
+    // 它很可能比 webServer 先起来，于是读到 undefined、打一行日志就永远放弃，
+    // 而 fiber 仍显示 active——界面上就是整个 /api/skill-hub 族返回 404。
+    // `ctx.inject` 是官方的「等服务就绪再跑」入口：服务永远不到的
+    // 非 web profile 里回调根本不执行，也就不会拖住启动。
     disposeRoutes = ctx.effect(
       () => {
-        // A non-web profile has no HTTP surface at all. Skipping here keeps the
-        // plugin activated (skills provider + dots still work) instead of
-        // blocking the whole boot on a service that can never arrive.
-        const webServer = ctx.get('webServer')
-        if (webServer === undefined) {
-          logInfo('[dsh-skill-hub] webServer absent — HTTP routes skipped (non-web profile)')
-          return () => {}
+        const fiber = ctx.inject(['webServer'], (injected) => {
+          const webServer = injected.get('webServer')
+          if (webServer === undefined) return
+          // 技能进化元代理的接线。
+  //
+  // 用 `ctx.inject` 等服务就绪：插件可能比 session-query / llm 先起来，一次性
+  // `ctx.get` 会把 undefined 锁死，进化就永远走不可用分支。
+  // 配置变化会重跑 sync，所以旧 fiber 先拆，避免堆出一排执行器。
+  if (evolutionFiber !== undefined) {
+    void evolutionFiber.dispose()
+    evolutionFiber = undefined
+  }
+  if (evolutionWiring !== undefined) {
+    evolutionWiring.dispose()
+    evolutionWiring = undefined
+  }
+  evolutionFiber = ctx.inject(['sessionQuery', 'llm'], (injected) => {
+    const sessionQuery = injected.get('sessionQuery')
+    const llm = injected.get('llm')
+    // 诊断探针：把「注入回调有没有跑到、两个服务在不在」写到磁盘。
+    // 进化不可用只有一种原因（服务缺失），但「服务缺失」与「注入回调根本没
+    // 触发」在界面上长得一模一样，靠这段文件就能一眼分开。
+    try {
+      writeFileSync(join(dshHome(), 'skill-usage-manager', 'evolution-probe.json'), JSON.stringify({
+        injected: true,
+        sessionQuery: sessionQuery !== undefined,
+        llm: llm !== undefined,
+        at: Date.now(),
+      }, null, 2), 'utf8')
+    } catch { /* 诊断写入失败不影响插件 */ }
+    if (sessionQuery === undefined || llm === undefined) return
+    evolutionWiring = wireEvolution({
+      sessionQuery: sessionQuery as never,
+      llm: llm as never,
+      // 储备函数，不是值：启动时还没有任何请求。
+      route: () => routeFromContext(ctx),
+      listSkills: async () => {
+        const snapshot = await ctx.skills.snapshot()
+        return snapshot.skills.map((skill) => ({ name: skill.name, description: skill.description }))
+      },
+      // 反思需要看正文（步骤冗余 / 校验缺失），所以带上。
+      readSkillBody: async (name: string) => {
+        const skill = await ctx.skills.get(name).catch(() => undefined)
+        return skill?.content
+      },
+      // 归属目录：与通用页「按目录」视图同一套分类（DSH / 公共 Agent / Trae …）。
+      readSkillSource: async (name: string) => {
+        const skill = await ctx.skills.get(name).catch(() => undefined)
+        return skill?.source
+      },
+      // 统计维度 ①：技能运行指标（历史调用量 / 近 7 天 / 成功率）。
+      //
+      // 成功率由账本条目算出；账本只记调用不记结果时省略该字段 ——
+      // 不能用 0 冒充「全失败」。
+      listUsage: async () => {
+        try {
+          const { entries } = await readLedger(join(dshHome(), 'skill-usage-manager', 'usage-ledger.jsonl'))
+          const aggregated = aggregate(entries, Date.now())
+          return [...aggregated.entries()].map(([name, value]) => ({
+            name,
+            total: value.total,
+            week: value.week,
+            lastUsed: value.lastUsed,
+            ...value.successRate === undefined ? {} : { successRate: value.successRate },
+          }))
+        } catch {
+          return []
         }
-        const disposers = makeRoutes({
-          skills: ctx.skills,
-          store,
-          // The host's own `/api` trust fence (loopback ∪ bind address ∪
-          // --trusted-host ∪ browser session). Read per request: Connection
-          // may be provided after this plugin starts, and a one-shot read here
-          // would latch the literal-loopback fallback for the whole process.
-          // A *persistent* absence means the upstream composition changed —
-          // say so once instead of silently re-creating issue #17.
-          fence: hostTrustFence(
-            () => ctx.get('connection'),
-            () => ctx.logger.warn('[dsh-skill-hub] Connection service absent: routes fall back to literal-loopback; reverse-proxy deployments will 403 until it mounts'),
-          ),
-          invalidate: () => {
-            for (const control of providerControls) control.invalidate()
-          },
-          stats,
-          config: current,
-          saved,
-          updateConfig,
-        }).map((route) => webServer.register(route))
+      },
+      // 统计维度 ②：回收站元数据（是否在回收站、移入时间、备注）。
+      listTrash: async () => {
+        try {
+          const entries = await store.listTrash()
+          return entries.map((entry) => ({
+            name: entry.name,
+            movedAt: entry.movedAt,
+            ...typeof entry.note === 'string' && entry.note !== '' ? { note: entry.note } : {},
+          }))
+        } catch {
+          return []
+        }
+      },
+      // 落地新技能后让 provider 重建发现结果，工作区页才能立刻看到它。
+      invalidate: () => {
+        for (const control of providerControls) control.invalidate()
+      },
+      // 旧提案兜底：从已登记工作区里找业务工作区（sports-coach 等）。
+      guessBusinessWorkspace: async () => {
+        const entries = await workspaceEntries(dshHome())
+        const hit = entries.find((entry) => BUSINESS_WORKSPACE_HINTS.some((hint) => entry.path.toLowerCase().includes(hint.toLowerCase())))
+        return hit?.path
+      },
+      enabled: () => current().evolution === true,
+      log: logInfo,
+    })
+    return () => { evolutionWiring?.dispose(); evolutionWiring = undefined }
+  })
+
+  const disposers = makeRoutes({
+            skills: ctx.skills,
+            store,
+            // The host's own `/api` trust fence (loopback ∪ bind address ∪
+            // --trusted-host ∪ browser session). Read per request: Connection
+            // may be provided after this plugin starts, and a one-shot read here
+            // would latch the literal-loopback fallback for the whole process.
+            fence: hostTrustFence(
+              () => ctx.get('connection'),
+              () => ctx.logger.warn('[dsh-skill-hub] Connection service absent: routes fall back to literal-loopback; reverse-proxy deployments will 403 until it mounts'),
+            ),
+            invalidate: () => {
+              for (const control of providerControls) control.invalidate()
+            },
+            config: current,
+            saved,
+            updateConfig,
+            // 当前对话的工作区：给「工作区」页预选默认项。
+            //
+            // 服务按请求现取（`ctx.get`），因为插件可能比 session-query 先起来；
+            // 取不到就返回 undefined，前端退回「全部工作区」而不是报错。
+            currentWorkspace: async () => {
+              const query = ctx.get('sessionQuery') as { listSessions?: () => Promise<Array<{ header?: { cwd?: unknown } }>> } | undefined
+              if (query?.listSessions === undefined) return undefined
+              try {
+                const sessions = await query.listSessions()
+                for (const record of sessions) {
+                  const cwd = record.header?.cwd
+                  if (typeof cwd === 'string' && cwd !== '') return cwd
+                }
+              } catch {
+                // 读不到会话不影响面板，前端会退回「全部工作区」。
+              }
+              return undefined
+            },
+          }, lazyEvolution(() => evolutionWiring?.routes)).map((route) => webServer.register(route))
+          // 回调返回的是这个内层 fiber 的清理函数。
+          return () => {
+            for (const dispose of disposers) dispose()
+          }
+        })
         return () => {
-          for (const dispose of disposers) dispose()
+          void fiber.dispose()
         }
       },
       'dsh-skill-hub: routes',
@@ -493,6 +624,40 @@ export function apply(ctx: Context, config?: Config): void {
   // settings page, the config route, the Host document editor — rewrite this
   // Loader entry, which re-enters apply(), so no in-process watcher is needed.
   sync()
+
+  // Permanent skill-invocation counter: subscribe to post-commit session events
+  // and append each skill call to the durable ledger. Task 0 verified that
+  // `session/event` listeners receive TWO arguments (session, event) and that
+  // the event object shape is {type, seq, time, data}; the SECOND argument is
+  // the event. Registering onSkillCall directly would wrongly treat the session
+  // as the event. The effect binds the listener's disposer to this fibre.
+  ctx.effect(() => {
+    const ledgerFile = join(dshHome(), 'skill-usage-manager', 'usage-ledger.jsonl')
+    const onSkillCall = createSkillCallHandler(ledgerFile)
+    const off = ctx.on('session/event', (_session, sessionEvent) => {
+      // Cordis types `sessionEvent` as its own SessionEvent union; the recorder
+      // only needs {type, time, data}. Normalise via unknown to bridge the two.
+      void onSkillCall(sessionEvent as unknown as SessionLikeEvent)
+    })
+    return () => off()
+  }, 'dsh-skill-hub: skill call recorder')
+
+  // 历史回填：账本从安装那一刻才开始记，之前的调用不在里面。启动后扫一次
+  // 已有会话日志，把 (name, ts) 尚未入账的调用补进去。幂等，重复启动不会重复计数；
+  // 异步执行且失败只记日志，绝不阻塞插件启动。
+  void (async () => {
+    try {
+      const ledgerFile = join(dshHome(), 'skill-usage-manager', 'usage-ledger.jsonl')
+      const { entries } = await readLedger(ledgerFile)
+      const sessionsRoot = join(dshHome(), 'sessions')
+      const result = await backfillFromSessionLogs(sessionsRoot, entries, (entry) => appendEntry(ledgerFile, entry))
+      if (result.appended > 0) {
+        logInfo(`[dsh-skill-hub] backfilled ${result.appended} historical skill call(s) from ${result.files} session log(s)`)
+      }
+    } catch (error) {
+      logWarn('[dsh-skill-hub] history backfill failed', error)
+    }
+  })()
 
   // One-time migration: an install upgraded from the sidecar-configured
   // build seeds the settings namespace from the saved sidecar config when the
@@ -565,104 +730,4 @@ export function apply(ctx: Context, config?: Config): void {
     }
   })()
 
-  // Optional trigger statistics: while a session-query service exists, wire a
-  // cached invocation-count reader into the stats route. Re-running sync()
-  // re-registers the routes with the reader attached (mirrors the optional
-  // stats wiring — no sessionQuery service ever mounted means none of this
-  // runs).
-  //
-  // Read-path preference: the host's sessionPersistence seam serves raw stored
-  // logs (decompress + parse only — no Session restore/validation, the host
-  // cost that OOMed large histories, see issue #7), with the query seam
-  // covering live sessions. Without a persistence service the reader falls
-  // back to sequential query reads. Scans are strictly lazy: the first one
-  // starts on the panel's first /stats poll, never at plugin startup (a
-  // headless boot with no browser must not pay for statistics nobody reads).
-  //
-  // Mount ordering between the two host services is not guaranteed, so the
-  // reader is (re-)built generation-guarded: a query-only reader wires
-  // immediately, and a later-arriving persistence service upgrades it to the
-  // cold path. A superseded build never assigns.
-  let statsQuery: SessionQueryLike | undefined
-  let statsPersistence: SessionPersistenceLike | undefined
-  let statsGeneration = 0
-  const wireStats = (): void => {
-    const query = statsQuery
-    if (query === undefined) return
-    const generation = ++statsGeneration
-    const cold = statsPersistence
-    void (async () => {
-      // 恢复 sidecar 里的增量扫描检查点后再建 reader（异步、不阻塞）：
-      // 重启后无需重新解压全部历史日志；每次扫描完都落盘（含上次总数），所以
-      // 重启后面板秒出旧数、后台重扫。扫描间隔与滚动窗口都从设置命名空间
-      // 实时读取——卡片里改完即生效，无需重启。
-      const checkpoint = await store.getSkillStatsState().catch(() => undefined)
-      if (generation !== statsGeneration || !mounted()) return
-      const scanMinutes = (): number => {
-        const value = current().statsScanMinutes
-        return typeof value === 'number' && value >= 1 ? Math.floor(value) : HUB_CONFIG_DEFAULTS.statsScanMinutes
-      }
-      const windowDays = (): number => {
-        const value = current().statsWindowDays
-        return typeof value === 'number' && value >= 0 ? Math.floor(value) : HUB_CONFIG_DEFAULTS.statsWindowDays
-      }
-      const reader = createSkillStatsReader(query, () => scanMinutes() * 60_000, {
-        checkpoint,
-        windowDays,
-        ...(cold === undefined ? {} : {
-          persistence: cold,
-          listLiveIds: async () => {
-            try {
-              const records = await query.listSessions()
-              return records.filter((record) => (record as { live?: unknown }).live === true).map((record) => record.header.id)
-            } catch {
-              return []
-            }
-          },
-          readLiveSession: async (id) => {
-            try {
-              return { events: (await query.readSession(id)).events }
-            } catch {
-              return undefined
-            }
-          },
-        }),
-        onCheckpoint: (next) => {
-          void store.saveSkillStatsState(next).catch((error) => {
-            if (mounted()) ctx.logger.warn('[dsh-skill-hub] persisting skill-stats checkpoint failed', error)
-          })
-        },
-      })
-      if (generation !== statsGeneration || !mounted()) return
-      ctx.logger.info(`[dsh-skill-hub] stats seam: ${cold === undefined ? 'session-query (fallback)' : 'session-persistence (cold)'}`)
-      stats = reader
-      sync()
-    })()
-  }
-  ctx.inject(['sessionQuery'], (sctx) => {
-    statsQuery = sctx.sessionQuery
-    wireStats()
-    // The persistence service may mount after the query service: upgrade the
-    // reader when it arrives (no-op when it never does).
-    sctx.inject(['sessionPersistence'] as unknown as ['sessionQuery'], (pctx) => {
-      void (async () => {
-        const raw = (pctx as unknown as { sessionPersistence?: unknown }).sessionPersistence
-        const seam = asPersistenceSeam(raw)
-        if (seam === undefined) {
-          if (mounted()) ctx.logger.warn('[dsh-skill-hub] sessionPersistence shape mismatch, staying on query fallback')
-          return
-        }
-        try {
-          await seam.list() // probe: headers only, must succeed before trusting the cold path
-        } catch (error) {
-          if (mounted()) ctx.logger.warn('[dsh-skill-hub] persistence seam probe failed, staying on query fallback', error)
-          return
-        }
-        // The probe is awaited, so the plugin may have unloaded meanwhile (#19).
-        if (!mounted()) return
-        statsPersistence = seam
-        wireStats()
-      })()
-    })
-  })
 }

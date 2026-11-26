@@ -20,5 +20,5 @@ export function SkillRows(props: SkillRowsProps): JSX.Element {
     : status === 'enabled'
       ? skills.filter((skill) => skill.modelOverride !== true)
       : skills
-  return <>{visible.map((skill) => <SkillRow key={skill.name} skill={skill} {...rowProps} />)}</>
+  return <>{visible.map((skill) => <SkillRow key={skill.source + '\u0000' + skill.name} skill={skill} {...rowProps} />)}</>
 }

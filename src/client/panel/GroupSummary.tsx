@@ -1,10 +1,14 @@
 /**
- * Group-header usage summary: total invocation count chip + the group's most
- * recent last-used time. Honours the showGroupSummary config switch.
+ * 分类卡片头部合计：该分类下所有技能的调用量（日 / 周 / 总）+ 最近一次调用时间。
+ *
+ * 调用量只认永久账本（插件自己记的日/周/总）。会话日志统计已移除，所以这里
+ * 逐项累加 `permanent.today / week / total`，卡片上的三个数字因此分别等于展开后
+ * 各技能「日」「周」「总」之和。honours the showGroupSummary config switch.
  */
 
 import type { JSX } from 'react'
-import type { HubConfig } from '../../protocol.ts'
+import type { HubConfig, PermanentStat } from '../../protocol.ts'
+import { tt } from '../helpers.ts'
 import { relativeTimeText } from './format.ts'
 import css from './panel.module.css'
 
@@ -12,26 +16,35 @@ import css from './panel.module.css'
 export interface GroupSummaryProps {
   /** The group's member skill names. */
   members: readonly string[]
-  /** skillName → usage stats. */
-  uses: ReadonlyMap<string, { count: number; lastUsed?: number }>
+  /** skillName → permanent ledger stats (day/week/total). */
+  permanentUses: ReadonlyMap<string, PermanentStat>
   /** Effective hub config; null while it has not loaded. */
   hubConfig: HubConfig | null
 }
 
 export function GroupSummary(props: GroupSummaryProps): JSX.Element {
-  const { members, uses, hubConfig } = props
+  const { members, permanentUses, hubConfig } = props
+  let today = 0
+  let week = 0
   let total = 0
-  let latest: number | undefined
+  let latest = 0
   for (const name of members) {
-    const stat = uses.get(name)
+    const stat = permanentUses.get(name)
     if (stat === undefined) continue
-    total += stat.count
-    if (stat.lastUsed !== undefined && (latest === undefined || stat.lastUsed > latest)) latest = stat.lastUsed
+    today += stat.today
+    week += stat.week
+    total += stat.total
+    if (stat.lastUsed > latest) latest = stat.lastUsed
   }
+  const show = hubConfig?.showGroupSummary !== false
   return (
     <span className={css.groupTitleInner}>
-      {hubConfig?.showGroupSummary !== false && total > 0 ? <span className={css.useCount}>{total}</span> : null}
-      {hubConfig?.showGroupSummary !== false && latest !== undefined ? <span className={css.useTime + ' ' + css.groupTime}>{relativeTimeText(latest)}</span> : null}
+      {show && total > 0
+        ? <span className={css.groupStat} title={tt('group.totalHint')}>
+            {tt('row.day')} {today} · {tt('row.week')} {week} · {tt('row.total')} {total}
+          </span>
+        : null}
+      {show && latest > 0 ? <span className={css.useTime + ' ' + css.groupTime}>{relativeTimeText(latest)}</span> : null}
     </span>
   )
 }

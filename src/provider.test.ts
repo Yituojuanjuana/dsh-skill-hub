@@ -54,7 +54,10 @@ describe('SkillHubProvider', () => {
     await createSkill('user-dsh', 'good-skill', 'Good', home)
     await writeFile(join(home, 'skills', 'broken.md'), '# no frontmatter', 'utf8')
     const candidates = await makeProvider(home).provider.list({})
-    expect(candidates.map((candidate) => candidate.name)).toEqual(['good-skill'])
+    // 外部 Agent 根也会并入列表（Trae/Claude/… 的真实技能），所以只断言
+    // 「本测试造的那个有效技能在、坏文件不在」，不能断言整份列表的内容。
+    expect(candidates.map((candidate) => candidate.name)).toContain('good-skill')
+    expect(candidates.some((candidate) => candidate.path?.endsWith('broken.md') === true)).toBe(false)
   })
 
   it('includes project roots when a cwd is given', async () => {

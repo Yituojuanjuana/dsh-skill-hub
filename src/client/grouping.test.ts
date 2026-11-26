@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { CatalogSkill, CollectionGroup, SkillTag } from '../protocol.ts'
-import { conflictsOnClose, countInstalled, filterBySource, filterSkillsByQuery, filterSkillsByStatus, formatRelativeTime, groupByLocation, groupNamesOf, groupSwitchView, PRIVATE_SOURCE, roleActivationPlan, rolePausableSkills, roleRestorePlan, sortSkills, takeRoleSnapshot, visibleCollections } from './grouping.ts'
+import type { CatalogSkill } from '../protocol.ts'
+import { countInstalled, filterSkillsByQuery, filterSkillsByStatus, formatRelativeTime, groupByLocation, groupSwitchView, sortSkills } from './grouping.ts'
 
 function skill(name: string, writable = true): CatalogSkill {
   return {
@@ -98,77 +98,6 @@ describe('groupSwitchView', () => {
   })
 })
 
-describe('conflictsOnClose', () => {
-  it('flags enabled members that live in another group', () => {
-    const members = ['a', 'b', 'c']
-    const enabled = new Set(['a', 'b'])
-    const others = [{ members: ['c', 'a'] }, { members: ['x'] }]
-    expect(conflictsOnClose(members, enabled, others)).toEqual(['a'])
-  })
-
-  it('ignores disabled members and groups without the member', () => {
-    const members = ['a', 'b']
-    const enabled = new Set(['b'])
-    const others = [{ members: ['a'] }]
-    expect(conflictsOnClose(members, enabled, others)).toEqual([])
-  })
-})
-
-describe('groupNamesOf', () => {
-  it('collects tag and collection names for a skill', () => {
-    const tags: SkillTag[] = [{ id: '1', name: 'web', skillNames: ['a'] }]
-    const collections = [{ name: 'repo/x', skillNames: ['a', 'b'] }, { name: 'repo/y', skillNames: ['b'] }]
-    expect(groupNamesOf('a', tags, collections)).toEqual(['web', 'repo/x'])
-    expect(groupNamesOf('b', tags, collections)).toEqual(['repo/x', 'repo/y'])
-    expect(groupNamesOf('c', tags, collections)).toEqual([])
-  })
-})
-
-describe('filterBySource', () => {
-  it('filters by origin repo, buckets untracked skills as private, and returns all for "all"', () => {
-    const origins = { a: 'repo/x', b: 'repo/y' }
-    const skills = [skill('a'), skill('b'), skill('c')]
-    expect(filterBySource(skills, 'repo/x', origins).map((s) => s.name)).toEqual(['a'])
-    expect(filterBySource(skills, PRIVATE_SOURCE, origins).map((s) => s.name)).toEqual(['c'])
-    expect(filterBySource(skills, 'all', origins)).toHaveLength(3)
-  })
-
-  it('never buckets project skills as private (they belong to the project tree)', () => {
-    const origins = {}
-    const proj = skill('proj')
-    proj.source = 'project-dsh'
-    const projAgents = skill('proj-agents')
-    projAgents.source = 'project-agents'
-    const skills = [skill('personal'), proj, projAgents]
-    expect(filterBySource(skills, PRIVATE_SOURCE, origins).map((s) => s.name)).toEqual(['personal'])
-    expect(filterBySource(skills, 'all', origins)).toHaveLength(3)
-  })
-})
-
-describe('visibleCollections', () => {
-  const collections: CollectionGroup[] = [
-    { name: 'repo/x', skillNames: ['enabled-one', 'paused-one'] },
-    { name: 'repo/ghost', skillNames: ['gone'] },
-  ]
-
-  it('keeps collections with visible members and drops empty shells', () => {
-    const visible = visibleCollections(collections, [skill('enabled-one')])
-    expect(visible.map((entry) => entry.collection.name)).toEqual(['repo/x'])
-    expect(visible[0].skills.map((s) => s.name)).toEqual(['enabled-one'])
-  })
-
-  it('includes paused skills because they stay in the skills list', () => {
-    const paused = { ...skill('paused-one'), modelOverride: true }
-    const visible = visibleCollections(collections, [paused])
-    expect(visible.map((entry) => entry.collection.name)).toEqual(['repo/x'])
-    expect(visible[0].skills[0]?.modelOverride).toBe(true)
-  })
-
-  it('drops every collection when no member is visible', () => {
-    expect(visibleCollections(collections, [])).toEqual([])
-  })
-})
-
 describe('sortSkills', () => {
   it('sorts by name ascending', () => {
     const skills = [skill('zeta'), skill('alpha'), skill('beta')]
@@ -195,66 +124,6 @@ describe('sortSkills', () => {
     const sorted = sortSkills(skills, 'name')
     expect(sorted.map((s) => s.name)).toEqual(['a', 'b'])
     expect(skills.map((s) => s.name)).toEqual(['b', 'a'])
-  })
-})
-
-describe('role activation', () => {
-  const paused = (name: string): CatalogSkill => ({ ...skill(name), modelOverride: true })
-  const project = (name: string): CatalogSkill => ({ ...skill(name), source: 'project-dsh' })
-  const actions = (...names: string[]): ReadonlySet<string> => new Set(names)
-
-  it('enables paused members and pauses every other switchable skill', () => {
-    const skills = [skill('a'), paused('b'), skill('c'), paused('d')]
-    const plan = roleActivationPlan(['a', 'b'], skills, actions('a', 'b', 'c', 'd'))
-    expect(plan.toEnable).toEqual(['b'])
-    expect(plan.toDisable).toEqual(['c'])
-  })
-
-  it('is idempotent once the role is the only active set', () => {
-    const skills = [skill('a'), skill('b'), paused('c')]
-    expect(roleActivationPlan(['a', 'b'], skills, actions('a', 'b', 'c'))).toEqual({ toEnable: [], toDisable: [] })
-  })
-
-  it('never touches project skills or rows the hub cannot toggle', () => {
-    const skills = [skill('a'), project('p'), skill('readonly')]
-    const plan = roleActivationPlan(['a'], skills, actions('a', 'p'))
-    expect(plan.toDisable).toEqual([])
-    expect(roleActivationPlan([], skills, actions('a')).toDisable).toEqual(['a'])
-  })
-
-  it('lists exactly the skills an activation would pause', () => {
-    const skills = [skill('member'), paused('already-off'), skill('spare'), project('p')]
-    expect(rolePausableSkills(['member'], skills, actions('member', 'already-off', 'spare', 'p'))).toEqual(['spare'])
-  })
-
-  it('spares the skills the user kept, members still switch on', () => {
-    const skills = [paused('member'), skill('keep'), skill('pause')]
-    const plan = roleActivationPlan(['member'], skills, actions('member', 'keep', 'pause'), new Set(['keep']))
-    expect(plan.toEnable).toEqual(['member'])
-    expect(plan.toDisable).toEqual(['pause'])
-    // Keeping a member changes nothing: members are always on.
-    expect(roleActivationPlan(['member'], skills, actions('member', 'keep', 'pause'), new Set(['member'])).toEnable).toEqual(['member'])
-  })
-
-  it('sparing every pausable skill leaves the role switch with enables only', () => {
-    const skills = [paused('m'), skill('x'), skill('y')]
-    const pausable = rolePausableSkills(['m'], skills, actions('m', 'x', 'y'))
-    const plan = roleActivationPlan(['m'], skills, actions('m', 'x', 'y'), new Set(pausable))
-    expect(plan).toEqual({ toEnable: ['m'], toDisable: [] })
-  })
-
-  it('restores the pre-activation layout from a snapshot', () => {
-    const before = [skill('a'), paused('b'), skill('c')]
-    const snapshot = takeRoleSnapshot('r1', 'Review', before, actions('a', 'b', 'c'))
-    const after = [paused('a'), skill('b'), paused('c')]
-    const plan = roleRestorePlan(snapshot, after, actions('a', 'b', 'c'))
-    expect(plan.toEnable).toEqual(['a', 'c'])
-    expect(plan.toDisable).toEqual(['b'])
-  })
-
-  it('leaves skills installed after the snapshot untouched', () => {
-    const snapshot = takeRoleSnapshot('r1', 'Review', [skill('a')], actions('a'))
-    expect(roleRestorePlan(snapshot, [paused('a'), skill('new')], actions('a', 'new'))).toEqual({ toEnable: ['a'], toDisable: [] })
   })
 })
 

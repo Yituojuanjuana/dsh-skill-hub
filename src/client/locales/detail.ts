@@ -14,7 +14,6 @@ export const zhDetail = {
   'detail.whenToUse': '何时使用',
   'detail.argumentHint': '参数提示',
   'detail.uses': '调用次数',
-  'detail.groups': '所属分组',
   'detail.loading': '读取技能正文…',
 } as const
 
@@ -33,6 +32,5 @@ export const enDetail: Record<keyof typeof zhDetail, string> = {
   'detail.whenToUse': 'When to use',
   'detail.argumentHint': 'Argument hint',
   'detail.uses': 'Uses',
-  'detail.groups': 'Groups',
   'detail.loading': 'Loading skill body…',
 }

@@ -19,6 +19,29 @@ export interface SkillEntry {
 }
 
 /**
+ * 历史遗留 / 备份目录的后缀标记。**唯一来源**。
+ *
+ * 这些目录的 frontmatter `name` 仍指向原技能名，与目录名不符，且与原技能
+ * 同名 —— provider 会把它们当成第二份同名技能，报「同名不可达」+
+ * 「名称与发现路径不一致」。所以扫描时必须整体跳过。
+ *
+ * - `.bak-`   ：替换技能时的旧版本备份（旧版落在扫描根内）
+ * - `.moved-` ：迁移到工作区后留在原地的旧副本
+ *
+ * 新增此类后缀只改这里；两处扫描循环都通过 {@link isNonSkillEntry} 判定。
+ */
+export const NON_SKILL_SUFFIXES: readonly string[] = ['.bak-', '.moved-']
+
+/**
+ * 判断一个目录/文件名是否**不是**技能（备份或迁移遗留）。
+ * @param name - 扫描根下的条目名（不含路径）。
+ * @returns true 表示应跳过。
+ */
+export function isNonSkillEntry(name: string): boolean {
+  return NON_SKILL_SUFFIXES.some((suffix) => name.includes(suffix))
+}
+
+/**
  * Scan one skills root for discovery files: directory bundles (SKILL.md)
  * and flat <name>.md files. Hub-disabled files (.disabled) are excluded;
  * dot-prefixed entries (including .trash and .system) are always skipped.
@@ -34,6 +57,7 @@ export async function scanRoot(base: string): Promise<SkillEntry[]> {
   }
   for (const name of names) {
     if (name.startsWith('.')) continue
+    if (isNonSkillEntry(name)) continue
     const absolute = join(base, name)
     let stats
     try {
@@ -72,6 +96,7 @@ export async function scanDisabledRoot(base: string): Promise<string[]> {
   }
   for (const name of names) {
     if (name.startsWith('.')) continue
+    if (isNonSkillEntry(name)) continue
     const absolute = join(base, name)
     let stats
     try {

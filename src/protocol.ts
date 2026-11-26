@@ -14,7 +14,8 @@
  * 被打进包。barrel 的 `export ... from` 已被完整摇掉。
  */
 
-export { SKILL_HUB_API, SKILL_HUB_API_ROOT, SKILL_HUB_WRITE_HEADER, SKILL_HUB_WRITE_VALUE } from './protocol/api.ts'
+export { SKILL_HUB_API, SKILL_HUB_API_ROOT, SKILL_HUB_WRITE_HEADER, SKILL_HUB_WRITE_VALUE, SKILL_USAGE_API } from './protocol/api.ts'
+export type { PermanentStat, PermanentStatsResponse } from './protocol/api.ts'
 export type {
   WritableRoot,
   HubInvocation,
@@ -36,9 +37,30 @@ export type {
   CreateRequest,
   CreateResponse,
 } from './protocol/catalog.ts'
-export { ANNOUNCEMENT_CHAR_BUDGET, computeAnnouncementBudget } from './protocol/catalog.ts'
-export type { SkillStat, StatsResponse, SkillStatsCheckpoint } from './protocol/stats.ts'
+export { CATALOG_DESCRIPTION_MAX_LENGTH, computeAnnouncementBudget } from './protocol/catalog.ts'
 export type { ErrorResponse, HubConfig, HubSettingsValue, RedactedHubConfig, ConfigResponse, ConfigRequest } from './protocol/config.ts'
+export type {
+  EvolutionProposal,
+  EvolutionProposalKind,
+  EvolutionPriority,
+  EvolutionRecommendation,
+  EvolutionChangeType,
+  EvolutionProposalStatus,
+  EvolutionRunResult,
+  EvolutionRunStatus,
+  EvolutionFile,
+  EvolutionRunRecord,
+  EvolutionResponse,
+  EvolutionRunRequest,
+  EvolutionRunResponse,
+  EvolutionDecideRequest,
+  EvolutionDecideResponse,
+  EvolutionRejection,
+  EvolutionClearResponse,
+  EvolutionReparseResponse,
+  EvolutionApplyRequest,
+  EvolutionApplyResponse,
+} from './protocol/evolution.ts'
 export { HUB_CONFIG_DEFAULTS, HUB_ENTRY_ID, HEX_COLOR_RE, GITHUB_TOKEN_RE, CONFIG_FIELDS, CONFIG_FIELD_TYPES, resolveHubConfig, redactGithubToken, type ConfigField } from './protocol/config.ts'
 export type {
   MarketSourceRecord,
@@ -55,6 +77,7 @@ export type {
   MarketSyncResponse,
   MarketSkillsShEntry,
   MarketSkillsShResponse,
+  MarketSkillsShDetailResponse,
   MarketSkillsShInstallRequest,
   MarketSkillsShInstallResponse,
 } from './protocol/market.ts'

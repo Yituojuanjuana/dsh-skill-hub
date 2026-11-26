@@ -1,0 +1,66 @@
+{
+  "format": 1,
+  "title": {
+    "en": "Skill Hub",
+    "zh": "技能中枢"
+  },
+  "description": {
+    "en": "Community market index for dsh-skill-hub.",
+    "zh": "dsh-skill-hub 的社区插件市场索引。"
+  },
+  "metadata": {
+    "categories": {
+      "skills": {
+        "title": {
+          "en": "Skills",
+          "zh": "技能"
+        }
+      }
+    },
+    "labels": {},
+    "sortKeys": {}
+  },
+  "plugins": [
+    {
+      "name": "dsh-skill-hub",
+      "title": {
+        "en": "Skill Hub",
+        "zh": "技能中枢"
+      },
+      "description": {
+        "en": "Browse, search and switch every local skill from one panel: Settings → Skills Hub (General / Workspace / Market / Trash), or the 960 px sidebar panel. Each row shows day / week / total call counts from an append-only local ledger at ~/.dsh/skill-usage-manager/usage-ledger.jsonl that survives session deletion, and group headers sum them. Installs are content-audited first (hidden control characters, pipe-to-shell, credential paths); GitHub sources keep a commit pin, an update check and a restorable trash. Only ~/.dsh/skills and ~/.agents/skills are writable, and every toggle is a sidecar override, so skill source files never change. Pure local: no model calls; it contacts GitHub and skills.sh only for the checks and installs you start, and turning the plugin off removes the panel, the routes and the system-prompt note.",
+        "zh": "在一个面板里浏览、搜索、开关本机全部技能：设置 →「技能中枢」（通用 / 工作区 / 市场 / 回收站），或侧边栏 960px 面板。每行显示 `~/.dsh/skill-usage-manager/usage-ledger.jsonl` 只追加台账统计的当日 / 本周 / 累计调用次数（删掉会话也不丢），分组标题同样汇总；装前先过内容审计（隐藏控制字符、管道执行、凭据路径），GitHub 来源带 commit 钉版、更新检查与可恢复回收站。只有 `~/.dsh/skills` 与 `~/.agents/skills` 可写，所有开关都只写 sidecar 覆盖，技能源文件不动。纯本地：不调用模型；只有你主动发起的检查与安装才联网 GitHub 与 skills.sh；关掉插件后面板、路由与系统提示说明全部下线。"
+      },
+      "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2IiBmaWxsPSJub25lIj4KICA8ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSg2IDYpIHNjYWxlKDEuNSkiIGZpbGw9IiM0MTc2ZTYiPgogICAgPHBhdGggZD0iTTEyLjUxMTMgMTUuNDA2N0MxMi40Mzk1IDE1LjYyNDkgMTIuMTMwOCAxNS42MjQ5IDEyLjA1OSAxNS40MDY3TDExLjY0MyAxNC4xNDE2QzExLjQ1NCAxMy41NjcgMTEuMDAzMyAxMy4xMTY0IDEwLjQyODggMTIuOTI3NEw5LjE2MzY5IDEyLjUxMTNDOC45NDU0NCAxMi40Mzk1IDguOTQ1NDQgMTIuMTMwOCA5LjE2MzY5IDEyLjA1OUwxMC40Mjg4IDExLjY0M0MxMS4wMDMzIDExLjQ1NCAxMS40NTQgMTEuMDAzMyAxMS42NDMgMTAuNDI4OEwxMi4wNTkgOS4xNjM2OUMxMi4xMzA4IDguOTQ1NDQgMTIuNDM5NSA4Ljk0NTQ0IDEyLjUxMTMgOS4xNjM2OUwxMi45Mjc0IDEwLjQyODhDMTMuMTE2NCAxMS4wMDMzIDEzLjU2NyAxMS40NTQgMTQuMTQxNiAxMS42NDNMMTUuNDA2NyAxMi4wNTlDMTUuNjI0OSAxMi4xMzA4IDE1LjYyNDkgMTIuNDM5NSAxNS40MDY3IDEyLjUxMTNMMTQuMTQxNiAxMi45Mjc0QzEzLjU2NyAxMy4xMTY0IDEzLjExNjQgMTMuNTY3IDEyLjkyNzQgMTQuMTQxNkwxMi41MTEzIDE1LjQwNjdaIi8+CiAgICA8cGF0aCBkPSJNOS4wMjI0NiAwLjU0Njg3OEM5Ljk4MjIgMC41NDY4NzggMTAuNzU2NCAwLjU0NTQwMyAxMS4zNzQgMC42MTIzMDdDMTIuMDA0MiAwLjY4MDU4NiAxMi41NTE1IDAuODI2MjQ0IDEzLjAyNzMgMS4xNzE4OEMxMy4zMDUyIDEuMzczNzYgMTMuNTUwMSAxLjYxODY4IDEzLjc1MiAxLjg5NjQ5QzE0LjA5NzUgMi4zNzIyNSAxNC4yNDMyIDIuOTE5ODQgMTQuMzExNSAzLjU0OTgxQzE0LjM3ODQgNC4xNjcyNyAxNC4zNzcgNC45NDIwNiAxNC4zNzcgNS45MDEzN1Y4LjUxMzY3QzEzLjk2MTEgOC4yOTUzMyAxMy41MDcxIDguMTM5ODUgMTMuMDI3MyA4LjA2MDU1VjUuOTAxMzdDMTMuMDI3MyA0LjkxMjEgMTMuMDI1OSA0LjIyMzIyIDEyLjk2ODggMy42OTUzMkMxMi45MTI5IDMuMTgwNDQgMTIuODA5OCAyLjg5NzgyIDEyLjY1OTIgMi42OTA0M0MxMi41NDA2IDIuNTI3MjQgMTIuMzk2NiAyLjM4MzI2IDEyLjIzMzQgMi4yNjQ2NUMxMi4wMjYgMi4xMTQwNCAxMS43NDM3IDIuMDEwOSAxMS4yMjg1IDEuOTU1MDhDMTAuNzAwNSAxLjg5Nzg5IDEwLjAxMjIgMS44OTY0OSA5LjAyMjQ2IDEuODk2NDlINi41NTM3MUM1LjU2Mzk1IDEuODk2NDkgNC44NzU2OSAxLjg5Nzg3IDQuMzQ3NjYgMS45NTUwOEMzLjgzMjQyIDIuMDEwOTIgMy41NTAyMiAyLjExMzk4IDMuMzQyNzggMi4yNjQ2NUMzLjE3OTUzIDIuMzgzMjkgMy4wMzU2NCAyLjUyNzE5IDIuOTE2OTkgMi42OTA0M0MyLjc2NjQyIDIuODk3ODIgMi42NjMyNSAzLjE4MDQyIDIuNjA3NDIgMy42OTUzMkMyLjU1MDI3IDQuMjIzMjIgMi41NDg4MyA0LjkxMjEgMi41NDg4MyA1LjkwMTM3VjEwLjA5ODZDMi41NDg4MyAxMS4wODc4IDIuNTUwMzEgMTEuNzc2OCAyLjYwNzQyIDEyLjMwNDdDMi42NjMyNiAxMi44MTk2IDIuNzY2NDIgMTMuMTAzMiAyLjkxNjk5IDEzLjMxMDVDMy4wMzU1OCAxMy40NzM2IDMuMTc5NjYgMTMuNjE3OCAzLjM0Mjc4IDEzLjczNjNDMy41NTAyIDEzLjg4NjkgMy44MzI2NSAxMy45OTAxIDQuMzQ3NjYgMTQuMDQ1OUM0Ljg3NTY4IDE0LjEwMzEgNS41NjM5OCAxNC4xMDM1IDYuNTUzNzEgMTQuMTAzNUg4LjA4Mzk5QzguMjc0NDMgMTQuNjAyNSA4LjU1MDc3IDE1LjA1ODUgOC44OTU1MSAxNS40NTQxSDYuNTUzNzFDNS41OTQwMiAxNS40NTQxIDQuODE5NzYgMTUuNDU0NiA0LjIwMjE1IDE1LjM4NzdDMy41NzIwNCAxNS4zMTk0IDMuMDI0NjggMTUuMTczOCAyLjU0ODgzIDE0LjgyODFDMi4yNzExMSAxNC42MjYzIDIuMDI2MDYgMTQuMzgxMyAxLjgyNDIyIDE0LjEwMzVDMS40Nzg4MyAxMy42Mjc4IDEuMzMyOTMgMTMuMDggMS4yNjQ2NSAxMi40NTAyQzEuMTk3ODMgMTEuODMyNyAxLjE5OTIyIDExLjA1NzkgMS4xOTkyMiAxMC4wOTg2VjUuOTAxMzdDMS4xOTkyMiA0Ljk0MjA2IDEuMTk3OCA0LjE2NzI3IDEuMjY0NjUgMy41NDk4MUMxLjMzMjk1IDIuOTE5ODQgMS40Nzg2NyAyLjM3MjI1IDEuODI0MjIgMS44OTY0OUMyLjAyNjEzIDEuNjE4NjQgMi4yNzA5OCAxLjM3Mzc5IDIuNTQ4ODMgMS4xNzE4OEMzLjAyNDcyIDAuODI2MTgxIDMuNTcxOTcgMC42ODA2IDQuMjAyMTUgMC42MTIzMDdDNC44MTk3NiAwLjU0NTM5MyA1LjU5NCAwLjU0Njg3NyA2LjU1MzcxIDAuNTQ2ODc4SDkuMDIyNDZaTTkuMTk2MjkgOS4xNDY0OUg0LjU0NTlWNy44NDU3MUg5LjE5NjI5VjkuMTQ2NDlaTTExLjAzMDMgNi4xMDY0NUg0LjU0NTlWNC44MDU2N0gxMS4wMzAzVjYuMTA2NDVaIi8+CiAgPC9nPgo8L3N2Zz4K",
+      "author": "cheshireez",
+      "homepage": "https://github.com/cheshireez/dsh-skill-hub",
+      "repository": {
+        "url": "https://github.com/cheshireez/dsh-skill-hub"
+      },
+      "metadata": {
+        "category": "skills",
+        "keywords": [
+          "skill",
+          "skills",
+          "skill-manager",
+          "usage",
+          "statistics",
+          "audit",
+          "market"
+        ]
+      },
+      "versions": [
+        {
+          "version": "0.3.39",
+          "publishTimestamp": 1795532446,
+          "source": {
+            "type": "npm"
+          },
+          "engines": {
+            "dsh": ">=0.1.7-alpha.1 <0.3.0-0"
+          }
+        }
+      ]
+    }
+  ]
+}

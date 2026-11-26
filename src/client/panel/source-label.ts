@@ -2,7 +2,7 @@
 const SOURCE_LABELS: Readonly<Record<string, string>> = {
   'agent-ccswitch': 'CC Switch',
   'agent-workbuddy': 'WorkBuddy',
-  'agent-trae-cn': 'Trae CN',
+  'agent-trae-cn': 'Trae (国内版)',
   'agent-trae': 'Trae',
   'agent-codex': 'Codex',
   'agent-claude': 'Claude',
@@ -37,9 +37,11 @@ export function sourceLabel(source: string): string {
  * product name (`Codex`, `Claude`, …).
  */
 const LOCATION_LABELS: Readonly<Record<string, string>> = {
-  'user-dsh': '~/.dsh/skills',
-  'user-agents': '~/.agents/skills',
-  bundled: 'dsh built-in',
+  'user-dsh': 'DSH',
+  'user-agents': '公共 Agent',
+  bundled: '官方',
+  'project-dsh': '项目 DSH',
+  'project-agents': '项目 Agent',
 }
 
 export function locationLabel(source: string): string {

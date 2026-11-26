@@ -19,16 +19,19 @@ export interface HubConfig {
   showUseTime?: boolean
   /** Show group-header usage summaries (count + last used). Default true. */
   showGroupSummary?: boolean
-  /** 统计滚动窗口天数：只统计最近 N 天的使用；0 = 全部历史。默认 0。 */
-  statsWindowDays?: number
-  /** 自动统计扫描间隔（分钟，最小 1）。默认 5。 */
-  statsScanMinutes?: number
+  /** 侧边栏是否显示「技能中枢」入口卡片。Default true（保持现状）。 */
+  showSidebarCard?: boolean
+  evolution?: boolean
   /**
    * GitHub personal access token for market/source API calls (anonymous quota
    * is 60 req/h, authed 5000/hr). Stored in the local settings doc; absent
    * means anonymous. Never logged.
    */
   githubToken?: string
+  /**
+   * 技能进化：开启后对话结束会在后台复盘并提出技能建议。
+   * 默认关闭：它会调模型，不能默认开。
+   */
 }
 
 /**
@@ -44,8 +47,7 @@ export type RedactedHubConfig = Omit<HubConfig, 'githubToken'>
  * The complete config field list, in the order the settings page renders them.
  * The host walks it for volatile refs and the sidecar migration walks it to
  * hydrate untrusted JSON. A second hand-written list in store/migrate.ts used
- * to know only 7 of these, silently dropping statsWindowDays /
- * statsScanMinutes / githubToken on every migration.
+ * to know only 7 of these, silently dropping githubToken on every migration.
  */
 export const CONFIG_FIELDS = [
   'enabled',
@@ -55,8 +57,8 @@ export const CONFIG_FIELDS = [
   'showUseCount',
   'showUseTime',
   'showGroupSummary',
-  'statsWindowDays',
-  'statsScanMinutes',
+  'showSidebarCard',
+  'evolution',
   'githubToken',
 ] as const
 
@@ -71,8 +73,8 @@ export const CONFIG_FIELD_TYPES: Record<ConfigField, 'boolean' | 'string' | 'num
   showUseCount: 'boolean',
   showUseTime: 'boolean',
   showGroupSummary: 'boolean',
-  statsWindowDays: 'number',
-  statsScanMinutes: 'number',
+  showSidebarCard: 'boolean',
+  evolution: 'boolean',
   githubToken: 'string',
 }
 
@@ -88,14 +90,14 @@ export type HubSettingsValue = {
   showUseCount: boolean
   showUseTime: boolean
   showGroupSummary: boolean
+  /** 侧边栏是否显示技能中枢入口（默认 true）。 */
+  showSidebarCard: boolean
+  evolution: boolean
+  /** 技能进化开关：开启后对话结束会在后台复盘。 */
   /** Model-invocable dot color (#rrggbb); absent means the panel default. */
   dotModelColor?: string
   /** User-invocable dot color (#rrggbb); absent means the panel default. */
   dotUserColor?: string
-  /** 统计滚动窗口天数（0 = 全部历史）。 */
-  statsWindowDays?: number
-  /** 自动统计扫描间隔（分钟）。 */
-  statsScanMinutes?: number
   /** GitHub token（明文存本地设置文档，仅经 dsh 的 /api 信任栅栏可读；缺省为匿名）。 */
   githubToken?: string
 }
@@ -120,14 +122,13 @@ export const HUB_CONFIG_DEFAULTS = {
   showUseCount: true,
   showUseTime: true,
   showGroupSummary: true,
-  statsWindowDays: 14,
-  statsScanMinutes: 5,
+  showSidebarCard: true,
+  evolution: false,
 } as const
 
 /**
  * Fill a raw settings value into the effective hub config: schema defaults for
- * anything missing, and the numeric stats knobs clamped to sane ranges
- * (window ≥ 0, scan interval ≥ 1 minute).
+ * anything missing.
  *
  * There is deliberately no "saved sidecar layer" parameter. Until dsh 0.1.7 the
  * hub kept its own runtime overrides in the sidecar and merged them here; the
@@ -136,26 +137,18 @@ export const HUB_CONFIG_DEFAULTS = {
  * observe anything but `{}` — see the git history of `resolveHubConfig`.
  */
 export function resolveHubConfig(base: Partial<HubConfig> = {}): HubConfig {
-  const windowDays = clampNumber(base.statsWindowDays, 0) ?? HUB_CONFIG_DEFAULTS.statsWindowDays
-  const scanMinutes = clampNumber(base.statsScanMinutes, 1) ?? HUB_CONFIG_DEFAULTS.statsScanMinutes
   return {
     enabled: base.enabled ?? HUB_CONFIG_DEFAULTS.enabled,
     announceToAgent: base.announceToAgent ?? HUB_CONFIG_DEFAULTS.announceToAgent,
     showUseCount: base.showUseCount ?? HUB_CONFIG_DEFAULTS.showUseCount,
     showUseTime: base.showUseTime ?? HUB_CONFIG_DEFAULTS.showUseTime,
     showGroupSummary: base.showGroupSummary ?? HUB_CONFIG_DEFAULTS.showGroupSummary,
-    statsWindowDays: windowDays,
-    statsScanMinutes: scanMinutes,
+    showSidebarCard: base.showSidebarCard ?? HUB_CONFIG_DEFAULTS.showSidebarCard,
+    evolution: base.evolution ?? HUB_CONFIG_DEFAULTS.evolution,
     ...(base.dotModelColor !== undefined ? { dotModelColor: base.dotModelColor } : {}),
     ...(base.dotUserColor !== undefined ? { dotUserColor: base.dotUserColor } : {}),
     ...(base.githubToken !== undefined ? { githubToken: base.githubToken } : {}),
   }
-}
-
-/** Clamp a numeric override into a valid value; undefined/invalid stays undefined. */
-function clampNumber(value: unknown, min: number): number | undefined {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < min) return undefined
-  return Math.floor(value)
 }
 
 /**
@@ -188,9 +181,8 @@ export interface ConfigResponse {
 /**
  * POST /api/skill-hub/config — a partial patch; omitted fields keep their values.
  *
- * Only the fields the handler actually parses belong here: the stats knobs are
- * owned by the settings namespace (`statsWindowDays` / `statsScanMinutes` are
- * still part of {@link HubSettingsValue}), not by this route.
+ * Only the fields the handler actually parses belong here; the settings
+ * namespace owns the rest of {@link HubSettingsValue}, not this route.
  */
 export interface ConfigRequest {
   /** Set the field; null clears the saved override so it re-inherits the default. */
@@ -203,6 +195,9 @@ export interface ConfigRequest {
   showUseTime?: boolean | null
   /** Set the field; null clears the saved override so it re-inherits the default. */
   showGroupSummary?: boolean | null
+  /** Set the field; null clears the saved override so it re-inherits the default. */
+  showSidebarCard?: boolean | null
+  evolution?: boolean | null
   /** Set the dot color; null clears the saved override so it re-inherits the default. */
   dotModelColor?: string | null
   /** Set the dot color; null clears the saved override so it re-inherits the default. */

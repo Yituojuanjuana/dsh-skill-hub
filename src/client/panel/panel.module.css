@@ -87,7 +87,7 @@
 
 /* Segmented control: soft capsule, neutral active fill. */
 .segmented { display: flex; background: var(--hub-seg-bg); border-radius: var(--hub-radius-sm); padding: 3px; gap: 2px; }
-.segBtn { padding: 5px 13px; font-size: var(--hub-fs-12); border: none; border-radius: calc(var(--hub-radius-sm) - 2px); background: transparent; color: var(--hub-text-2); cursor: pointer; transition: background .16s ease, color .16s ease, box-shadow .16s ease, opacity .16s ease; }
+.segBtn { padding: 5px 13px; font-size: var(--hub-fs-12); border: none; border-radius: calc(var(--hub-radius-sm) - 2px); background: transparent; color: var(--hub-text); cursor: pointer; transition: background .16s ease, color .16s ease, box-shadow .16s ease, opacity .16s ease; }
 .segBtn:hover { color: var(--hub-text); background: var(--hub-hover); }
 /* 选中态：白/浮层底 + 轻阴影，像 iOS 分段控件「浮起」的那一段。 */
 .segBtnActive { background: var(--hub-card-bg); color: var(--hub-text); font-weight: 600; box-shadow: var(--hub-shadow-1); }
@@ -103,6 +103,7 @@
 .section:focus-within { border-color: color-mix(in srgb, var(--hub-accent) 40%, var(--hub-border)); box-shadow: var(--hub-shadow-2); }
 .sectionTitle { font-size: var(--hub-fs-13); font-weight: 700; margin: 14px 16px 2px; }
 .groupHead { display: flex; align-items: center; gap: 8px; padding: 10px 14px; min-height: 44px; box-sizing: border-box; }
+.groupTitleText { display: inline-block; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 .groupTitle { font-size: var(--hub-fs-13); font-weight: 600; color: var(--hub-text); flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 6px; line-height: 1; }
 .groupOps { flex: none; display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 
@@ -128,10 +129,14 @@
 .rowName { display: flex; align-items: center; gap: 5px; font-size: var(--hub-fs-14); }
 .rowNameText { font-weight: 600; }
 .rowDesc { font-size: var(--hub-fs-13); color: var(--hub-text-3); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Expanded skill description (skills.sh 结果里的「说明」): a quiet inset block
+   that can wrap freely — unlike .rowDesc it must not truncate, since the whole
+   point of expanding is to read the full text. */
+.skillDescBox { margin-top: 6px; padding: 8px 10px; border-radius: var(--hub-radius-sm); background: var(--hub-surface); border: 1px solid var(--hub-border); color: var(--hub-text); font-size: var(--hub-fs-12); line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* No badge chips on list rows; keep only for the detail head. */
 .badges { display: flex; gap: 6px; align-items: center; flex: none; }
-.badge { font-size: var(--hub-fs-11); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--hub-border-2); color: var(--hub-text-2); white-space: nowrap; line-height: 1.6; }
+.badge { font-size: var(--hub-fs-11); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--hub-border-2); color: var(--hub-text); white-space: nowrap; line-height: 1.6; }
 .badgeReadonly { opacity: .5; }
 
 /* iOS-style switch (kept, already matches the system look). */
@@ -153,7 +158,7 @@
 .diagBadgeError { color: var(--hub-danger); background: rgba(209,36,47,.12); }
 .diagBadgeWarn { color: var(--hub-warn-text); background: rgba(210,153,34,.14); }
 .auditBadge { display: inline-block; margin-right: 6px; padding: 0 5px; border-radius: var(--hub-radius-xs); font-size: var(--hub-fs-11); font-weight: 700; color: var(--hub-danger); background: rgba(209,36,47,.12); vertical-align: 1px; }
-.diagPath { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--hub-fs-11); color: var(--hub-text-2); word-break: break-all; }
+.diagPath { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--hub-fs-11); color: var(--hub-text); word-break: break-all; }
 .diagReason { color: var(--hub-text-3); margin-top: 1px; }
 .updateLink { color: inherit; font-weight: 600; text-decoration: underline; }
 
@@ -184,10 +189,6 @@
 .detailSourceRaw { color: var(--hub-text-4); font-size: var(--hub-fs-11); }
 .detailContent { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--hub-fs-12); line-height: 1.6; white-space: pre-wrap; word-break: break-word; background: var(--hub-surface); border-radius: var(--hub-radius-md); padding: 14px 16px; max-height: 62vh; overflow: auto; }
 
-.form { display: flex; flex-direction: column; gap: 10px; background: var(--hub-surface); border: 0.5px solid var(--hub-border); border-radius: var(--hub-radius-md); padding: 14px 16px; }
-/* 角色切换后的还原条：一次切换只留一份快照，刷新后仍在。 */
-.roleBar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; padding: 9px 12px; border: 0.5px solid var(--hub-border); border-radius: var(--hub-radius-md); background: var(--hub-surface); font-size: var(--hub-fs-12); color: var(--hub-text-2); }
-.roleBarText { flex: 1 1 auto; min-width: 0; }
 .formRow { display: flex; flex-direction: column; gap: 5px; }
 .formLabel { font-size: var(--hub-fs-12); color: var(--hub-text-3); }
 .input, .select { padding: 9px 12px; border: none; border-radius: var(--hub-radius-sm); background: var(--hub-surface); color: inherit; font-size: var(--hub-fs-13); outline: none; }
@@ -198,9 +199,6 @@
 .button:disabled { opacity: .45; cursor: default; }
 
 /* Quiet filter trigger: secondary until a filter is active. */
-.filterButton { padding: 6px 12px; border-radius: var(--hub-radius-sm); border: 1px solid var(--hub-border); background: var(--hub-surface); color: var(--hub-text-2); font-size: var(--hub-fs-13); cursor: pointer; transition: background .15s ease, color .15s ease, border-color .15s ease; white-space: nowrap; }
-.filterButton:hover { background: var(--hub-hover); color: var(--hub-text); }
-.filterButtonActive { background: color-mix(in srgb, var(--hub-accent) 14%, transparent); color: var(--hub-accent-text); border-color: color-mix(in srgb, var(--hub-accent) 45%, transparent); font-weight: 600; }
 .primary { background: var(--hub-accent); color: var(--hub-on-accent); font-weight: 600; box-shadow: 0 1px 2px color-mix(in srgb, var(--hub-accent) 35%, transparent); }
 .primary:hover { background: var(--hub-accent); opacity: .94; box-shadow: 0 3px 10px color-mix(in srgb, var(--hub-accent) 40%, transparent); }
 .primary:disabled { opacity: .45; cursor: default; }
@@ -242,19 +240,58 @@
 .mainTabActive::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--hub-accent); }
 .mainTab:focus-visible { outline: 2px solid var(--hub-accent); outline-offset: -2px; }
 /* 回收站计数：让「里面有东西」停在别的 tab 时也看得见。 */
-.tabCount { font-size: var(--hub-fs-11); font-weight: 600; line-height: 1.5; padding: 0 6px; border-radius: 999px; background: var(--hub-hover); color: var(--hub-text-2); font-variant-numeric: tabular-nums; }
+.tabCount { font-size: var(--hub-fs-11); font-weight: 600; line-height: 1.5; padding: 0 6px; border-radius: 999px; background: var(--hub-hover); color: var(--hub-text); font-variant-numeric: tabular-nums; }
 .legendToggle { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--hub-border); background: var(--hub-surface); color: inherit; font-size: var(--hub-fs-12); line-height: 1; cursor: pointer; opacity: .6; transition: opacity .15s ease, background .15s ease, border-color .15s ease; }
 .legendToggle:hover { opacity: 1; }
 .legendToggleActive { opacity: 1; background: var(--hub-active); }
 
 /* Source filter row (分类 view). */
-.filterBar { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0; }
+.filterInline { flex: 0 1 auto; min-width: 0; max-width: 150px; }
+.filterSearch { display: inline-flex; align-items: stretch; gap: 6px; flex: 1 1 auto; min-width: 0; }
+.filterSearch .search { flex: 1 1 auto; min-width: 0; height: 38px; box-sizing: border-box; }
+.filterSearchButton { flex: 0 0 auto; min-width: 62px; height: 38px; box-sizing: border-box; white-space: nowrap; }
+.filterBar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; row-gap: 6px; }
 .filterBar .formLabel { margin: 0; }
 
-/* Invocation count: amber chip beside the skill name. */
-.useCount { display: inline-block; margin-left: 6px; font-size: var(--hub-fs-11); font-weight: 700; color: var(--hub-warn-text); background: rgba(210,153,34,.14); border: 1px solid rgba(210,153,34,.22); border-radius: 999px; padding: 0 6px; line-height: 1.6; vertical-align: 1px; font-variant-numeric: tabular-nums; }
+/* Group-header usage totals (日/周/总) share one declaration with the per-row
+   .permStat below: same size, same 500 weight, same muted gray + .8 opacity, so
+   a card's three numbers read exactly like the rows it summarizes. */
+.groupStat,
+.permRate { color: var(--hub-text-3); }
+.permStat { display: inline-block; margin-left: 6px; font-size: var(--hub-fs-11); font-weight: 500; color: var(--hub-text-4); opacity: .8; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* 按调用量分档的卡片列表：与按目录/按角色的卡片保持同一节奏。 */
+.tierList { display: flex; flex-direction: column; gap: 10px; }
+/* 工作区下拉：占据可用宽度，与搜索框同高，避免路径被截断。 */
+ .workspaceSelect { flex: 1 1 auto; min-width: 0; max-width: 420px; }
+/* 工作区页工具栏：状态 / 工作区 / 搜索一行排开，搜索吃掉剩余宽度。 */
+.workspaceBar { align-items: center; gap: 8px; flex-wrap: nowrap; }
+.workspaceStatusSelect { flex: none; width: 108px; }
+/* 工作区选择：加粗描边突出它是这一页的主控件。 */
+.workspaceSelectStrong { flex: none; min-width: 150px; max-width: 260px; font-weight: 600; border-color: var(--hub-text-4); }
+.workspaceSearch { flex: 1 1 auto; min-width: 0; }
+/* 空状态：虚线框，与参考设计的「这个工作区还没有技能」一致。 */
+.workspaceEmptyState { display: flex; align-items: center; justify-content: center; min-height: 180px; margin-top: 10px; border: 1px dashed var(--hub-border); border-radius: var(--hub-radius-md); color: var(--hub-text-4); font-size: var(--hub-fs-13); }
 /* Relative last-used time: right-aligned on the name row, above the description. */
 .useTime { margin-left: auto; font-size: var(--hub-fs-11); color: var(--hub-text-4); white-space: nowrap; }
+/* 最近调用 / 安装时间：与调用量 (.permStat) 同一套字体样式 —— 同字号、同字重、
+   同灰度、同 opacity、同 tabular-nums，三处元信息在视觉上是一个整体。
+   只保留位置差异：最近调用紧跟调用量，安装时间靠右。 */
+.useTimeInline,
+.installedAt {
+  display: inline-block;
+  font-size: var(--hub-fs-11);
+  font-weight: 500;
+  color: var(--hub-text-4);
+  opacity: .8;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.useTimeInline { margin-left: 6px; }
+/* 安装时间靠右：margin-left:auto 吃掉行内剩余空间。`margin-right:0` 抵消
+   .rowName 的 flex gap，否则它会离右边缘差一个 gap 的距离，看起来没对齐。 */
+.installedAt { margin-left: auto; margin-right: 0; flex: none; }
+/* Per-row 日/周/总 totals: shares the .groupStat declaration above so the card
+   header and the rows stay typographically identical. */
 
 
 
@@ -266,8 +303,9 @@
 .switchMixed { background: rgba(47,129,247,.45); background: color-mix(in srgb, var(--hub-accent) 45%, transparent); }
 .switchMixed .switchThumb { transform: translateX(7.5px); box-shadow: 0 1px 2px rgba(0,0,0,.25); }
 
-/* Group title inner summary (count + last used) sits inline after the name. */
-.groupTitleInner { display: inline-flex; align-items: baseline; }
+/* Group title inner summary (day/week/total + last used) sits inline after the name.
+   `nowrap` keeps the three totals on one line; the title itself truncates instead. */
+.groupTitleInner { display: inline-flex; align-items: baseline; gap: 0; white-space: nowrap; }
 
 /* Source link inside group titles / rows. */
 .sourceLink { color: inherit; font-weight: 600; text-decoration: none; border-bottom: 1px dotted currentColor; opacity: .9; }
@@ -316,13 +354,17 @@
 .filterBar .search { flex: 1 1 auto; min-width: 0; }
 .filterBar .formLabel { flex: none; }
 .filterBar .select { flex: none; max-width: 150px; }
+/* Workspace tab's project dropdown: sits above the tree with the same rhythm as
+   the main filter bar, and may grow wider since project titles are longer. */
+.workspaceFilterBar { margin: 2px 0 6px; }
+.workspaceFilterBar .select { max-width: 320px; }
 .filterBar .segmented { flex: none; }
 
 
 /* Panel title icon (skill identity). */
 .titleIcon { display: inline-block; vertical-align: -2px; margin-right: 2px; color: var(--hub-accent); }
 /* 头部计数做成小药丸，一眼能扫到总量；禁用数跟在后面用弱化色。 */
-.headerCount { font-size: var(--hub-fs-12); color: var(--hub-text-2); margin-left: 2px; white-space: nowrap; padding: 2px 8px; border-radius: 999px; background: var(--hub-seg-bg); font-variant-numeric: tabular-nums; }
+.headerCount { font-size: var(--hub-fs-12); color: var(--hub-text); margin-left: 2px; white-space: nowrap; padding: 2px 8px; border-radius: 999px; background: var(--hub-seg-bg); font-variant-numeric: tabular-nums; }
 
 /* ---- inline-style replacements: one class per recurring layout intent.
    These must stay AFTER the rules they modify (e.g. .groupTime after
@@ -343,14 +385,12 @@
 .sectionTitleFill { flex: 1; }
 .dialogSelect { width: 100%; margin-bottom: 12px; }
 .dialogRow { display: flex; align-items: center; gap: 8px; }
-/* 角色切换弹窗的勾选工具栏：一句提示 + 「全保留 / 全停用」。 */
-.dialogRowBar { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; }
-.dialogRowBarHint { flex: 1; min-width: 0; font-size: var(--hub-fs-12); color: var(--hub-text-3); }
 /* Workspace (project path) picker in the subbar. */
 .workspaceBox { display: inline-flex; align-items: center; gap: 6px; }
 .workspaceInput { width: 200px; padding: 6px 10px; font-size: var(--hub-fs-12); }
 /* Project-level three-tier tree: outer card (the .section), inner levels are
    flat — indent + a hairline guide only, no nested card surfaces. */
+.workspaceFlatList { display: flex; flex-direction: column; gap: 2px; }
 .projectNest { display: flex; flex-direction: column; margin: 2px 0 0 14px; border-left: 1px solid var(--dsw-alias-border-l1, rgba(128,128,128,.14)); }
 
 /* Drag handle + reorder states — 窄版：尽量收窄占位，仍保留抓取感 */
@@ -374,8 +414,6 @@
 /* 角色视图的筛选说明：来源/状态两项在该视图不生效，隐藏后说明原因。 */
 .filterNote { flex-basis: 100%; margin: 0; font-size: var(--hub-fs-12); color: var(--hub-text-3); }
 
-/* 列表工具行（全部折叠 / 全部展开）。 */
-.listTools { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 0 2px; }
 
 /* 键盘焦点环：只在 focus-visible（键盘操作）时出现，鼠标点击不打扰。 */
 .opBtn:focus-visible, .button:focus-visible, .segBtn:focus-visible, .disclosure:focus-visible,
@@ -461,7 +499,7 @@ body:not([data-ds-dark-theme]) .panel {
 /* Overflow menu for low-frequency chrome actions. */
 .menuAnchor { position: relative; display: inline-flex; }
 .moreButton { min-width: 28px; padding: 4px 8px; font-size: var(--hub-fs-15); line-height: 1; }
-.menu { position: absolute; right: 0; top: calc(100% + 6px); min-width: 190px; padding: 4px; z-index: 30;
+.menu { position: fixed; min-width: 190px; padding: 4px; z-index: 60;
   display: flex; flex-direction: column; gap: 2px; background: var(--dsw-alias-bg-layer-1, #fff); color: var(--hub-text);
   border: 0.5px solid var(--hub-border); border-radius: var(--hub-radius-md); box-shadow: 0 12px 40px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.08); }
 .menuItem { text-align: left; border: none; background: transparent; color: inherit; font: inherit; font-size: var(--hub-fs-13);
@@ -493,6 +531,9 @@ body:not([data-ds-dark-theme]) .panel {
 /* Keep row text clickable without putting buttons inside a role=button div. */
 .rowMainButton { flex: 1; min-width: 0; display: block; border: none; background: transparent; color: inherit; font: inherit; text-align: left; padding: 0; cursor: pointer; }
 .rowMainButton:focus-visible { outline: 2px solid var(--hub-accent); outline-offset: 2px; border-radius: var(--hub-radius-xs); }
+
+/* Native <input type=file> used by ZIP import: kept in the DOM, never shown. */
+.hiddenFile { display: none; }
 
 /* Touch devices should not inherit sticky hover feedback. */
 @media (hover: none) {
@@ -526,8 +567,54 @@ body:not([data-ds-dark-theme]) .panel {
 .dialogAlsoIn { margin-right: 6px; }
 .dialogOptionDisabled { cursor: default; }
 .formErrorText { color: var(--hub-danger-text); }
-.hiddenFile { display: none; }
 .hintRowTight { margin: 2px 2px 0; display: flex; gap: 8px; flex-wrap: wrap; }
 .diagRowFlex { display: flex; align-items: flex-start; gap: 10px; }
 .diagMain { flex: 1; min-width: 0; }
 .diagFix { flex: none; align-self: center; }
+
+
+/* ------------------------------------------------- 技能进化元代理 */
+.evolutionWrap { display: flex; flex-direction: column; gap: 10px; }
+.evolutionMetrics { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.evolutionMetric { font-size: var(--hub-fs-10); padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--hub-text-4) 12%, transparent); color: var(--hub-text-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.evolutionMetricTrash { font-size: var(--hub-fs-10); padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--hub-danger) 14%, transparent); color: var(--hub-danger); white-space: nowrap; }
+.evolutionMetricReason { margin-top: 4px; padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--hub-accent) 7%, transparent); font-size: var(--hub-fs-11); line-height: 1.55; color: var(--hub-text-2); }
+.evolutionRunning { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: color-mix(in srgb, var(--hub-accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--hub-accent) 24%, transparent); font-size: var(--hub-fs-11); color: var(--hub-accent-text); line-height: 1.5; }
+.evolutionSpinner { flex: none; width: 12px; height: 12px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--hub-accent) 30%, transparent); border-top-color: var(--hub-accent); animation: hub-spin .8s linear infinite; }
+@keyframes hub-spin { to { transform: rotate(360deg); } }
+.evolutionTitle { font-size: var(--hub-fs-13); font-weight: 600; color: var(--hub-text); }
+.evolutionHint { font-size: var(--hub-fs-11); line-height: 1.55; color: var(--hub-text-4); max-width: 720px; margin: 0; }
+.evolutionCard { border: 1px solid var(--hub-border); border-radius: 10px; padding: 10px 12px; background: var(--hub-card-bg); display: flex; flex-direction: column; gap: 6px; }
+.evolutionCardHead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.evolutionBadgeReclaim { font-size: var(--hub-fs-10); font-weight: 600; padding: 1px 6px; border-radius: 5px; background: color-mix(in srgb, var(--hub-danger) 14%, transparent); color: var(--hub-danger); }
+.evolutionBadge { font-size: var(--hub-fs-10); font-weight: 600; padding: 1px 6px; border-radius: 5px; background: color-mix(in srgb, var(--hub-accent) 14%, transparent); color: var(--hub-accent-text); }
+.evolutionSkillId { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--hub-fs-10); color: var(--hub-text-4); padding: 1px 5px; border-radius: 4px; background: color-mix(in srgb, var(--hub-text-4) 10%, transparent); }
+.evolutionName { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--hub-fs-12); color: var(--hub-text); }
+.evolutionChipLocation { font-size: var(--hub-fs-10); padding: 1px 6px; border-radius: 5px; background: color-mix(in srgb, var(--hub-text-4) 14%, transparent); color: var(--hub-text-3); white-space: nowrap; }
+.evolutionChipPending { font-size: var(--hub-fs-10); padding: 1px 6px; border-radius: 5px; border: 1px dashed var(--hub-border); color: var(--hub-text-4); white-space: nowrap; }
+.evolutionChipScan { font-size: var(--hub-fs-10); padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--hub-accent) 16%, transparent); color: var(--hub-accent-text); white-space: nowrap; font-weight: 600; }
+.evolutionChip { font-size: var(--hub-fs-10); padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--hub-text-4) 14%, transparent); color: var(--hub-text-3); white-space: nowrap; }
+.evolutionAge { margin-left: auto; font-size: var(--hub-fs-10); color: var(--hub-text-4); }
+.evolutionDescription { font-size: var(--hub-fs-12); color: var(--hub-text); line-height: 1.55; }
+.evolutionRationale { font-size: var(--hub-fs-11); color: var(--hub-text-4); line-height: 1.55; }
+.evolutionActions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+.evolutionButton { padding: 4px 8px; font-size: var(--hub-fs-11); }
+.evolutionBody { margin: 4px 0 0; padding: 8px 10px; border-radius: 8px; background: color-mix(in srgb, var(--hub-text-4) 8%, transparent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--hub-fs-11); line-height: 1.6; color: var(--hub-text); white-space: pre-wrap; word-break: break-word; max-height: 420px; overflow: auto; }
+.evolutionError { font-size: var(--hub-fs-11); color: var(--hub-danger); line-height: 1.5; }
+.evolutionNotice { font-size: var(--hub-fs-11); color: var(--hub-accent-text); line-height: 1.5; }
+.evolutionMuted { font-size: var(--hub-fs-11); color: var(--hub-text-4); }
+.evolutionLabel { font-size: var(--hub-fs-11); color: var(--hub-text-3); }
+.evolutionQuickReasons { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.evolutionQuickReason { padding: 3px 8px; font-size: var(--hub-fs-10); border-radius: 999px; border: 1px solid var(--hub-border); background: transparent; color: var(--hub-text-3); cursor: pointer; white-space: nowrap; }
+.evolutionQuickReason:hover { border-color: var(--hub-accent); color: var(--hub-accent-text); }
+.evolutionQuickReasonActive { border-color: var(--hub-accent); color: var(--hub-accent-text); background: color-mix(in srgb, var(--hub-accent) 12%, transparent); }
+.evolutionRedraft { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: var(--hub-radius-sm); background: var(--hub-surface); border: 1px solid var(--hub-border); }
+.evolutionHistory { font-size: var(--hub-fs-11); color: var(--hub-text-4); }
+.evolutionHistory summary { cursor: pointer; }
+.evolutionHistory ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+.evolutionHistory > div { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.evolutionEmpty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 40px 16px; text-align: center; }
+.evolutionEmptyGlyph { font-size: 22px; color: var(--hub-text-4); }
+.evolutionEmpty strong { font-size: var(--hub-fs-13); color: var(--hub-text-2); font-weight: 600; }
+.evolutionEmpty p { margin: 0; font-size: var(--hub-fs-11); color: var(--hub-text-4); line-height: 1.55; max-width: 460px; }
+.sectionTitle { font-size: var(--hub-fs-12); font-weight: 600; color: var(--hub-text-2); margin-top: 4px; }

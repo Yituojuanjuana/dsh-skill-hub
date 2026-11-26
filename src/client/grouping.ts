@@ -2,18 +2,14 @@
  * Pure grouping helpers for the skill-hub panel (no React/DOM deps, so the
  * merge/classify/filter logic stays unit-testable).
  *
- * The "分组" view unifies two ways a skill can belong to a group:
- *  - user tags (sidecar SkillTag)
- *  - origin collections (sidecar sources → backend-aggregated CollectionGroup)
- *
- * Switch semantics: a skill's enabled state is global (the file is renamed
- * once), so a group switch is derived from its members' actual states:
- * all members enabled → 'on', all disabled → 'off', otherwise 'mixed'.
- * Closing a group whose member is enabled in another group is a conflict the
- * GUI resolves with a dialog; the helpers below compute both sides.
+ * A skill's enabled state is global (the file is renamed once), so a group's
+ * switch state is derived from its members' actual states: all members enabled
+ * → 'on', all disabled → 'off', otherwise 'mixed'. The panel derives groups
+ * from three axes — usage rank, discovery location, and an automatic role
+ * classification — none of which is stored on disk.
  */
 
-import type { CatalogSkill, CollectionGroup, SkillTag } from '../protocol.ts'
+import type { CatalogSkill } from '../protocol.ts'
 import { isProjectSource } from '../protocol.ts'
 
 export { isProjectSource }
@@ -46,121 +42,6 @@ export function groupSwitchView(members: readonly string[], enabledNames: Readon
   return { state, enabled, disabled }
 }
 
-/* ------------------------------------------------------------------ roles */
-
-/** Names that must be switched to reach a target enablement layout. */
-export interface RoleActivationPlan {
-  toEnable: string[]
-  toDisable: string[]
-}
-
-/**
- * Only skills the hub can actually switch take part in a role activation.
- * Project skills live in the Workspace tab; read-only/bundled/runtime rows
- * cannot be toggled at all. `actionNames` comes from the catalog flow.
- */
-function switchableSkills(skills: readonly CatalogSkill[], actionNames: ReadonlySet<string>): CatalogSkill[] {
-  return skills.filter((skill) => !isProjectSource(skill.source) && actionNames.has(skill.name))
-}
-
-/**
- * Skills a role activation would otherwise pause: enabled, switchable, and
- * not a member. The confirm dialog lists them so the user can spare any of
- * them instead of accepting an all-or-nothing switch.
- */
-export function rolePausableSkills(
-  members: readonly string[],
-  skills: readonly CatalogSkill[],
-  actionNames: ReadonlySet<string>,
-): string[] {
-  const memberSet = new Set(members)
-  const names: string[] = []
-  for (const skill of switchableSkills(skills, actionNames)) {
-    if (!memberSet.has(skill.name) && skill.modelOverride !== true) names.push(skill.name)
-  }
-  return names
-}
-
-/**
- * Plan "activate this role": turn the role's members on and every other
- * switchable skill off, except the names in `keepEnabled` the user chose to
- * spare. Already-correct rows are omitted so a second run is a no-op
- * (idempotent).
- */
-export function roleActivationPlan(
-  members: readonly string[],
-  skills: readonly CatalogSkill[],
-  actionNames: ReadonlySet<string>,
-  keepEnabled?: ReadonlySet<string>,
-): RoleActivationPlan {
-  const memberSet = new Set(members)
-  const toEnable: string[] = []
-  const toDisable: string[] = []
-  for (const skill of switchableSkills(skills, actionNames)) {
-    const enabled = skill.modelOverride !== true
-    if (memberSet.has(skill.name)) {
-      if (!enabled) toEnable.push(skill.name)
-    } else if (enabled) {
-      // Spared by the user: leave the switch exactly as it is.
-      if (keepEnabled?.has(skill.name) === true) continue
-      toDisable.push(skill.name)
-    }
-  }
-  return { toEnable, toDisable }
-}
-
-/** Switch states captured right before a role activation, kept for restore. */
-export interface RoleSnapshot {
-  roleId: string
-  roleName: string
-  at: number
-  states: Array<{ name: string; enabled: boolean }>
-}
-
-export function takeRoleSnapshot(
-  roleId: string,
-  roleName: string,
-  skills: readonly CatalogSkill[],
-  actionNames: ReadonlySet<string>,
-): RoleSnapshot {
-  return {
-    roleId,
-    roleName,
-    at: Date.now(),
-    states: switchableSkills(skills, actionNames).map((skill) => ({ name: skill.name, enabled: skill.modelOverride !== true })),
-  }
-}
-
-/**
- * Plan "restore before the last role activation". Skills installed after the
- * snapshot are left untouched — pausing them would silently undo a newer
- * user decision.
- */
-export function roleRestorePlan(
-  snapshot: RoleSnapshot,
-  skills: readonly CatalogSkill[],
-  actionNames: ReadonlySet<string>,
-): RoleActivationPlan {
-  const before = new Map(snapshot.states.map((state) => [state.name, state.enabled]))
-  const toEnable: string[] = []
-  const toDisable: string[] = []
-  for (const skill of switchableSkills(skills, actionNames)) {
-    const target = before.get(skill.name)
-    if (target === undefined) continue
-    const enabled = skill.modelOverride !== true
-    if (target && !enabled) toEnable.push(skill.name)
-    if (!target && enabled) toDisable.push(skill.name)
-  }
-  return { toEnable, toDisable }
-}
-
-/** Names of every group a skill belongs to (tags + collections). */
-export function groupNamesOf(name: string, tags: readonly SkillTag[], collections: readonly CollectionGroup[]): string[] {
-  const names: string[] = []
-  for (const tag of tags) if (tag.skillNames.includes(name)) names.push(tag.name)
-  for (const collection of collections) if (collection.skillNames.includes(name)) names.push(collection.name)
-  return names
-}
 
 /**
  * Members of a group that are currently enabled AND also belong to at least
@@ -258,6 +139,138 @@ export function filterSkillsByStatus(skills: readonly CatalogSkill[], status: Sk
   })
 }
 
+/* ------------------------------------------------------- automatic roles */
+
+/**
+ * Role ids the hub derives automatically. This is a presentation axis only:
+ * nothing is written to disk, so a role can never drift out of sync with the
+ * catalog. Manual tags (SkillTag) stay a separate, user-curated axis.
+ */
+export type RoleId = 'design' | 'dev' | 'doc' | 'media' | 'data' | 'research' | 'ops' | 'office' | 'other'
+
+/**
+ * A keyword with its evidence weight. 4 = the word almost names the role,
+ * 2 = supporting evidence, 1 = a hint that must not decide anything alone.
+ */
+type RoleKeyword = readonly [text: string, weight: number]
+
+/**
+ * Keyword rules per role, earlier rules winning ties. Generic words that show up
+ * in nearly every SKILL.md (`skill`, `agent`, `web`, `tool`) are deliberately
+ * absent: they would pull unrelated skills into whichever rule listed them.
+ */
+const ROLE_RULES: ReadonlyArray<{ id: RoleId; keywords: readonly RoleKeyword[] }> = [
+  { id: 'office', keywords: [['office', 4], ['docx', 4], ['xlsx', 4], ['pptx', 4], ['powerpoint', 4], ['ppt', 4], ['spreadsheet', 4], ['excel', 4], ['word', 3], ['pdf', 3], ['办公', 4]] },
+  { id: 'design', keywords: [['design', 4], ['figma', 4], ['css', 4], ['typography', 4], ['brand', 4], ['layout', 3], ['visual', 3], ['interface', 3], ['ui', 2], ['ux', 3], ['landing', 3], ['token', 3], ['taste', 4], ['设计', 3], ['界面', 4], ['排版', 3], ['配色', 3]] },
+  { id: 'dev', keywords: [['react', 4], ['vue', 4], ['typescript', 4], ['javascript', 4], ['tdd', 4], ['refactor', 4], ['debug', 4], ['bug', 4], ['lint', 4], ['commit', 4], ['git', 4], ['api', 3], ['code', 2], ['test', 3], ['build', 2], ['开发', 4], ['代码', 4], ['测试', 4], ['调试', 4], ['重构', 4]] },
+  { id: 'media', keywords: [['image', 4], ['video', 4], ['photo', 4], ['poster', 4], ['cover', 4], ['animation', 4], ['motion', 4], ['remotion', 4], ['canvas', 3], ['art', 4], ['audio', 4], ['p5', 3], ['card', 2], ['图片', 4], ['视频', 4], ['卡片', 3], ['封面', 4], ['海报', 4], ['动画', 4]] },
+  { id: 'data', keywords: [['data', 2], ['csv', 4], ['sql', 4], ['chart', 4], ['analytics', 4], ['analysis', 2], ['statistic', 4], ['metric', 4], ['query', 3], ['数据', 3], ['表格', 3], ['图表', 4], ['统计', 4]] },
+  { id: 'research', keywords: [['search', 4], ['research', 4], ['discover', 3], ['crawl', 4], ['scrape', 4], ['github', 4], ['browse', 3], ['搜索', 4], ['研究', 4], ['检索', 4]] },
+  { id: 'doc', keywords: [['document', 4], ['documentation', 4], ['writing', 4], ['write', 3], ['article', 4], ['blog', 4], ['markdown', 4], ['notion', 4], ['readme', 4], ['glossary', 4], ['adr', 4], ['spec', 2], ['doc', 4], ['文档', 4], ['文章', 4], ['笔记', 4], ['写作', 4]] },
+  { id: 'ops', keywords: [['sandbox', 4], ['acl', 4], ['disk', 4], ['cleanup', 4], ['uninstall', 4], ['install', 4], ['plugin', 4], ['config', 4], ['setup', 4], ['deploy', 4], ['hook', 3], ['memory', 4], ['permission', 4], ['cli', 3], ['系统', 4], ['安装', 4], ['配置', 4], ['清理', 4], ['权限', 4]] },
+]
+
+/**
+ * Minimum score before a role claims a skill. Below it the skill stays in
+ * `other` — a wrong group is worse than no group, because the heading then lies
+ * about its contents.
+ */
+const MIN_SCORE = 4
+
+/** Name evidence counts double: the name is the author's own one-word summary. */
+const NAME_FACTOR = 2
+
+/**
+ * Split text into lowercase tokens. ASCII words stay whole; a CJK run is emitted
+ * both as one token and as its individual characters, so a two-character keyword
+ * such as 排版 still matches inside a longer run such as 把文档排版成网页.
+ */
+function tokensOf(text: string): Set<string> {
+  const tokens = new Set<string>()
+  for (const raw of text.toLocaleLowerCase().split(/[^a-z0-9+#.\u3400-\u9fff]+/)) {
+    if (raw === '') continue
+    tokens.add(raw)
+    // Individual characters, so short CJK keywords can match as substrings.
+    if (/[\u3400-\u9fff]/.test(raw) && raw.length > 1) {
+      for (const char of raw) tokens.add(char)
+    }
+  }
+  return tokens
+}
+
+/**
+ * Match one keyword against a token set. ASCII keywords of 4+ characters also
+ * match as a prefix (`test` finds `testing`, `install` finds `installing`);
+ * shorter ones must match a whole token, so `ui` never fires on `build`.
+ * CJK keywords match as a plain substring.
+ */
+function matchesKeyword(tokens: Set<string>, keyword: string): boolean {
+  if (!/^[a-z0-9+#.]+$/.test(keyword)) {
+    for (const token of tokens) if (token.includes(keyword)) return true
+    return false
+  }
+  if (tokens.has(keyword)) return true
+  if (keyword.length < 4) return false
+  for (const token of tokens) if (token.startsWith(keyword)) return true
+  return false
+}
+
+/** Score one rule: name hits weigh double, description hits weigh once. */
+function scoreRule(rule: { keywords: readonly RoleKeyword[] }, nameTokens: Set<string>, textTokens: Set<string>): number {
+  let score = 0
+  for (const [keyword, weight] of rule.keywords) {
+    if (matchesKeyword(nameTokens, keyword)) score += weight * NAME_FACTOR
+    else if (matchesKeyword(textTokens, keyword)) score += weight
+  }
+  return score
+}
+
+/**
+ * Classify one skill into a role from keyword evidence in its name, description
+ * and whenToUse. Deterministic and offline: no model call, no disk writes, so
+ * the same catalog always renders the same groups.
+ */
+export function classifyRole(skill: { name: string; description?: string; whenToUse?: string }): RoleId {
+  const nameTokens = tokensOf(skill.name)
+  const textTokens = tokensOf((skill.description ?? '') + ' ' + (skill.whenToUse ?? ''))
+  let best: RoleId = 'other'
+  let bestScore = MIN_SCORE - 1
+  for (const rule of ROLE_RULES) {
+    const score = scoreRule(rule, nameTokens, textTokens)
+    // Strictly greater: an earlier rule keeps the win on a tie.
+    if (score > bestScore) { best = rule.id; bestScore = score }
+  }
+  return best
+}
+
+/** One auto-derived role with its members. */
+export interface RoleGroup {
+  id: RoleId
+  skills: CatalogSkill[]
+}
+
+/**
+ * Group skills into auto roles, in rule order, with `other` last. Empty roles
+ * are dropped so the panel never renders a heading with nothing under it.
+ */
+export function groupByRole(skills: readonly CatalogSkill[]): RoleGroup[] {
+  const buckets = new Map<RoleId, CatalogSkill[]>()
+  for (const skill of skills) {
+    if (isProjectSource(skill.source)) continue
+    const id = classifyRole(skill)
+    const bucket = buckets.get(id)
+    if (bucket === undefined) buckets.set(id, [skill])
+    else bucket.push(skill)
+  }
+  const order: RoleId[] = [...ROLE_RULES.map((rule) => rule.id), 'other']
+  const groups: RoleGroup[] = []
+  for (const id of order) {
+    const members = buckets.get(id)
+    if (members !== undefined && members.length > 0) groups.push({ id, skills: members })
+  }
+  return groups
+}
+
 /** One discovery root (where the skill files live) with its members. */
 export interface LocationGroup {
   /** Discovery source id: `user-dsh`, `user-agents`, `agent-codex`, … */
@@ -292,26 +305,22 @@ export function groupByLocation(skills: readonly CatalogSkill[]): LocationGroup[
     .sort((a, b) => locationRank(a.id) - locationRank(b.id) || a.id.localeCompare(b.id))
 }
 
-/** One origin collection with the members visible under the current filters. */
-export interface VisibleCollection {  collection: CollectionGroup
-  skills: CatalogSkill[]
+/**
+ * Total calls for one skill, used by the usage view's ranking.
+ * The permanent ledger wins over the session-log counter because the ledger
+ * survives session deletion; the log count is only a fallback.
+ */
+export function usageTotal(stat: { count: number; permanent?: { total: number } } | undefined): number {
+  if (stat === undefined) return 0
+  return stat.permanent?.total ?? stat.count
 }
 
-/**
- * Match origin collections against the currently visible skills, dropping
- * collections with no visible member. Paused skills stay in `skills` with
- * `modelOverride`, so there is no second "disabled rows" stream to merge.
- */
-export function visibleCollections(
-  collections: readonly CollectionGroup[],
-  visibleSkills: readonly CatalogSkill[],
-): VisibleCollection[] {
-  const visible: VisibleCollection[] = []
-  for (const collection of collections) {
-    const skills = visibleSkills.filter((skill) => collection.skillNames.includes(skill.name))
-    if (skills.length > 0) visible.push({ collection, skills })
-  }
-  return visible
+/** Skills ordered by total calls, highest first. Ties keep the input order. */
+export function sortByUsage<T extends { name: string }>(
+  skills: readonly T[],
+  uses: ReadonlyMap<string, { count: number; permanent?: { total: number } }>,
+): T[] {
+  return [...skills].sort((a, b) => usageTotal(uses.get(b.name)) - usageTotal(uses.get(a.name)))
 }
 
 /** Catalog sort keys offered by the filter bar. */

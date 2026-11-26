@@ -75,6 +75,9 @@ export function foreignRoots(userHome: string): ForeignRoot[] {
     { agent: 'claude-code', dir: join(userHome, '.claude', 'skills'), scope: 'user' },
     { agent: 'codex', dir: join(userHome, '.codex', 'skills'), scope: 'user' },
     { agent: 'workbuddy', dir: join(userHome, '.workbuddy', 'skills'), scope: 'user' },
+    // Trae 国内版与海外版是两套独立目录，都可能有技能；本机 .trae-cn 常有几十个。
+    { agent: 'trae-cn', dir: join(userHome, '.trae-cn', 'skills'), scope: 'user' },
+    { agent: 'trae', dir: join(userHome, '.trae', 'skills'), scope: 'user' },
     { agent: 'cursor', dir: join(userHome, '.cursor', 'skills'), scope: 'user' },
     { agent: 'gemini-cli', dir: join(userHome, '.gemini', 'skills'), scope: 'user' },
     { agent: 'copilot', dir: join(userHome, '.copilot', 'skills'), scope: 'user' },
@@ -101,6 +104,7 @@ const PROJECT_AGENT_DIRS: ReadonlyArray<{ agent: string; dir: string }> = [
   { agent: 'opencode', dir: '.opencode/skills' },
   { agent: 'windsurf', dir: '.windsurf/skills' },
   { agent: 'trae', dir: '.trae/skills' },
+  { agent: 'trae-cn', dir: '.trae-cn/skills' },
   { agent: 'roo', dir: '.roo/skills' },
   { agent: 'codebuddy', dir: '.codebuddy/skills' },
 ]

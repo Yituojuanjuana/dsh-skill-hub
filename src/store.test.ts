@@ -380,16 +380,12 @@ describe('SkillHubStore', () => {
         showUseCount: false,
         showUseTime: false,
         showGroupSummary: false,
-        statsWindowDays: 30,
-        statsScanMinutes: 15,
         githubToken: 'token-12345678',
       },
     }), 'utf8')
     expect(await store.getConfig()).toMatchObject({
       enabled: false,
       dotModelColor: '#112233',
-      statsWindowDays: 30,
-      statsScanMinutes: 15,
       githubToken: 'token-12345678',
     })
   })
@@ -424,66 +420,6 @@ describe('SkillHubStore', () => {
     expect(entry?.origin).toMatchObject({ repo: 'blader/humanizer', root: '' })
   })
 
-  it('migrates a v3 file (no skillStats) and persists a checkpoint round-trip at v4', async () => {
-    // v3 旧文件：无 skillStats 字段 → 装载后检查点为空，写盘时版本升到当前。
-    await writeFile(file, JSON.stringify({
-      version: 3,
-      disabled: [],
-      tags: [{ id: 't1', name: '通用', skillNames: [], default: true }],
-    }), 'utf8')
-    expect(await store.getSkillStatsState()).toBeUndefined()
-    const checkpoint = {
-      windowDays: 0,
-      frozenBefore: 1000,
-      frozenSessions: { 'session-a': { createdAt: 900, counts: { tdd: { count: 7, lastUsed: 900 }, 'code-review': { count: 2, lastUsed: 800 } } } },
-      lastFullReconcile: 1234,
-    }
-    await store.saveSkillStatsState(checkpoint)
-    // 新实例读回一致（含深拷贝的 frozenTotals）。
-    const reloaded = new SkillHubStore(file)
-    expect(await reloaded.getSkillStatsState()).toEqual(checkpoint)
-    const raw = JSON.parse(await readFile(file, 'utf8')) as { version: number; skillStats?: unknown }
-    expect(raw.version).toBe(4)
-    expect(raw.skillStats).toEqual(checkpoint)
-  })
-
-  it('drops a corrupt skillStats bucket instead of trusting bad counts', async () => {
-    await writeFile(file, JSON.stringify({
-      version: 4,
-      disabled: [],
-      skillStats: { windowDays: 'x', frozenBefore: true, lastFullReconcile: false, frozenSessions: { bad: { createdAt: 'y', counts: [] } } },
-    }), 'utf8')
-    expect(await store.getSkillStatsState()).toBeUndefined()
-  })
-
-  it('persists coldRevisions round-trip and drops corrupt revision entries', async () => {
-    await writeFile(file, JSON.stringify({
-      version: 4,
-      disabled: [],
-      skillStats: {
-        windowDays: 14,
-        frozenBefore: 1000,
-        frozenSessions: {},
-        lastFullReconcile: 1234,
-        coldRevisions: {
-          good: { rev: 'r1', createdAt: 900, counts: { tdd: { count: 3, lastUsed: 900 } } },
-          'bad-rev': { rev: 42, createdAt: 900, counts: {} },
-          'bad-counts': { rev: 'r1', createdAt: 900, counts: { tdd: { count: 'many', lastUsed: 1 } } },
-        },
-      },
-    }), 'utf8')
-    // 好条目保留并写盘回读一致；坏条目被清洗（重读一次即可恢复）。
-    expect(await store.getSkillStatsState()).toEqual({
-      windowDays: 14,
-      frozenBefore: 1000,
-      frozenSessions: {},
-      lastFullReconcile: 1234,
-      coldRevisions: {
-        good: { rev: 'r1', createdAt: 900, counts: { tdd: { count: 3, lastUsed: 900 } } },
-        'bad-counts': { rev: 'r1', createdAt: 900, counts: {} },
-      },
-    })
-  })
 
   it('persists a marketStats snapshot round-trip and drops corrupt buckets', async () => {
     expect(await store.getMarketStatsState()).toBeUndefined()

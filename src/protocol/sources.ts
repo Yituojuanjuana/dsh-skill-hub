@@ -44,6 +44,12 @@ export interface TrashEntry {
   }
   /** 移入回收站前所属的角色（tag）ID；恢复时重新加回这些角色。 */
   tagIds?: string[]
+  /**
+   * 回收站备注（人工写的说明，例如「长期无人使用」「功能被新技能替代」）。
+   *
+   * 旧条目没有该字段；进化模块会把它作为「回收站状态」维度的一部分展示。
+   */
+  note?: string
 }
 
 /** GET /api/skill-hub/sources */

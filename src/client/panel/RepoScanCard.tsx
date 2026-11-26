@@ -104,8 +104,7 @@ export function RepoScanCard(props: { hub: SkillHubState }): JSX.Element | null 
             <div className={css.hintLine + ' ' + css.repoSelectionRow}>
               <span>{tt('repo.selection', { selected: selected.length, total: entries.length, size: formatBytes(selectedBytes), shown: paged.length, filtered: filtered.length })}</span>
               <span className={css.repoSelectionActions}>
-                <button type='button' className={css.button + ' ' + css.repoMiniButton} onClick={() => { setRepoSelected(new Set(filtered.filter((e)=>!isExisting(e)).slice(0, visibleCount).map((e)=>e.path))) }}>{tt('repo.selectVisible')}</button>
-                <button type='button' className={css.button + ' ' + css.repoMiniButton} onClick={() => { setRepoSelected(new Set(entries.filter((e)=>!isExisting(e)).map((e)=>e.path))) }}>{tt('repo.selectAllN', { count: entries.filter(e=>!isExisting(e)).length })}</button>
+                <button type='button' className={css.button + ' ' + css.repoMiniButton} onClick={() => { setRepoSelected(new Set(filtered.filter((e)=>!isExisting(e)).map((e)=>e.path))) }}>{tt('repo.selectAllN', { count: filtered.filter(e=>!isExisting(e)).length })}</button>
                 <button type='button' className={css.button + ' ' + css.repoMiniButton} onClick={() => { setRepoSelected(new Set()) }}>{tt('repo.clearAll')}</button>
               </span>
             </div>

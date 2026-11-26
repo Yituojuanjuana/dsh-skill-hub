@@ -158,6 +158,19 @@ export interface MarketSkillsShResponse {
   skills: MarketSkillsShEntry[]
 }
 
+/**
+ * GET /api/skill-hub/market/skills-sh/detail?source=&skillId= — 取一个技能的说明。
+ *
+ * skills.sh 的搜索索引只给 id/source/skillId/name/installs，没有说明；说明只
+ * 存在于技能包内的 SKILL.md frontmatter 里。所以这条路由要下载整个包，代价
+ * 明显高于搜索，因此只在用户主动点「说明」时按需取，不预取。
+ */
+export interface MarketSkillsShDetailResponse {
+  ok: true
+  /** frontmatter 里的 description；技能没有合法 frontmatter 时为空串。 */
+  description: string
+}
+
 /** POST /api/skill-hub/market/skills-sh/install — 直装单个技能（不登记来源）。 */
 export interface MarketSkillsShInstallRequest {
   /** `owner/repo`。 */

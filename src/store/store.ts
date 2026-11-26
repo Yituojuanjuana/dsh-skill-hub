@@ -22,7 +22,6 @@ import { marketSlice, type MarketSlice } from './market.ts'
 import { orderSlice, type OrderSlice } from './order.ts'
 import { statePath } from './paths.ts'
 import { sourceSlice, type SourceSlice } from './sources.ts'
-import { statsSlice, type StatsSlice } from './stats.ts'
 import { tagSlice, type TagSlice } from './tags.ts'
 import { trashSlice, type TrashSlice } from './trash.ts'
 
@@ -34,8 +33,7 @@ export interface SkillHubStore
     OrderSlice,
     SourceSlice,
     MarketSlice,
-    TrashSlice,
-    StatsSlice {}
+    TrashSlice {}
 
 /** Sidecar state owner. */
 export class SkillHubStore {
@@ -52,7 +50,6 @@ export class SkillHubStore {
       sourceSlice(this.core),
       marketSlice(this.core),
       trashSlice(this.core),
-      statsSlice(this.core),
     )
   }
 }

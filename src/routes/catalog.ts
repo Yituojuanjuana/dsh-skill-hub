@@ -4,7 +4,7 @@
  */
 
 import { readFile, stat } from 'node:fs/promises'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import type { SkillDefinition } from '@deepseek-ai/dsh-skill'
 import { isSkillName } from '@deepseek-ai/dsh-skill'
 import {
@@ -14,25 +14,25 @@ import {
   type SkillDeleteResponse,
   type SkillDetail,
   type SkillDetailResponse,
-  type StatsResponse,
   type ToggleBatchResponse,
   type ToggleResponse,
   type WritableRoot,
 } from '../protocol.ts'
 import { createSkill, createSkillInDir, occupancyOf, parseFrontmatter, readSkillInterface, rootOfPath, rootPath, trashSkill } from '../skillfs.ts'
-import { projectSkillsRoot } from '../skillfs/paths.ts'
+import { foreignRootOfPath, projectSkillsRoot } from '../skillfs/paths.ts'
 import { errorText } from '../error-text.ts'
 import {
   applyInterface,
   buildCatalog,
-  configOf,
   homeOf,
   isWritableSource,
   pathExists,
   queryParam,
   readString,
   readStrings,
+  resolveForeignSkill,
   resolveWritableSkill,
+  userHomeOf,
   toDetail,
   workspaceEntries,
   writeError,
@@ -72,7 +72,16 @@ async function discoveryPathOf(deps: SkillHubRouteDeps, name: string, cwd?: stri
  * never through a same-name disabled sidecar record.
  */
 async function nonWritableDiscoveryPath(deps: SkillHubRouteDeps, name: string, cwd: string): Promise<string | undefined> {
-  if (cwd === '') return undefined
+  // 没有 cwd 时也要能识别外部 Agent 技能：它们不在任何工作区里，但用户
+  // 明确要求能停用/启用它们，而这条路径正是「非可写来源」的启用入口。
+  if (cwd === '') {
+    const skill = await deps.skills.get(name)
+    if (skill === undefined || skill.path === undefined) return undefined
+    const path = resolve(skill.path)
+    if (rootOfPath(path, homeOf(deps)) !== undefined) return undefined
+    // 只认已知外部根，避免把任意 provider 的路径当成可覆盖目标。
+    return foreignRootOfPath(path, userHomeOf(deps)) === undefined ? undefined : path
+  }
   const discovered = await discoveryPathOf(deps, name, cwd)
   if (discovered === undefined) return undefined
   const path = resolve(discovered)
@@ -154,6 +163,40 @@ async function applyToggle(deps: SkillHubRouteDeps, name: string, enabled: boole
   return { ok: true }
 }
 
+/**
+ * 把一个名字解析成「某个已登记工作区内的项目级技能」。
+ *
+ * 与 resolveWritableSkill 的区别：那个只认 dsh 的用户可写根；这个只认
+ * `<workspace>/.dsh/skills` 与 `<workspace>/.agents/skills`。
+ * 两条路径都做严格包含判定，因此回收动作不可能被诱导到工作区之外。
+ * @param deps - 路由依赖。
+ * @param name - 技能名。
+ * @param cwd - 可选工作区（给了就只在该工作区里找）。
+ * @returns 命中的路径，或带 HTTP 状态的拒绝。
+ */
+async function resolveProjectSkill(
+  deps: SkillHubRouteDeps,
+  name: string,
+  cwd?: string,
+): Promise<{ ok: true; path: string } | { ok: false; status: number; error: string }> {
+  const lookup = cwd !== undefined && cwd !== '' ? { cwd } : undefined
+  const skill = await deps.skills.get(name, lookup)
+  if (skill === undefined) return { ok: false, status: 404, error: 'skill not found: ' + name }
+  if (skill.source !== 'project-dsh' && skill.source !== 'project-agents') {
+    return { ok: false, status: 409, error: 'source "' + skill.source + '" is not a project skill' }
+  }
+  if (skill.path === undefined) return { ok: false, status: 409, error: 'project skill has no file' }
+  // 必须落在某个已登记工作区的 skills 目录内。
+  const workspaces = await workspaceEntries(homeOf(deps))
+  const target = resolve(skill.path)
+  for (const workspace of workspaces) {
+    const root = resolve(projectSkillsRoot(workspace.path))
+    const rel = relative(root, target)
+    const inside = rel !== '' && !rel.startsWith('..') && !isAbsolute(rel)
+    if (inside) return { ok: true, path: target }
+  }
+  return { ok: false, status: 409, error: 'project skill path is outside every registered workspace: ' + skill.path }
+}
 export function catalogRoutes(deps: SkillHubRouteDeps): RouteSpec[] {
   return [
     // ------------------------------------------------------------ catalog
@@ -275,7 +318,21 @@ export function catalogRoutes(deps: SkillHubRouteDeps): RouteSpec[] {
           // trashSkill 按 SKILL.md / <name>.md 判定目录包还是扁平文件。
           trashResult = await trashSkill(disabled.path)
         } else {
-            writeError(res, resolved.status, resolved.error); return
+            // 外部 Agent 技能：用户明确要求它们也能删除。只认 foreignRoots()
+            // 列出的目录（resolveForeignSkill 做包含判定），因此不会误删别处文件。
+            // 仍走同一个回收站，恢复逻辑不变。
+            const foreign = await resolveForeignSkill(deps, name, cwd !== '' ? cwd : undefined)
+            if (foreign.ok) {
+              trashResult = await trashSkill(foreign.path)
+            } else {
+              // 项目级技能（project-dsh / project-agents）：它不在 dsh 的用户可写根里，
+              // 所以 resolveWritableSkill 会 409。但工作区页明确要求能回收它。
+              // 这里只接受「路径落在某个已登记工作区的 skills 目录内」的技能，
+              // 判定用 projectSkillsRoot 做包含检查，不会误删工作区里的其它文件。
+              const project = await resolveProjectSkill(deps, name, cwd !== '' ? cwd : undefined)
+              if (!project.ok) { writeError(res, project.status, project.error); return }
+              trashResult = await trashSkill(project.path)
+            }
           }
         }
         // 入回收站前快照来源归属与角色成员：恢复时把它们加回来，否则恢复
@@ -432,26 +489,6 @@ export function catalogRoutes(deps: SkillHubRouteDeps): RouteSpec[] {
         if (defaultTag !== undefined) await deps.store.addSkillToTag(defaultTag.id, name)
         deps.invalidate?.()
         writeJson(res, 201, { ok: true, path, ...(createdRoot !== undefined ? { root: createdRoot } : {}), ...(createdWorkspace !== undefined ? { workspace: createdWorkspace } : {}) } satisfies CreateResponse)
-      },
-    },
-    // ---------------------------------------------------------------- stats
-    {
-      path: SKILL_HUB_API.stats,
-      methods: ['GET'],
-      handler: async ({ res }) => {
-        if (deps.stats === undefined) {
-          writeJson(res, 200, { ok: true, available: false, stats: [] } satisfies StatsResponse)
-          return
-        }
-        // All usage displays off means nobody reads statistics: answer
-        // unavailable without invoking the reader, so no scan is triggered.
-        const display = configOf(deps)
-        if (display.showUseCount === false && display.showUseTime === false && display.showGroupSummary === false) {
-          writeJson(res, 200, { ok: true, available: false, stats: [] } satisfies StatsResponse)
-          return
-        }
-        const stats = await deps.stats()
-        writeJson(res, 200, { ok: true, available: true, ...(deps.stats.source !== undefined ? { source: deps.stats.source } : {}), stats } satisfies StatsResponse)
       },
     },
   ]

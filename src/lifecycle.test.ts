@@ -46,12 +46,14 @@ function fakeHost(options: { agents?: ReturnType<typeof fakeAgent>[] } = {}) {
   const sections: string[] = []
   const routes: string[] = []
   const warns: string[] = []
-  const injected: Array<(context: unknown) => void> = []
   const listeners = new Map<string, Array<(payload: unknown) => void>>()
   const fiber: { uid: number | null } = { uid: 1 }
   /** Disposers of every `ctx.effect` body, released by `unload()` in reverse order. */
   const effects: Array<() => void> = []
-  /** The HTTP surface is read through `ctx.get('webServer')` now, not injected. */
+  /**
+   * `webServer` 服务。路由现在走 `ctx.inject(['webServer'], …)` 注册，
+   * 所以这份替身必须同时满足 `get('webServer')` 与 `inject` 两条路径。
+   */
   const webServer = {
     register: (route: { path: string }) => {
       routes.push(route.path)
@@ -91,7 +93,24 @@ function fakeHost(options: { agents?: ReturnType<typeof fakeAgent>[] } = {}) {
       effects.push(dispose)
       return dispose
     },
-    inject: (_names: unknown, run: (child: unknown) => void) => { injected.push(run) },
+    /**
+     * `ctx.inject(deps, callback)`：服务齐备后跑回调，返回一个带 `dispose` 的 fiber。
+     *
+     * 真实 Cordis 的 inject 就是这个语义：回调返回的清理函数由内层 fiber 持有，
+     * 外层 effect 清理时通过 `fiber.dispose()` 把它一起收拾。
+     */
+    inject: (_deps: string[], callback: (ctx: unknown) => unknown) => {
+      const produced = callback(context)
+      const inner = {
+        disposed: false,
+        async dispose() {
+          if (inner.disposed) return
+          inner.disposed = true
+          if (typeof produced === 'function') (produced as () => void)()
+        },
+      }
+      return inner
+    },
   }
   /** Tear the fiber down: mark it inactive and release its effects newest-first, like Cordis. */
   const unload = () => {
@@ -99,13 +118,7 @@ function fakeHost(options: { agents?: ReturnType<typeof fakeAgent>[] } = {}) {
     // Ask each disposer in turn — it removes itself from `effects`.
     while (effects.length > 0) effects[effects.length - 1]!()
   }
-  return { context, sections, routes, fiber, injected, unload, warns }
-}
-
-/** The session-query seam the stats wiring accepts. */
-const queryStub = {
-  listSessions: async () => [],
-  readSession: async () => ({ events: [] }),
+  return { context, sections, routes, fiber, unload, warns }
 }
 
 describe('plugin lifecycle (issues #19, #24)', () => {
@@ -128,27 +141,6 @@ describe('plugin lifecycle (issues #19, #24)', () => {
     apply(host.context as never, undefined)
     expect(host.sections).toEqual(['plugin:dsh-skill-hub'])
     expect(host.routes).toContain('/api/skill-hub/catalog')
-  })
-
-  it('drops a late stats continuation instead of syncing on an inactive context', async () => {
-    const host = fakeHost()
-    apply(host.context as never, undefined)
-    const beforeUnload = host.sections.length
-
-    // The session-query service arrives: wireStats() starts an async build that
-    // first awaits the persisted scan checkpoint. The nested persistence probe
-    // is left unmounted (the child `inject` never calls back).
-    expect(host.injected).toHaveLength(1)
-    host.injected[0]!({ sessionQuery: queryStub, inject: () => {} })
-
-    // A config rewrite (or disable) unloads the fiber while that await is in
-    // flight — the exact window issue #19 aborted on.
-    host.fiber.uid = null
-    await new Promise((resolve) => setTimeout(resolve, 100))
-
-    // Without the guard the continuation called sync(), which re-registered the
-    // announcement on the dead context (and threw on a real host).
-    expect(host.sections).toHaveLength(beforeUnload)
   })
 
   it('releases agent-layer provider registrations with the fiber so a profile replay can re-register (issue #24)', () => {

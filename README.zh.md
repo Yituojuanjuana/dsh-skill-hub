@@ -26,7 +26,7 @@ dsh plugin --profile web add dsh-skill-hub
 
 要求 `Node ^22.19 || >=24` + dsh web `>=0.1.7-alpha.1 <0.3`。dsh `0.2.2` 起要求 `Node >=24.9`。
 
-两个界面 —— 管理面板在 **设置 → 技能中枢**；本插件自身的配置卡片在 **插件管理页** 的插件自有页面上（侧边栏「插件」→ dsh-skill-hub）。该卡片由本插件自己注册进 `plugins.bundle.config` 槽位（dsh 没有自动生成的配置页），覆盖总开关、向 Agent 公告、圆点颜色、用量显示与统计窗口/间隔。
+两个界面 —— 管理面板在 **设置 → 技能中枢**；本插件自身的配置卡片在 **插件管理页** 的插件自有页面上（侧边栏「插件」→ dsh-skill-hub）。该卡片由本插件自己注册进 `plugins.bundle.config` 槽位（dsh 没有自动生成的配置页），覆盖总开关、向 Agent 公告、圆点颜色、GitHub Token 与显示哪些调用统计。
 
 ## 功能
 
@@ -34,7 +34,7 @@ dsh plugin --profile web add dsh-skill-hub
 
 同一个面板也提供 **960px 宽屏侧栏入口**（左侧栏「插件」区域 → 技能中枢），浏览技能不必离开对话。
 
-- **浏览** — `ctx.skills` 注册表全量：项目/用户/内置+第三方。按名称、描述、`displayName` 搜索；按来源、状态（已启用/已停用）、调用方式（模型/用户）筛选；按名称/添加时间/调用次数排序。每行都有 `⋯` 菜单（详情/启停/删除），操作不再依赖编辑模式。不同来源的同名技能挂重名徽标，不再静默隐藏。
+- **浏览** — `ctx.skills` 注册表全量：项目/用户/内置+第三方。按名称、描述、`displayName` 搜索；按来源、状态（已启用/已停用）、调用方式（模型/用户）筛选；按调用次数（默认）/名称/添加时间排序。每行都有 `⋯` 菜单（详情/启停/删除），操作不再依赖编辑模式。不同来源的同名技能挂重名徽标，不再静默隐藏。
 - **内容审计** — 已启用技能的正文（`SKILL.md`）也体检：裸 ESC 控制字符、Unicode 标签字符、双向控制符，以及编码伪装（文本文件里出现 NUL 字节 / UTF-16 / 非法 UTF-8）—— 这些会让「看过」不等于「看见」，市场导入时直接拒绝落盘；另有零宽字符、`curl … | sh` 式远程执行、SSH/云凭据/钥匙串路径、超长 description，以及单文件 2 MiB / 单技能 10 MiB / 500 文件上限。只有「没有正当用途」的特征才阻断安装，其余为警告，交给人判断。规则是纯本地静态匹配，不跑模型、不出网。市场导入会扫整包（含 `scripts/`），常驻体检只扫 `SKILL.md`（每 5 秒轮询，扫全目录会拖慢面板）。
 - **公告预算** — 一层渐进加载注入的 name + description 总量随目录一起返回，面板显示字符数与 token 估算；超过 8000 字符变红提示（超出后客户端会截断尾部条目，表现为「装了却不触发」）。
 - **开关** — 单技能开关 + 整组三态开关，跨组冲突弹窗（全部关闭/保留开启）。停用只写 sidecar 策略：发现文件不改名、不删除，由 invocation override 关闭模型自动调用（「/技能名」仍可用）；停用的技能仍留在目录里、可查看正文、可一键重新启用，编辑模式下也可直接移入回收站。仅 `~/.dsh/skills` 与 `~/.agents/skills` 可写，其余只读。
@@ -48,8 +48,9 @@ dsh plugin --profile web add dsh-skill-hub
 - **从其他 Agent 导入** — 只读扫描 Claude Code / Codex / WorkBuddy / Cursor / Gemini CLI / Copilot / OpenCode / Goose 的技能目录，两层：**用户级**（`~/.claude/skills` 等）收进 `~/.dsh/skills`，**项目级**（`<projectRoot>/.claude/skills` 等，项目根从已登记工作区推出）收进该项目的 `.dsh/skills`。原目录不受影响；扁平技能统一落成目录包；同样过内容审计与体积上限。多个 agent 目录软链到同一份文件（cc-switch 式集中管理）时按真实路径合并成一条，并标出「也在」哪些 agent；WorkBuddy 的 `workbuddy.json` 或 `SKILL.md` frontmatter 里的展示名/简介会映射到本插件的展示名与短描述，`_skillhub_meta.json` 里指向原安装目录的绝对路径与外链在副本中剥掉。
 - **项目技能开关** — 项目技能可以停用，方式是**模型调用覆盖**（invocation override）：hub 在每个 agent 的技能层里再注册一次自己的 provider，用同名条目把宿主原生条目盖掉，把该技能的 `modelInvocable` 压成 false —— 模型不再自动调用，「/技能名」手动调用保留，**项目文件一个字节都不动**（git 仓库零污染）。停用状态存在 hub 的 sidecar 里，开关即写即生效；再点一次恢复。
 - **从 ZIP 导入** — 选一个 `.zip`：包内每个含 `SKILL.md` 的目录算一个技能，整包是一个技能还是技能集合都支持，逐个独立成败、逐个过内容审计。解压前先拦路径穿越、符号链接、加密包、ZIP64 与解压炸弹；落盘走临时目录 + 原子改名，失败不留半成品；同名已启用的跳过，只有禁用占位或空壳才移入回收站让位（可恢复）。
-- **统计** — 会话日志的调用次数+最近使用，分组头汇总；窗口与扫描间隔在设置卡片实时可调。
-- **设置卡片** — 注册在 **插件管理页** 的插件自有页面上（侧边栏「插件」→ dsh-skill-hub，默认折叠，点标题展开）：总开关、向 Agent 公告、调用圆点颜色、用量显示开关、统计窗口/间隔。标题行的版本徽标旁会提示新版本（**检查更新** 以 npm registry 的 `latest` 为准 —— 也就是 `dsh plugin add` 实际会装到的版本；GitHub release 仅作兜底，结果缓存 10 分钟），旁边带一个**立即更新**按钮：装在 profile 里的拷贝可以直接点它升级，装好后提示重启生效；被 `link:` 到开发目录的拷贝会被明确拒绝（那份换了会断开开发流程），Electron 独占的 profile 则由宿主自己拒绝。
+- **技能进化**（默认关闭）— 一轮对话结束后开始计空闲；闲置 20 秒后，hub 把这段对话里的用户 / 助手 / 工具消息重放一遍，走**一次无工具的一次性模型调用**，问它里面有没有值得复用的经验。回来的建议要先过一道硬门槛才入队：kebab-case 名、描述/正文/理由非空、置信度 ≥ 0.6、`create` 不能撞已有名字、`update` 必须指向已有技能。每条建议都带它涉及技能的**真实台账调用数**（当日 / 本周 / 累计）——「这个值得做成技能」因此有证据，而不是模型的看法。建议只排队，**采纳是一次点击**；只有 `create` 能一键采纳（改进已有技能要并进人写的文件里，那一步永远不替你做）。复盘发生在对话之外：不占轮次、不带工具、不动 prompt cache，任何失败都降级成「这一轮什么也没学到」。
+- **调用统计** — 一个只追加的本地台账（`~/.dsh/skill-usage-manager/usage-ledger.jsonl`）记下每次技能调用，按当日 / 本周 / 累计三档汇总，分组头同样汇总；台账独立于会话日志，**删掉会话也不丢**，插件启动时从会话日志回填历史。显示哪些档位、最近调用时间在设置卡片里实时可调。
+- **设置卡片** — 注册在 **插件管理页** 的插件自有页面上（侧边栏「插件」→ dsh-skill-hub，默认折叠，点标题展开）：总开关、向 Agent 公告、调用圆点颜色、GitHub Token、调用统计显示开关。标题行的版本徽标旁会提示新版本（**检查更新** 以 npm registry 的 `latest` 为准 —— 也就是 `dsh plugin add` 实际会装到的版本；GitHub release 仅作兜底，结果缓存 10 分钟），旁边带一个**立即更新**按钮：装在 profile 里的拷贝可以直接点它升级，装好后提示重启生效；被 `link:` 到开发目录的拷贝会被明确拒绝（那份换了会断开开发流程），Electron 独占的 profile 则由宿主自己拒绝。
 
 ## 内容审计与公告预算
 
@@ -94,7 +95,11 @@ GitHub 仓库 ──扫描/导入──▶ ~/.dsh/skills
 | `/api/skill-hub/toggle-batch` | POST | `{names, enabled}` |
 | `/api/skill-hub/create` | POST | `{name, description?, root?}` |
 | `/api/skill-hub/diagnostic/fix` | POST | `{path}` 自动修 frontmatter |
-| `/api/skill-hub/stats` | GET | 调用次数 |
+| `/api/skill-hub/permanent-stats` | GET | 台账聚合的当日 / 本周 / 累计调用次数 |
+| `/api/skill-hub/evolution` | GET | 待审技能建议、已处理记录、复盘运行 |
+| `/api/skill-hub/evolution/adopt` | POST | `{id, root?}` 把一条 `create` 建议写成真实技能 |
+| `/api/skill-hub/evolution/dismiss` | POST | `{id}` 丢弃一条建议 |
+| `/api/skill-hub/evolution/run` | POST | `{sessionId?}` 立刻复盘一次（忽略冷却） |
 | `/api/skill-hub/config` | GET/POST | 运行时配置（`null` 清除） |
 | `/api/skill-hub/groups` | GET | tags+集合+排序 |
 | `/api/skill-hub/tag` 等 | POST | 新建/重命名、删除、设成员、排序 |
@@ -118,9 +123,11 @@ GitHub 仓库 ──扫描/导入──▶ ~/.dsh/skills
 
 ```bash
 npm run typecheck  # tsc --noEmit
-npm test           # 543 tests, 26 suites
+npm test           # 576 tests, 41 suites
 npm run build      # tsc + tsdown → lib/index.js + lib/client.js
 ```
+
+**插件管理页** 的展示元数据与代码一起发布，读取时不需要启用插件：`locale/en.json` + `locale/zh.json`（`meta.title` / `meta.description` / `meta.detail`）、`icon.svg`，以及只含一张图的详情文档 `DETAIL.md` / `DETAIL.zh.md` 与 `preview.svg`。`engines.dsh` 故意写得与 peer 范围一样宽 —— 一旦声明就由它单独判定兼容性，下限收窄会拒绝今天还能用的宿主。`market/index.json` 是社区索引用的 format-1 条目，发版时同步更新其中的 `version` 与 `publishTimestamp`。
 
 > 同一 `$DSH_HOME` + cwd 下勿开两个 `dsh web` — 无会话日志锁，会 `seq gap` 损坏。换 `DSH_HOME` 或先关旧实例。
 

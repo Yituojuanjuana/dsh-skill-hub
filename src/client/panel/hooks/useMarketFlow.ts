@@ -5,7 +5,7 @@
  * 碰其他域的 state。
  */
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type {
   MarketSkillsShEntry,
   MarketStatsResponse,
@@ -16,6 +16,7 @@ import { errorMessage, tt } from '../../helpers.ts'
 import { runFlow, type FlowNotices, type MarketCheckResult, type MarketState } from './shared.ts'
 import { useRepoImportFlow } from './useRepoImportFlow.ts'
 import type { MarketSyncDialogState, VersionChoiceState } from '../dialogs.tsx'
+import { sortSkillsSh } from '../market-format.ts'
 
 export function useMarketFlow(
   api: SkillHubApi,
@@ -354,7 +355,47 @@ export function useMarketFlow(
    * 重新搜索三种情况互相覆盖。
    */
   const [skillsShQuery, setSkillsShQuery] = useState('')
+  /**
+   * 结果排序：`installs` = 按安装量从高到低取前 20；`az` = 按技能名 A-Z。
+   *
+   * 排序是**展示层**的事，不改上游返回的原始顺序 —— 换排序不需要重新搜索，
+   * 因此这里只存一个键，在渲染时排序。
+   */
+  const [skillsShSort, setSkillsShSort] = useState<'installs' | 'az'>('installs')
   const [skillsShState, setSkillsShState] = useState<{ status: 'idle' | 'loading' | 'ready' | 'error'; skills: MarketSkillsShEntry[]; message?: string }>({ status: 'idle', skills: [] })
+
+  /**
+   * 技能说明缓存：键是 `source/skillId`。
+   *
+   * 说明要从技能包里读（服务端得下载整个包），比搜索贵得多，所以按需取、
+   * 取到就缓存，同一结果反复展开不再请求。失败只记在 `skillsShDetailError`
+   * 里，不弹全局错误 —— 说明缺失不该打断用户正在做的事。
+   */
+  const [skillsShDetail, setSkillsShDetail] = useState<ReadonlyMap<string, string>>(new Map())
+  const [skillsShDetailLoading, setSkillsShDetailLoading] = useState<string | null>(null)
+  const [skillsShDetailError, setSkillsShDetailError] = useState<string | null>(null)
+
+  /** 按当前排序键给结果排序；`installs` 档只保留安装量最高的前 20 条。 */
+  const sortedSkillsSh = useMemo(
+    (): MarketSkillsShEntry[] => sortSkillsSh(skillsShState.skills, skillsShSort),
+    [skillsShState.skills, skillsShSort],
+  )
+
+  /** 取一条结果的说明（已缓存则直接返回）。 */
+  const loadSkillsShDetail = useCallback(async (source: string, skillId: string): Promise<void> => {
+    const key = source + '/' + skillId
+    if (skillsShDetail.has(key)) return
+    setSkillsShDetailLoading(key)
+    setSkillsShDetailError(null)
+    try {
+      const result = await api.skillsShDetail(source, skillId)
+      setSkillsShDetail((prev) => new Map(prev).set(key, result.description))
+    } catch (error) {
+      setSkillsShDetailError(errorMessage(error))
+    } finally {
+      setSkillsShDetailLoading(null)
+    }
+  }, [api, skillsShDetail])
 
   /** 在 skills.sh 索引里搜技能。上游要求至少 2 个字符，短查询直接不发。 */
   const runSkillsShSearch = useCallback(async (): Promise<void> => {
@@ -403,8 +444,9 @@ export function useMarketFlow(
     syncBusy, newSourceName, repoDiscoverState, scanningRepo, repoSelected, repoImporting,
     repoResult, importJobId, marketStats, versionDialog, versionBusy, updateAllDialog,
     skillsShQuery, skillsShState, skillsShInstalling,
+    skillsShSort, sortedSkillsSh, skillsShDetail, skillsShDetailLoading, skillsShDetailError,
     setBranchChoice, setMarketSyncDialog, setNewSourceName, setRepoSelected,
-    setUpdateAllDialog, setVersionDialog, setSkillsShQuery,
+    setUpdateAllDialog, setVersionDialog, setSkillsShQuery, setSkillsShSort, loadSkillsShDetail,
     loadMarket, addSource, addMarketSource, removeMarketSource, requestRemoveMarketSource, cancelRemoveMarketSource, confirmRemoveMarketSource, removeMarketDialog, scanRepo, confirmBranchChoice,
     openVersionDialog, confirmVersionDialog, toggleRepoSelected, importRepo, cancelImport,
     clearScan, checkMarket, loadMarketStats, syncMarketSource, confirmMarketSync, updateAll,

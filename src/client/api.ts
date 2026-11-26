@@ -6,6 +6,7 @@ import {
   SKILL_HUB_API,
   SKILL_HUB_WRITE_HEADER,
   SKILL_HUB_WRITE_VALUE,
+  SKILL_USAGE_API,
   type CatalogResponse,
   type ConfigResponse,
   type CreateRequest,
@@ -25,9 +26,16 @@ import {
   type MarketSourcesResponse,
   type MarketSourceVersionsResponse,
   type MarketSkillsShResponse,
+  type MarketSkillsShDetailResponse,
   type MarketSkillsShInstallRequest,
   type MarketSkillsShInstallResponse,
   type MarketStatsResponse,
+  type PermanentStatsResponse,
+  type EvolutionResponse,
+  type EvolutionRunResponse,
+  type EvolutionDecideResponse,
+  type EvolutionClearResponse,
+  type EvolutionReparseResponse,
   type MarketSyncRequest,
   type MarketSyncResponse,
   type RepoDiscoverResponse,
@@ -52,7 +60,6 @@ import {
   type SourcesResponse,
   type SourceSyncRequest,
   type SourceSyncResponse,
-  type StatsResponse,
   type TagDeleteRequest,
   type TagDeleteResponse,
   type TagMembersRequest,
@@ -80,13 +87,25 @@ export class SkillHubApiError extends Error {
   }
 }
 
-/** Parse a JSON response or throw a SkillHubApiError. */
-async function readJson<T>(response: Response): Promise<T> {
+/**
+ * Parse a JSON response or throw a SkillHubApiError.
+ *
+ * 非 JSON 的响应体（最常见是 SPA fallback 对缺失文件回的 404 空 body）过去只会报
+ * 「invalid JSON response」，既看不出请求了哪个地址，也分不清是路由缺失还是服务
+ * 没挂上。现在把地址与状态一起带上：排查时一眼能看出是哪个请求、什么状态。
+ * @param response - 待解析的响应。
+ * @param url - 发出请求的完整地址（可选，用于报错定位）。
+ * @returns 解析后的 JSON。
+ */
+async function readJson<T>(response: Response, url?: string): Promise<T> {
+  const where = url === undefined ? '' : ' (' + url + ')'
   let body: unknown
   try {
     body = await response.json()
   } catch {
-    throw new SkillHubApiError('HTTP ' + response.status + ': invalid JSON response')
+    // 空 body 的 404 基本都是「这个地址没有任何处理者」：说明白比只报 invalid JSON 有用得多。
+    const hint = response.status === 404 ? '— 没有任何处理者响应这个地址（路由未注册，或尚未重启使新路由生效）' : ''
+    throw new SkillHubApiError('HTTP ' + response.status + ': invalid JSON response' + where + hint)
   }
   if (!response.ok) {
     const message = typeof body === 'object' && body !== null && typeof (body as { error?: unknown }).error === 'string'
@@ -152,6 +171,15 @@ const NETWORK_TIMEOUT_MS = 60_000
  * 比服务端早一点放弃，宁可报超时也不要让面板无限挂着。
  */
 const UPDATE_APPLY_TIMEOUT_MS = 240_000
+/**
+ * 复盘一次的预算。
+ *
+ * 这个请求不是读盘，而是**同步等一次模型回答**：服务端自己的
+ * 超时是 120s，用 10s 的默认值会在模型还在生成时就先报
+ * 「请求超时」，而且错误文案还指向 GitHub——完全误导。
+ * 留 150s 比服务端宽一点：让服务端自己的 120s 超时先生效，
+ * 那样错误信息才是真正的原因（模型超时 / 路由缺失……）。
+ */
 
 async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit, ms = DEFAULT_TIMEOUT_MS): Promise<Response> {
   const controller = new AbortController()
@@ -194,7 +222,7 @@ export class SkillHubApi {
   /** One GET round trip (query already encoded by the caller). */
   private async get<T>(path: string, query = '', ms?: number): Promise<T> {
     const response = await fetchWithTimeout(path + query, undefined, ms)
-    return readJson<T>(response)
+    return readJson<T>(response, path + query)
   }
 
   /** One POST round trip (body omitted for routes that take none). */
@@ -204,7 +232,7 @@ export class SkillHubApi {
       headers: writeHeaders(body !== undefined ? { 'content-type': 'application/json' } : {}),
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     }, ms)
-    return readJson<T>(response)
+    return readJson<T>(response, path)
   }
 
   /** Catalog lookup options (cwd selects a workspace's project skills). */
@@ -236,10 +264,69 @@ export class SkillHubApi {
     return this.post<CreateResponse>(SKILL_HUB_API.create, payload)
   }
 
-  stats(): Promise<StatsResponse> {
-    return this.get<StatsResponse>(SKILL_HUB_API.stats)
+  /** Permanent ledger-backed day/week/total counters (best-effort). */
+  getPermanentStats(): Promise<PermanentStatsResponse> {
+    return this.get<PermanentStatsResponse>(SKILL_USAGE_API)
   }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  /** 技能进化元代理：读当前提案。 */
+  fetchEvolution(): Promise<EvolutionResponse> {
+    return this.get<EvolutionResponse>(SKILL_HUB_API.evolution)
+  }
+
+  /**
+   * 启动一次进化分析（**立即返回**，不等分析跑完）。
+   *
+   * 分析在服务端后台跑，进度靠 {@link fetchEvolution} 轮询读取 —— 这样切页面、
+   * 组件卸载、甚至刷新浏览器都不会打断它。超时给得很短（15 秒）是因为接口本身
+   * 只做「启动」这一件事，长任务不该占用 HTTP 请求。
+   */
+  runEvolution(sessionId?: string): Promise<EvolutionRunResponse> {
+    return this.post<EvolutionRunResponse>(
+      SKILL_HUB_API.evolutionRun,
+      sessionId === undefined ? {} : { sessionId },
+      15_000,
+    )
+  }
+
+  /** 人工处理一条提案：accepted 会落地成技能文件，rejected 需给原因。 */
+  decideEvolution(id: string, status: 'accepted' | 'rejected' | 'deferred', reason?: string, root?: 'user-dsh' | 'user-agents'): Promise<EvolutionDecideResponse> {
+    return this.post<EvolutionDecideResponse>(
+      SKILL_HUB_API.evolutionDecide,
+      { id, status, ...reason === undefined ? {} : { reason }, ...root === undefined ? {} : { root } },
+      120_000,
+    )
+  }
+
+  /**
+   * 离线重新解析：用已存的模型输出重跑解析，不调用模型。
+   */
+  reparseEvolution(): Promise<EvolutionReparseResponse> {
+    return this.post<EvolutionReparseResponse>(SKILL_HUB_API.evolutionReparse, {}, 60_000)
+  }
+
+  /** 清空提案。 */
+  clearEvolution(): Promise<EvolutionClearResponse> {
+    return this.post<EvolutionClearResponse>(SKILL_HUB_API.evolutionClear, {})
+  }
   /** Toggle a whole group in one write; resolves with the fresh catalog + failures. */
   toggleBatch(names: string[], enabled: boolean): Promise<ToggleBatchResponse> {
     const payload: ToggleBatchRequest = { names, enabled }
@@ -318,6 +405,17 @@ export class SkillHubApi {
    */
   searchSkillsSh(query: string): Promise<MarketSkillsShResponse> {
     return this.get<MarketSkillsShResponse>(SKILL_HUB_API.marketSkillsSh, '?q=' + encodeURIComponent(query), NETWORK_TIMEOUT_MS)
+  }
+
+  /**
+   * 取 skills.sh 某个技能的说明。
+   *
+   * 服务端要下载整个技能包才能读到 SKILL.md，所以只在用户点「说明」时按需
+   * 调用，不要预取 —— 一次搜索几十条结果，预取等于几十个下载请求。
+   */
+  skillsShDetail(source: string, skillId: string): Promise<MarketSkillsShDetailResponse> {
+    const query = '?source=' + encodeURIComponent(source) + '&skillId=' + encodeURIComponent(skillId)
+    return this.get<MarketSkillsShDetailResponse>(SKILL_HUB_API.marketSkillsShDetail, query, NETWORK_TIMEOUT_MS)
   }
 
   /**

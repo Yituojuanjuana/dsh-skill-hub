@@ -4,6 +4,7 @@ import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 // SkillHubStore, migrate and fs writes into the filesystem layer.
 import { dshHome } from '../store/paths.ts'
 import type { WritableRoot } from '../protocol.ts'
+import { foreignRoots } from './foreign.ts'
 
 /** Root ids this module may write to. */
 export const WRITABLE_ROOTS: readonly WritableRoot[] = ['user-dsh', 'user-agents']
@@ -50,6 +51,29 @@ export function rootOfPath(path: string, home = dshHome()): WritableRoot | undef
       const rel = relative(base, normalized)
       if (rel !== '' && !rel.startsWith('..' + sep) && !rel.startsWith('..' + '/') && !rel.startsWith('..' + '\\') && rel !== '..' && !isAbsolute(rel)) return root
     }
+  }
+  return undefined
+}
+
+/**
+ * 外部 Agent 技能根（`agent-*` 来源）的路径解析。
+ *
+ * 这些目录**属于别的 agent**，所以它们不是 `WritableRoot`（不参与 hub 的
+ * 「可写根」语义），但用户明确要求能停用与删除它们，因此这里单独提供一条
+ * 只针对「已知外部根」的路径判定：只认 `foreignRoots()` 列出的那几个目录，
+ * 不认任意路径 —— 否则删除动作就能被诱导到任何地方。
+ * @param path - 技能发现文件或目录的绝对路径。
+ * @param userHome - 用户主目录（外部根相对它解析）。
+ * @returns 命中的外部根 id（如 `trae-cn`），或 undefined。
+ */
+export function foreignRootOfPath(path: string, userHome = homedir()): string | undefined {
+  const normalized = resolve(path)
+  for (const root of foreignRoots(userHome)) {
+    const base = resolve(root.dir)
+    const rel = relative(base, normalized)
+    if (rel === '') return root.agent
+    if (rel === '..' || rel.startsWith('..' + sep) || rel.startsWith('../') || rel.startsWith('..\\') || isAbsolute(rel)) continue
+    return root.agent
   }
   return undefined
 }

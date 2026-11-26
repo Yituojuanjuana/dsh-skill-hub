@@ -5,14 +5,16 @@
  * Registers the dsh-skill-hub locale dictionaries and mounts:
  *  - a top-level Settings section (Settings → 技能中枢) hosting the skill hub
  *    panel: catalog, search, enable/disable, diagnostics, new-skill form;
- *  - the chat "/" menu skill dots, colored from the same config the panel reads.
- *
+ *  - the chat "/" menu skill dots, colored from the same config the panel reads;
  *  - a configuration card in the `plugins.bundle.config` slot, keyed by the
  *    BUNDLE PACKAGE NAME, rendered on the plugin's own page in the Plugins
  *    manager (sidebar → 插件 → dsh-skill-hub). dsh 0.1.7 has no auto-generated
  *    config page: the manager only renders that section for bundles that
  *    register this slot, and the card writes through the shared config form
  *    (`ctx.configForms.get(skill-hub)`), the same form the host routes read.
+ *
+ * The panel's "Settings" button (before "New Skill") navigates to that plugin
+ * settings page via the optional `pluginNavigation` service.
  *
  * Failure policy: mounting problems are logged, never thrown — the web
  * shell fails the whole boot when a plugin apply throws, and an external
@@ -116,11 +118,8 @@ export function apply(ctx: ClientContext): void {
   // inject 含 inputTriggers 保证 fiber 就绪后再 wrap，slash-dots 内的 undefined 防御仅用于单元测试 mock
   ctx.effect(() => setupSkillSlashDots(ctx, api, scope), 'dsh-skill-hub: slash dots')
 
-  // The plugin's own configuration page. It must be registered here: the
-  // Plugins manager only renders the config section for bundles that appear in
-  // `plugins.bundle.config` (`ledger.bundles.has(openPkg.name)`), and its key is
-  // the BUNDLE PACKAGE NAME — not the settings entry id (`skill-hub`). There is
-  // no auto-generated fallback page in dsh 0.1.7.
+  // The plugin's own configuration page in the Plugins manager. Settings stay
+  // here; the hub panel's "Settings" button navigates here via pluginNavigation.
   ctx.effect(
     () => ctx.slots.inject('plugins.bundle.config', () => ctx.slots.register({
       name: 'plugins.bundle.config',
@@ -131,6 +130,15 @@ export function apply(ctx: ClientContext): void {
     'dsh-skill-hub: plugin config',
   )
 
+  // "Settings" button in the hub panel navigates to the plugin's config page.
+  // pluginNavigation is contributed by the Plugins manager. Resolve it lazily
+  // at click time (the provider may register after this plugin) and keep the
+  // undefined check so a host without that service still mounts the hub.
+  const openSettings = (): void => {
+    const navigation = ctx.get('pluginNavigation') as { openBundle: (name: string) => void } | undefined
+    navigation?.openBundle('dsh-skill-hub')
+  }
+
   // Top-level Settings section: the skill management page.
   ctx.effect(
     () => ctx.slots.inject('settings.section', () => ctx.slots.register({
@@ -140,34 +148,61 @@ export function apply(ctx: ClientContext): void {
       label: () => t('entry.label'),
       locale: NS,
       inject: () => ({}),
-    }, () => <SkillHubPanel api={api} />)),
+    }, () => <SkillHubPanel api={api} onOpenSettings={openSettings} />)),
     'dsh-skill-hub: settings section',
   )
 
-  // Wide sidebar main panel: same hub surface, 960px shell. The settings page
-  // remains the canonical place for configuration; this panel is the sidebar
-  // companion for browsing skills without leaving the conversation.
+  // Wide sidebar main panel: same hub surface, 960px shell.
   ctx.effect(
     () => ctx.slots.inject('main', () => ctx.slots.register({
       name: 'main',
       key: 'skill-hub',
       locale: NS,
       inject: () => ({}),
-    }, () => <SkillHubPanel api={api} mode='sidebar' />)),
+    }, () => <SkillHubPanel api={api} mode='sidebar' onOpenSettings={openSettings} />)),
     'dsh-skill-hub: sidebar main panel',
   )
 
+
   // Sidebar entry icon, directly under 插件 in the left rail.
-  ctx.effect(
-    () => ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
-      name: 'sidebar.panellist',
-      id: 'skill-hub',
-      order: 30,
-      label: () => t('entry.label'),
-      locale: NS,
-    }, IconSkillOutline16)),
-    'dsh-skill-hub: sidebar entry',
-  )
+  //
+  // 注册机制：`slots.inject()` 返回一个 dispose 函数，可以**在运行时真正撤掉**
+  // 已注册的卡片，不是「加载期固定、只能视觉隐藏」。因此这里订阅配置 scope：
+  // 开 → 注入（注册）卡片；关 → 调 dispose 把卡片从 sidebar.panellist 槽里摘除。
+  // 这样 `showSidebarCard=false` 时侧边栏里根本没有这个入口，不占位、不可点，
+  // 保存后立刻生效，无需重启。
+  ctx.effect(() => {
+    let disposeEntry: (() => void) | undefined
+
+    const registerEntry = (): void => {
+      if (disposeEntry !== undefined) return
+      disposeEntry = ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+        name: 'sidebar.panellist',
+        id: 'skill-hub',
+        order: 30,
+        label: () => t('entry.label'),
+        locale: NS,
+      }, IconSkillOutline16))
+    }
+    const unregisterEntry = (): void => {
+      disposeEntry?.()
+      disposeEntry = undefined
+    }
+
+    // 配置变化时重新判定；scope.subscribe 在设置保存后由宿主触发。
+    const unsubscribe = scope.subscribe(() => {
+      const snapshot = scope.getSnapshot()
+      const visible = snapshot.value?.showSidebarCard !== false // 默认 true
+      if (visible) registerEntry()
+      else unregisterEntry()
+    })
+
+    // 首次按当前值决定。
+    const initial = scope.getSnapshot().value?.showSidebarCard !== false
+    if (initial) registerEntry()
+
+    return () => { unsubscribe(); unregisterEntry() }
+  }, 'dsh-skill-hub: sidebar entry')
 
   // Settings nav icon. dsh 0.2.2-rc.2 起宿主提供 `settings.section.icon`
   // （list / root，注册 id 必须等于目标 section 的 id），图标随 section 声明

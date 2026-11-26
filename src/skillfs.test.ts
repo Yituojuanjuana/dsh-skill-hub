@@ -17,6 +17,18 @@ describe('parseFrontmatter', () => {
     })
   })
 
+  it('tolerates a UTF-8 BOM before the opening fence', () => {
+    // Windows 编辑器/部分工具会写 BOM。不剥掉它，`^---` 匹配失败，整份技能
+    // 会被判成「没有 frontmatter」而从列表消失（用户看到「有目录却检测不到」）。
+    const text = '\uFEFF---\nname: bom-skill\ndescription: Has a BOM\n---\n\n# Body'
+    const parsed = parseFrontmatter(text)
+    expect('value' in parsed).toBe(true)
+    if ('value' in parsed) {
+      expect(parsed.value.name).toBe('bom-skill')
+      expect(parsed.value.content).toBe('# Body')
+    }
+  })
+
   it('parses whenToUse and invocation overrides', () => {
     const text = [
       '---',

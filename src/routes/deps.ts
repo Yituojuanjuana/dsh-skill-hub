@@ -8,6 +8,7 @@ import { homedir } from 'node:os'
 import type { SkillDefinition, SkillSummary } from '@deepseek-ai/dsh-skill'
 import { resolveHubConfig, type HubConfig, type WritableRoot } from '../protocol.ts'
 import { rootOfPath } from '../skillfs.ts'
+import { foreignRootOfPath } from '../skillfs/paths.ts'
 import { dshHome } from '../store/paths.ts'
 import { type SkillHubStore } from '../store.ts'
 import { writeError, type RouteFence } from './http.ts'
@@ -46,13 +47,19 @@ export interface SkillHubRouteDeps {
   /** Invalidate the registry catalog cache after hub-driven mutations. */
   invalidate?: () => void
   /** Optional invocation-count reader; absent means the stats route reports unavailable. */
-  stats?: import('../stats.ts').SkillStatsReader
   /** Resolves the current plugin config; business routes honour the master switch. */
   config?: () => HubConfig
   /** Resolves the raw saved config layer (fields the user explicitly overrode). */
   saved?: () => Partial<HubConfig>
   /** Persist a config patch and re-sync plugin surfaces; resolves with the fresh config. */
   updateConfig?: (patch: Partial<HubConfig>) => Promise<HubConfig>
+  /**
+   * 当前对话所在的工作区路径。
+   *
+   * 用来给「工作区」页预选默认项：用户打开面板时最想看到的是自己正在用的
+   * 那个工作区，而不是一串待选路径。缺省时前端退回「全部工作区」。
+   */
+  currentWorkspace?: () => Promise<string | undefined>
 }
 
 /** The resolved hub config a route sees (the shared resolver fills defaults). */
@@ -124,4 +131,37 @@ export async function resolveWritableSkill(deps: SkillHubRouteDeps, name: string
   const root = rootOfPath(skill.path, homeOf(deps))
   if (root === undefined) return { ok: false, status: 409, error: 'skill path is outside the hub writable roots' }
   return { ok: true, skill, path: skill.path, root }
+}
+
+/** 一个被判定为「外部 Agent 技能」的目标（可停用、可删除，但不是 dsh 可写根）。 */
+export interface ForeignSkillTarget {
+  skill: SkillDefinition
+  /** 发现文件绝对路径（SKILL.md 或扁平 <name>.md）。 */
+  path: string
+  /** 命中的外部根 id，如 `trae-cn`。 */
+  agent: string
+}
+
+/**
+ * 把名字解析成「已知外部 Agent 根里的技能」。
+ *
+ * 与 {@link resolveWritableSkill} 的区别：那个只认 dsh 自己的可写根；这个只认
+ * `foreignRoots()` 列出的目录。两条路径都做严格包含判定，因此删除动作不可能
+ * 被诱导到列表之外的任何位置。
+ * @param deps - 路由依赖。
+ * @param name - 技能名。
+ * @param cwd - 可选工作区。
+ * @returns 命中的外部目标，或带 HTTP 状态的拒绝。
+ */
+export async function resolveForeignSkill(deps: SkillHubRouteDeps, name: string, cwd?: string): Promise<{ ok: true } & ForeignSkillTarget | { ok: false; status: number; error: string }> {
+  const lookup = cwd !== undefined && cwd !== '' ? { cwd } : undefined
+  const skill = await deps.skills.get(name, lookup)
+  if (skill === undefined) return { ok: false, status: 404, error: 'skill not found: ' + name }
+  if (!skill.source.startsWith('agent-')) {
+    return { ok: false, status: 409, error: 'source "' + skill.source + '" is not an external agent root' }
+  }
+  if (skill.path === undefined) return { ok: false, status: 409, error: 'provider-managed skill has no file' }
+  const agent = foreignRootOfPath(skill.path, userHomeOf(deps))
+  if (agent === undefined) return { ok: false, status: 409, error: 'skill path is outside the known external agent roots' }
+  return { ok: true, skill, path: skill.path, agent }
 }

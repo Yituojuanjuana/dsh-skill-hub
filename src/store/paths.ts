@@ -1,6 +1,6 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import type { DisabledSkill, HubConfig, MarketSourceRecord, MarketStatsSnapshot, SkillStatsCheckpoint, SkillTag, SourceRecord, TrashEntry } from '../protocol.ts'
+import type { DisabledSkill, HubConfig, MarketSourceRecord, MarketStatsSnapshot, SkillTag, SourceRecord, TrashEntry } from '../protocol.ts'
 
 /** 默认角色名（系统预置的兜底角色，新技能自动归入）。 */
 export const DEFAULT_SCENE_NAME = '通用'
@@ -20,7 +20,6 @@ export interface StoreFile {
   /** Trashed skills (removed after upstream deletion, restorable). */
   trash?: TrashEntry[]
   /** Usage-statistics incremental-scan checkpoint (frozen watermark + totals). */
-  skillStats?: SkillStatsCheckpoint
   /** Market-stats snapshot (stars/downloads per repo, hourly TTL). */
   marketStats?: MarketStatsSnapshot
   /** Drag-reorder: collection name order for 来源分组 */

@@ -16,7 +16,11 @@ export interface FrontmatterValue {
 
 /** Parse a SKILL.md the way the official filesystem provider does. */
 export function parseFrontmatter(text: string): { value: FrontmatterValue } | { error: string } {
-  const match = /^---\s*\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n([\s\S]*))?$/.exec(text)
+  // 先剥掉 UTF-8 BOM：Windows 上的编辑器与部分工具会写它，而 `^---` 在 BOM 之后
+  // 永远匹配不上，整份技能会被判成「没有 frontmatter」而从列表里消失 —— 用户
+  // 看到的就是「明明有目录却检测不到」。BOM 不是内容，剥掉不影响任何语义。
+  const cleaned = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text
+  const match = /^---\s*\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n([\s\S]*))?$/.exec(cleaned)
   if (match === null) return { error: 'missing YAML frontmatter (--- block)' }
   let data: unknown
   let rawFrontmatter = match[1]

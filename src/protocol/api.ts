@@ -34,7 +34,6 @@ export const SKILL_HUB_API = {
   toggle: '/api/skill-hub/toggle',
   toggleBatch: '/api/skill-hub/toggle-batch',
   create: '/api/skill-hub/create',
-  stats: '/api/skill-hub/stats',
   config: '/api/skill-hub/config',
   market: '/api/skill-hub/market',
   marketSource: '/api/skill-hub/market/source',
@@ -66,7 +65,44 @@ export const SKILL_HUB_API = {
   marketStats: '/api/skill-hub/market/stats',
   marketSkillsSh: '/api/skill-hub/market/skills-sh',
   marketSkillsShInstall: '/api/skill-hub/market/skills-sh/install',
+  marketSkillsShDetail: '/api/skill-hub/market/skills-sh/detail',
   foreign: '/api/skill-hub/foreign',
   foreignImport: '/api/skill-hub/foreign/import',
   importZip: '/api/skill-hub/import/zip',
+  permanentStats: '/api/skill-hub/permanent-stats',
+  evolution: '/api/skill-hub/evolution',
+  evolutionRun: '/api/skill-hub/evolution/run',
+  evolutionDecide: '/api/skill-hub/evolution/decide',
+  evolutionClear: '/api/skill-hub/evolution/clear',
+  evolutionReparse: '/api/skill-hub/evolution/reparse',
 } as const
+
+/**
+ * Standalone alias for the permanent-stats path (also available as
+ * `SKILL_HUB_API.permanentStats`). Kept as a named export because that is the
+ * name the client half imports for its fetch call.
+ */
+export const SKILL_USAGE_API = '/api/skill-hub/permanent-stats'
+
+/** Permanent usage counter: one row per skill, bucketed by local day/week. */
+export interface PermanentStat {
+  name: string
+  today: number
+  week: number
+  total: number
+  lastUsed: number
+  /**
+   * 历史成功率（0~1）。
+   *
+   * 只在账本里存在带 `ok` 标记的条目时才有值 —— 缺省表示「未知」，
+   * 界面显示「-」而不是 0%。进化模块与通用页都用它。
+   */
+  successRate?: number
+}
+
+export interface PermanentStatsResponse {
+  ok: true
+  stats: PermanentStat[]
+  skipped: number
+  note: string
+}

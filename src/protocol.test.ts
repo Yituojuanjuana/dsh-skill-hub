@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ANNOUNCEMENT_CHAR_BUDGET, computeAnnouncementBudget, type CatalogSkill } from './protocol.ts'
+import { CATALOG_DESCRIPTION_MAX_LENGTH, computeAnnouncementBudget, type CatalogSkill } from './protocol.ts'
 
 function skill(overrides: Partial<CatalogSkill> = {}): CatalogSkill {
   return {
@@ -19,18 +19,18 @@ describe('computeAnnouncementBudget', () => {
       skills: 0,
       chars: 0,
       approxTokens: 0,
-      budget: ANNOUNCEMENT_CHAR_BUDGET,
-      overBudget: false,
+      descriptionMaxLength: CATALOG_DESCRIPTION_MAX_LENGTH,
+      truncated: 0,
     })
   })
 
-  it('sums name, description and whenToUse', () => {
+  it('sums name and description but ignores whenToUse, which DSH never renders', () => {
     const budget = computeAnnouncementBudget([
       skill({ name: 'abc', description: 'de', whenToUse: 'fg' }),
     ])
     expect(budget.skills).toBe(1)
-    expect(budget.chars).toBe(7)
-    expect(budget.approxTokens).toBe(3)
+    expect(budget.chars).toBe(5)
+    expect(budget.approxTokens).toBe(2)
   })
 
   it('skips skills the model cannot invoke', () => {
@@ -42,18 +42,29 @@ describe('computeAnnouncementBudget', () => {
     expect(budget.chars).toBe('model-visible'.length)
   })
 
-  it('flags a catalog over the budget', () => {
+  it('counts descriptions over the per-entry cap and charges only the rendered length', () => {
     const budget = computeAnnouncementBudget([
-      skill({ name: 'a', description: 'x'.repeat(ANNOUNCEMENT_CHAR_BUDGET) }),
+      skill({ name: 'a', description: 'x'.repeat(CATALOG_DESCRIPTION_MAX_LENGTH + 100) }),
     ])
-    expect(budget.overBudget).toBe(true)
+    expect(budget.truncated).toBe(1)
+    // name (1) + capped description (cap - 3 + '...').
+    expect(budget.chars).toBe(1 + CATALOG_DESCRIPTION_MAX_LENGTH)
   })
 
-  it('treats exactly the budget as within it', () => {
+  it('treats exactly the per-entry cap as untruncated', () => {
     const budget = computeAnnouncementBudget([
-      skill({ name: 'a', description: 'x'.repeat(ANNOUNCEMENT_CHAR_BUDGET - 1) }),
+      skill({ name: 'a', description: 'x'.repeat(CATALOG_DESCRIPTION_MAX_LENGTH - 1) }),
     ])
-    expect(budget.chars).toBe(ANNOUNCEMENT_CHAR_BUDGET)
-    expect(budget.overBudget).toBe(false)
+    expect(budget.truncated).toBe(0)
+    expect(budget.chars).toBe(CATALOG_DESCRIPTION_MAX_LENGTH)
+  })
+
+  it('never caps the catalog as a whole: a huge total is not an error', () => {
+    const many = Array.from({ length: 100 }, (_, i) =>
+      skill({ name: `s${i}`, description: 'x'.repeat(400) }))
+    const budget = computeAnnouncementBudget(many)
+    expect(budget.skills).toBe(100)
+    expect(budget.truncated).toBe(0)
+    expect(budget.chars).toBeGreaterThan(8000)
   })
 })

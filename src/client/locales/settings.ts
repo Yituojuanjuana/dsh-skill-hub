@@ -1,7 +1,7 @@
 /** 设置卡。从 locales.ts 按前缀拆出，键集合不变。 */
 export const zhSettings = {
   'settings.title': '技能中枢',
-  'settings.description': '管理 dsh 本地技能目录：浏览、分组、来源同步与新建。',
+  'settings.description': '技能中枢：按目录、角色或工作区分组浏览本地技能，也可平铺查看；记录调用量与最近调用，支持市场安装与来源同步。技能进化会从会话中挖掘提案，人工审核后可落地到对应项目工作区；回收站与诊断帮助你管理和修复技能。',
   'settings.enabled': '启用插件',
   'settings.enabledHint': '关闭后技能中枢的路由、入口与公告全部下线。',
   'settings.announceToAgent': '向 Agent 公告',
@@ -16,10 +16,8 @@ export const zhSettings = {
   'settings.showUseTimeHint': '在技能名行右侧显示相对时间（如「3 天前」）。',
   'settings.showGroupSummary': '显示分组汇总',
   'settings.showGroupSummaryHint': '在分组标题后汇总调用次数与最近调用时间。',
-  'settings.statsWindowDays': '统计窗口（天）',
-  'settings.statsWindowDaysHint': '只统计最近 N 天的使用次数，默认 14 天；0 = 全部历史。改动立即生效。',
-  'settings.statsScanMinutes': '自动统计间隔（分钟）',
-  'settings.statsScanMinutesHint': '后台扫描会话日志的间隔，最小 1 分钟；扫描耗时会自动拉长间隔。',
+  'settings.showSidebarCard': '侧边栏显示技能中枢',
+  'settings.showSidebarCardHint': '关闭后左侧栏不再出现「技能中枢」入口；设置页里仍可打开面板。保存后立即生效，无需重启。',
   'settings.githubToken': 'GitHub Token',
   'settings.githubTokenHint': '市场/来源走 GitHub API，匿名每小时 60 次，填 token 后 5000 次。细粒度 token 无需任何权限。明文存本地设置，仅经 dsh 的 /api 信任栅栏可读（回环 / 绑定地址 / --trusted-host）；留空即匿名（或跟随 GITHUB_TOKEN 环境变量）。',
   'settings.githubTokenPlaceholder': 'ghp_… / github_pat_…（留空为匿名）',
@@ -35,11 +33,13 @@ export const zhSettings = {
   'settings.notExposed': '本部署没有挂载该设置命名空间。',
   'settings.collapse': '收起设置',
   'settings.expand': '展开设置',
+  'settings.open': '插件设置',
+  'settings.openHint': '打开插件设置页（通用 / 工作区 / 来源 / 市场等开关与外观）',
 } as const
 
 export const enSettings: Record<keyof typeof zhSettings, string> = {
   'settings.title': 'Skill Hub',
-  'settings.description': 'Manage the local dsh skill catalog: browse, group, sync, and scaffold skills.',
+  'settings.description': 'Skill Hub browses local skills grouped by directory, role, or workspace — or as a flat list. It tracks call counts and recent usage, and supports the marketplace and source sync. Skill evolution mines proposals from session history; after review they can be applied into the right project workspace. A recycle bin and diagnostics help you manage and repair skills.',
   'settings.enabled': 'Enable plugin',
   'settings.enabledHint': 'Disables the hub routes, entries, and announcement.',
   'settings.announceToAgent': 'Announce to agent',
@@ -54,10 +54,8 @@ export const enSettings: Record<keyof typeof zhSettings, string> = {
   'settings.showUseTimeHint': 'Show relative last-used time on the name row (e.g. "3 d ago").',
   'settings.showGroupSummary': 'Show group summaries',
   'settings.showGroupSummaryHint': 'Summarize invocation count and last-used time after group titles.',
-  'settings.statsWindowDays': 'Stats window (days)',
-  'settings.statsWindowDaysHint': 'Count only usage within the last N days (default 14); 0 = full history. Changes apply immediately.',
-  'settings.statsScanMinutes': 'Auto stats interval (minutes)',
-  'settings.statsScanMinutesHint': 'How often the background session-log scan runs (min 1); heavy scans automatically stretch it.',
+  'settings.showSidebarCard': 'Show Skill Hub in sidebar',
+  'settings.showSidebarCardHint': 'Turn off to remove the Skill Hub entry from the left sidebar; the panel stays reachable from the Settings page. Takes effect immediately after saving — no restart needed.',
   'settings.githubToken': 'GitHub token',
   'settings.githubTokenHint': 'Market/sources use the GitHub API: 60 req/h anonymous, 5000/hr with a token. A fine-grained token needs no permissions. Stored plaintext in local settings, reachable only through dsh\'s /api trust fence (loopback / bind address / --trusted-host); empty means anonymous (or GITHUB_TOKEN env).',
   'settings.githubTokenPlaceholder': 'ghp_… / github_pat_… (empty = anonymous)',
@@ -73,4 +71,6 @@ export const enSettings: Record<keyof typeof zhSettings, string> = {
   'settings.notExposed': 'This deployment does not expose the settings namespace.',
   'settings.collapse': 'Hide settings',
   'settings.expand': 'Show settings',
+  'settings.open': 'Settings',
+  'settings.openHint': 'Open the plugin settings page (enable, appearance, sources, and more)',
 }

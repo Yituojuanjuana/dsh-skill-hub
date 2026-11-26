@@ -35,11 +35,13 @@ export {
   disabledGate,
   homeOf,
   isWritableSource,
+  resolveForeignSkill,
   resolveWritableSkill,
   savedOf,
   userHomeOf,
 } from './deps.ts'
 export type {
+  ForeignSkillTarget,
   SkillHubRouteDeps,
   SkillLookupLike,
   WritableSkill,

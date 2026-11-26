@@ -43,7 +43,7 @@ function catalog(skills: CatalogSkill[] = [skill('alpha')], overrides: Partial<C
     skills,
     disabled: [],
     diagnostics: [],
-    announcement: { skills: skills.length, chars: 10, approxTokens: 4, budget: 8000, overBudget: false },
+    announcement: { skills: skills.length, chars: 10, approxTokens: 4, descriptionMaxLength: 500, truncated: 0 },
     ...overrides,
   }
 }
@@ -83,7 +83,7 @@ function renderFlow(api: ReturnType<typeof mockApi>, flowNotices = notices()): {
   let count = 0
   function Probe(): null {
     count += 1
-    result.current = useCatalogFlow(api as unknown as SkillHubApi, uses, flowNotices, noop, noop)
+    result.current = useCatalogFlow(api as unknown as SkillHubApi, uses, flowNotices, noop)
     return null
   }
   act(() => { root.render(<Probe />) })

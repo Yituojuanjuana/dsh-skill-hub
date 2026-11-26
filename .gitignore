@@ -6,3 +6,4 @@ coverage/
 .dsh/
 docs/
 .workbuddy/
+.vitest.log

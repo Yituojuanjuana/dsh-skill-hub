@@ -12,6 +12,7 @@ import {
   type MarketSourcesResponse,
   type MarketSourceVersionsResponse,
   type MarketSkillsShResponse,
+  type MarketSkillsShDetailResponse,
   type MarketSkillsShInstallResponse,
   type MarketStatsResponse,
   type MarketSyncResponse,
@@ -19,6 +20,7 @@ import {
 import {
   diffRemoteSkills,
   downloadSkillsShSkill,
+  fetchSkillsShDescription,
   getLatestCommit,
   getLatestReleaseTag,
   getRepoStats,
@@ -326,6 +328,27 @@ export function marketRoutes(deps: SkillHubRouteDeps): RouteSpec[] {
           writeJson(res, 200, { ok: true, skills } satisfies MarketSkillsShResponse)
         } catch (error) {
           // 400 = 查询词问题，502 = 上游问题；两者都是用户可读的失败原因。
+          if (error instanceof SkillsShError) { writeError(res, error.status, error); return }
+          throw error
+        }
+      },
+    },
+    // skills.sh 技能说明：搜索索引不含说明，只有包里的 SKILL.md 有。
+    //
+    // 这条路由要下载整个技能包（可能上百 KB），比搜索贵得多，所以前端只在
+    // 用户点「说明」时按需调用。说明本身是装饰性信息，取不到就回空串，让前端
+    // 显示「暂无说明」而不是报错 —— 只有上游/网络失败才回错误状态码。
+    {
+      path: SKILL_HUB_API.marketSkillsShDetail,
+      methods: ['GET'],
+      handler: async ({ res, url }) => {
+        const source = queryParam(url, 'source') ?? ''
+        const skillId = queryParam(url, 'skillId') ?? ''
+        if (source === '' || skillId === '') { writeError(res, 400, 'source and skillId are required'); return }
+        try {
+          const description = await fetchSkillsShDescription(source, skillId)
+          writeJson(res, 200, { ok: true, description } satisfies MarketSkillsShDetailResponse)
+        } catch (error) {
           if (error instanceof SkillsShError) { writeError(res, error.status, error); return }
           throw error
         }

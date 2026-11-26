@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useRef, useState, type JSX } from 'react'
-import type { GroupsResponse, HubConfig, SkillDetail, SourceCheckResult, SourcesResponse } from '../../protocol.ts'
+import type { HubConfig, SkillDetail, SourceCheckResult, SourcesResponse } from '../../protocol.ts'
 import { copyTextToClipboard, isDisplayNameDistinct, tt } from '../helpers.ts'
 import { isProjectSource } from '../grouping.ts'
 import css from './panel.module.css'
@@ -19,7 +19,6 @@ export interface SkillDetailViewProps {
   hubConfig: HubConfig | null
   /** skillName → usage stat (count + last used). */
   uses: ReadonlyMap<string, { count: number; lastUsed?: number }>
-  groupsState: GroupsResponse | null
   sourcesState: SourcesResponse | null
   sourceCheck: Readonly<Record<string, SourceCheckResult>>
   checkingSource: string | null
@@ -40,7 +39,7 @@ export interface SkillDetailViewProps {
 }
 
 export function SkillDetailView(props: SkillDetailViewProps): JSX.Element {
-  const { detail, hubConfig, uses, groupsState, sourcesState, sourceCheck, checkingSource, syncingSource, disabled, onEnable, onBack, onCheck, onSync, onFollowDelete, modal } = props
+  const { detail, hubConfig, uses, sourcesState, sourceCheck, checkingSource, syncingSource, disabled, onEnable, onBack, onCheck, onSync, onFollowDelete, modal } = props
   // Project skills are never part of a tracked upstream source: a same-name
   // user skill must not leak its source card into the project detail page.
   const detailSource = detail.source !== undefined && isProjectSource(detail.source)
@@ -90,10 +89,6 @@ export function SkillDetailView(props: SkillDetailViewProps): JSX.Element {
           if (stat === undefined || stat.count === 0) return null
           const at = stat.lastUsed !== undefined ? ' · ' + new Date(stat.lastUsed).toLocaleString() : ''
           return <div className={css.detailMetaLine}>{tt('detail.uses')}: {stat.count}{at}</div>
-        })()}
-        {(() => {
-          const tags = (groupsState?.tags ?? []).filter((tag) => tag.skillNames.includes(detail.name)).map((tag) => tag.name)
-          return tags.length > 0 ? <div className={css.detailMetaLine}>{tt('detail.groups')}: {tags.join(', ')}</div> : null
         })()}
       </div>
       {detailSource !== undefined ? (

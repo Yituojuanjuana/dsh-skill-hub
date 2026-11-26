@@ -1,10 +1,11 @@
 {
   "name": "dsh-skill-hub",
-  "version": "0.3.38",
-  "description": "dsh web GUI skill hub: browse/search all local skills, per-skill/group toggles, install-time audit (hidden chars, pipe-to-shell), GitHub market with commit pins, local-edit detection, cross-agent import, restorable trash.",
+  "version": "0.3.39",
+  "description": "Browse, search and switch every local skill in one dsh Web GUI panel, with day / week / total call counts from an append-only ledger, install-time content audit, GitHub sources with commit pins, local-edit detection, cross-agent and ZIP import, and a restorable trash.",
   "type": "module",
   "engines": {
-    "node": "^22.19.0 || >=24.0.0"
+    "node": "^22.19.0 || >=24.0.0",
+    "dsh": ">=0.1.7-alpha.1 <0.3.0-0"
   },
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -22,7 +23,9 @@
       "default": "./lib/client.js"
     },
     "./src/*": "./src/*",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
   },
   "dsh": {
     "bundle": {
@@ -74,14 +77,15 @@
         "0.2.2-alpha.3",
         "0.2.2-rc.1",
         "0.2.2-rc.2",
-        "0.2.2-rc.3"
+        "0.2.2-rc.3",
+        "0.2.3-alpha.2"
       ]
     },
     "capability": {
       "id": "skill-hub-settings-panel",
       "kind": "ui",
-      "invocation": "Open Settings → Skills panel; GET /api/skill-hub/catalog",
-      "expected": "The full local skill catalog (all roots) renders as groups and toggles persist an enabled/disabled row without a restart."
+      "invocation": "Open Settings → Skills Hub (技能中枢), or the 960 px sidebar panel; GET /api/skill-hub/catalog",
+      "expected": "The full local skill catalog (all roots) renders as groups with day / week / total call counts, and toggles persist an enabled/disabled row without a restart."
     },
     "evidence": {
       "install": null,
@@ -204,6 +208,11 @@
     "lib/**/*.d.ts.map",
     "src",
     "cordis.patch.yml",
+    "locale/*.json",
+    "DETAIL.md",
+    "DETAIL.zh.md",
+    "preview.svg",
+    "icon.svg",
     "README.md",
     "README.zh.md",
     "LICENSE",
