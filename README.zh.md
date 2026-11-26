@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/cheshireez/dsh-skill-shelf/main/promo/real-skill-hub.png" alt="dsh-skill-shelf 面板" width="640">
+  <img src="preview-real.png" alt="技能书架面板：四个目录分组行，各带日 / 周 / 总调用次数与最近调用时间" width="720">
 </p>
 
 面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的技能书架 —— 在 Web GUI 里浏览与治理 `ctx.skills` 全量目录：按目录 / 角色 / 工作区分组或平铺查看，日 / 周 / 总调用量与成功率来自本地台账，导入前做内容审计，来源可同步并检测本地改动，移除进可恢复回收站，诊断可定位并修复加载问题，技能进化提案经人工审核后落地到项目工作区。

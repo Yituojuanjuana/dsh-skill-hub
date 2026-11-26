@@ -349,7 +349,19 @@ export function SkillHubPanel(props: SkillHubPanelProps): React.JSX.Element {
         </div>
       ) : null}
 
-      {loading ? (
+      {/*
+        首屏骨架：只要**还没有拿到过 catalog**就显示骨架，而不是只在 `loading`
+        为 true 时显示。
+
+        旧写法只认 `loading`，而 `loading` 是一个单向闩（`load()` 的 finally 里
+        置 false 后永不复位）。于是存在一个真实空档：首次 `load()` 失败 →
+        `loading=false`、`catalog` 仍是 null；随后任何一次成功流程（如别处
+        的 `runFlow`）把错误条幅 `clearFail()` 掉，屏幕上就只剩标题栏和筛选行，
+        正文整块空白。侧栏入口更容易撞上：它和设置页是两个独立挂载点，各自
+        冷启动，谁先失败谁先空白；切一次 tab 会因为重新渲染把后续轮询结果带进
+        来，看起来「自愈」，其实只是掩盖了空档。
+      */}
+      {loading || catalog === null ? (
         <div className={css.skeleton} role='status' aria-label={tt('panel.loading')}>
           <div className={css.skeletonRow} />
           <div className={css.skeletonRow} />

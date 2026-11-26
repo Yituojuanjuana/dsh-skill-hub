@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/cheshireez/dsh-skill-shelf/main/promo/real-skill-hub.png" alt="dsh-skill-shelf panel" width="640">
+  <img src="preview-real.png" alt="Skill Shelf panel: four directory group rows, each with day / week / total call counts and last-used time" width="720">
 </p>
 
 In-GUI skill shelf for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — browse and govern the full `ctx.skills` catalog from the Web GUI: grouped by directory / role / workspace or as a flat list, with day / week / total call counts and success rate from a local ledger. Imports are content-audited first, tracked sources can be synced with local-edit detection, removals land in a restorable trash, diagnostics locate and repair loading problems, and evolution proposals are applied into the owning project workspace after human review.

@@ -96,6 +96,8 @@ export function useCatalogFlow(
   }, [])
 
   const load = useCallback(async (): Promise<void> => {
+    /** 本次调用是否真的拿到了 catalog（决定能否收起骨架）。 */
+    let gotCatalog = false
     // 有开关写在途时别用旧快照盖掉乐观 UI（5 秒轮询正好会撞上）。
     if (pendingToggles.current.size > 0) return
     const seq = ++requestSeq.current
@@ -124,11 +126,25 @@ export function useCatalogFlow(
         collapsePersonal()
       }
       shared.clearFail()
+      /**
+       * 只有**真正拿到过数据**才收起骨架。
+       *
+       * `loadingRef` 是单向闩（只从 true 变一次 false，为的是让 5 秒轮询不再
+       * 重复 dispatch 相同值）。首次 `load()` 失败时于是留下空档：
+       * `loading=false` 但 `catalog` 仍是 null —— 面板既不画骨架、也没有正文，
+       * 屏幕上只剩标题栏和筛选行，就是用户看到的整块空白。侧栏入口更容易撞上，
+       * 因为它是与设置页并列的独立挂载点，各自冷启动。
+       *
+       * 修法：收起骨架的条件绑到「这次真的拿到了 catalog」上。用 `gotCatalog`
+       * 局部标记而不是读 `catalogRef`（ref 要等 effect 才同步，会多渲染一次）。
+       */
+      gotCatalog = true
     } catch (error) {
       if (!mounted.current || seq !== requestSeq.current) return
       shared.fail(errorMessage(error))
+      // 失败时不动 loading：没数据就继续显示骨架，不留空白。
     } finally {
-      if (mounted.current && seq === requestSeq.current && loadingRef.current) {
+      if (mounted.current && seq === requestSeq.current && loadingRef.current && gotCatalog) {
         loadingRef.current = false
         setLoading(false)
       }

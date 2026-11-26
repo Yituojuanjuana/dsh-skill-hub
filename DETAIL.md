@@ -1,1 +1,3 @@
-![The Skill Shelf UI: a filter row (category / status / invocation / sort, with the search button embedded inside the input), a grouped view above and a flat workspace list below, each row showing day / week / total call counts and last-used time](preview.svg)
+![The Skill Shelf UI: five tabs (General / Workspace / Market / Evolution / Trash), a filter row with four dropdowns (by directory, enabled, all invocations, by call count) and a search box whose blue button is embedded inside the input; below are grouped directory rows (Trae (国内版) / 官方 / DSH / 公共 Agent), each showing day / week / total call counts and last-used time, with an enable switch on the right](preview.svg)
+
+![Real screenshot: Skill Shelf v0.4.2 with 85 skills, filter row set to by-directory / enabled / all invocations / by call count, four directory group rows each showing day, week and total call counts plus last-used time, and all enable switches on](preview-real.png)

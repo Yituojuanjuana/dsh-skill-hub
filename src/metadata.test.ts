@@ -53,12 +53,17 @@ describe('plugin display metadata', () => {
     }
   })
 
-  it('points every detail document at the one feature image', () => {
+  it('points every detail document at the vector preview and the real screenshot', () => {
+    // DETAIL 里两张图各司其职：`preview.svg` 是矢量示意（多倍率下清晰，
+    // 也是市场封面用的那张），`preview-real.png` 是真实界面截图。
+    // 两个语言版本必须引用同一组，且文件都存在、非空。
     for (const { language, meta } of locales()) {
       const detail = readFileSync(new URL(meta.detail as string, root), 'utf8')
       const images = [...detail.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((match) => match[1])
-      expect(images, language).toEqual(['preview.svg'])
-      expect(statSync(new URL('preview.svg', root)).size, language).toBeGreaterThan(0)
+      expect(images, language).toEqual(['preview.svg', 'preview-real.png'])
+      for (const image of images) {
+        expect(statSync(new URL(image, root)).size, language + ':' + image).toBeGreaterThan(0)
+      }
     }
   })
 

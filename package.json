@@ -1,6 +1,6 @@
 {
   "name": "dsh-skill-shelf",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "description": "Browse, search and switch every local skill in one dsh Web GUI panel, with day / week / total call counts from an append-only ledger, install-time content audit, GitHub sources with commit pins, local-edit detection, cross-agent and ZIP import, and a restorable trash.",
   "type": "module",
   "engines": {
@@ -213,6 +213,8 @@
     "DETAIL.zh.md",
     "preview.svg",
     "preview.png",
+    "preview-real.png",
+    "preview-real@2x.png",
     "icon-512.png",
     "icon.svg",
     "README.md",
