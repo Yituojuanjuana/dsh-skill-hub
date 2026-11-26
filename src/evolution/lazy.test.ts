@@ -1,13 +1,16 @@
 /** 惰性代理：服务晚到时路由仍能用上真正的执行器。 */
 import { describe, expect, it } from 'vitest'
 import { lazyEvolution, unavailableEvolution, type EvolutionRouteDeps } from '../routes/evolution.ts'
+import { defaultTuning } from './tuning.ts'
 
 const stub = (): EvolutionRouteDeps => ({
-  read: async () => ({ markdown: 'm', ranAt: 5, proposals: [], runs: [], rejections: [] }),
+  read: async () => ({ markdown: 'm', ranAt: 5, proposals: [], runs: [], rejections: [], tuning: defaultTuning() }),
   run: async () => ({ markdown: 'ok', proposals: [], sessions: 2, messages: 9 }),
   status: () => ({ running: false, elapsedMs: 0 }),
   reparse: async () => ({ ok: false, proposals: 0, elapsedMs: 0, hasMarkdown: false }),
   decide: async () => ({ found: true }),
+  tuning: async () => ({ tuning: defaultTuning() }),
+  recalibrate: async () => ({ tuning: defaultTuning() }),
   clear: async () => undefined,
 })
 

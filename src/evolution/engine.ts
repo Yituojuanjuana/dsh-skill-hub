@@ -48,6 +48,13 @@ export interface EvolutionEngineDeps {
    * 进化卡片要展示「归属目录」，与通用页「按目录」视图同一套分类。
    */
   readSkillSource?: (name: string) => Promise<string | undefined>
+  /**
+   * 当前生效的自适应参数（缺省即默认值）。
+   *
+   * 引擎只读它来决定过滤门槛与扫描上限，绝不写回 —— 写回只发生在
+   * wiring.recalibrate()。
+   */
+  readTuning?: () => Promise<{ minValueScore?: number; maxScanProposals?: number } | undefined>
   /** 是否开启。 */
   enabled: () => boolean
   /** 单次最多读几个会话。 */
@@ -779,7 +786,8 @@ export class EvolutionEngine {
     // 走**单一解析管线**：完整分析与离线重新解析共用同一入口，
     // 保证两条路径的字段校验、命名规范化、草稿强制、统计评估、
     // 驳回去重、内容去重完全一致。
-    const pipeline = runPipeline(markdown, sources, this.now())
+    const tuning = await this.deps.readTuning?.().catch(() => undefined)
+    const pipeline = runPipeline(markdown, sources, this.now(), [], tuning)
 
     // ---- 全量技能主动扫描 ----
     //
@@ -788,7 +796,7 @@ export class EvolutionEngine {
     const scanned = await this.scanAllSkills(sources.trash ?? [], sources.usage ?? [])
     let proposals = pipeline.proposals
     if (scanned.length > 0) {
-      const scannedPipeline = runPipeline('', { ...sources }, this.now(), scanned)
+      const scannedPipeline = runPipeline('', { ...sources }, this.now(), scanned, tuning)
       proposals = mergeProposals(proposals, scannedPipeline.proposals)
       this.deps.log?.('[dsh-skill-shelf] evolution scan produced ' + String(scannedPipeline.proposals.length) + ' optimize proposal(s) from '
         + String(scanned.length) + ' candidate skill(s)')

@@ -193,7 +193,7 @@ export interface ValueScore {
  * @param proposal - 提案。
  * @returns 评分明细。
  */
-export function scoreProposal(proposal: EvolutionProposal): ValueScore {
+export function scoreProposal(proposal: EvolutionProposal, minScore: number = MIN_VALUE_SCORE, lowScore: number = LOW_VALUE_SCORE): ValueScore {
   const text = [
     proposal.skillName,
     proposal.displayName ?? '',
@@ -229,8 +229,9 @@ export function scoreProposal(proposal: EvolutionProposal): ValueScore {
     score: clamped,
     positives,
     negatives,
-    belowThreshold: clamped < MIN_VALUE_SCORE,
-    lowValue: clamped >= MIN_VALUE_SCORE && clamped < LOW_VALUE_SCORE,
+    // 门槛可由自适应校准调整（见 `tuning.ts`），默认值仍是 MIN_VALUE_SCORE。
+    belowThreshold: clamped < minScore,
+    lowValue: clamped >= minScore && clamped < lowScore,
   }
 }
 
@@ -250,7 +251,7 @@ export interface ValueFilterResult {
  * @param proposals - 待过滤提案。
  * @returns 保留的（按分数降序，带 valueScore 字段）与丢弃明细。
  */
-export function applyValueFilter(proposals: readonly EvolutionProposal[]): ValueFilterResult {
+export function applyValueFilter(proposals: readonly EvolutionProposal[], minScore: number = MIN_VALUE_SCORE): ValueFilterResult {
   const kept: EvolutionProposal[] = []
   const blockedByBlacklist: ValueFilterResult['blockedByBlacklist'] = []
   const belowThreshold: ValueFilterResult['belowThreshold'] = []
@@ -269,7 +270,7 @@ export function applyValueFilter(proposals: readonly EvolutionProposal[]): Value
       blockedByBlacklist.push({ skillName: proposal.skillName, reason: hit.reason })
       continue
     }
-    const scored = scoreProposal(proposal)
+    const scored = scoreProposal(proposal, minScore)
     if (scored.belowThreshold) {
       belowThreshold.push({ skillName: proposal.skillName, score: scored.score })
       continue

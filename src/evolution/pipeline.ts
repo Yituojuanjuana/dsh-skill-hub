@@ -135,6 +135,8 @@ export function fingerprint(proposal: EvolutionProposal): string {
  * @param markdown - 模型输出（完整分析时来自本次调用，重新解析时来自已存记录）。
  * @param sources - 统计/回收站/驳回数据源。
  * @param now - 当前时间（时间戳与幂等性都依赖它）。
+ * @param presets - 调用方已构造好的提案（如主动扫描结果）。
+ * @param params - 自适应校准后的参数；缺省即默认门槛。
  * @returns 提案与各阶段丢弃明细。
  */
 export function runPipeline(
@@ -142,6 +144,8 @@ export function runPipeline(
   sources: PipelineSources,
   now = Date.now(),
   presets: readonly EvolutionProposal[] = [],
+  /** 校准后的参数（缺省即默认值）。 */
+  params?: { minValueScore?: number },
 ): PipelineResult {
   // presets：调用方已构造好的提案（如主动扫描结果）。
   // 它们与解析结果走完全相同的校验 / 评分 / 去重链路，不另开分支。
@@ -161,7 +165,7 @@ export function runPipeline(
   //
   // 放在统计维度之前：低价值场景不该进入后续评估（回收站/驳回都白算）。
   // 这一步同时负责按分数降序排序，高价值提案自然置顶。
-  const valued = applyValueFilter(valid)
+  const valued = applyValueFilter(valid, params?.minValueScore)
   const droppedBlacklist = valued.blockedByBlacklist
   const droppedLowValue = valued.belowThreshold
 
