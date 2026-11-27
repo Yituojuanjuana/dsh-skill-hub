@@ -553,6 +553,13 @@ body:not([data-ds-dark-theme]) .panel {
 /* Keep row text clickable without putting buttons inside a role=button div. */
 .rowMainButton { flex: 1; min-width: 0; display: block; border: none; background: transparent; color: inherit; font: inherit; text-align: left; padding: 0; cursor: pointer; }
 .rowMainButton:focus-visible { outline: 2px solid var(--hub-accent); outline-offset: 2px; border-radius: var(--hub-radius-xs); }
+/* 回收站展开行：提示可点开，展开区与提案卡片同一套弱化文字。 */
+.trashExpandBtn { display: flex; align-items: center; gap: 8px; }
+.trashChevron { font-size: var(--hub-fs-11); color: var(--hub-text-4); }
+.trashDetail { padding: 4px 14px 12px; border-top: 0.5px solid var(--hub-border); }
+.trashDetailLine { font-size: var(--hub-fs-11); color: var(--hub-text-4); line-height: 1.6; margin-top: 6px; }
+.trashDetailLine strong { color: var(--hub-text-3); font-weight: 500; }
+.trashDetailLine code { font-size: var(--hub-fs-11); word-break: break-all; }
 
 /* Native <input type=file> used by ZIP import: kept in the DOM, never shown. */
 .hiddenFile { display: none; }

@@ -70,6 +70,36 @@ function snippet(text: string, max = 80): string {
 }
 
 /**
+ * 把技能描述压成提案里的可读快照（只取 description 一行）。
+ *
+ * 超过 160 字按词边界截断：优先在最后一个空格处收尾（且该空格不能太靠前，
+ * 否则等于砍掉大半句），找不到合适的空格才硬切。省略号用单个 `…`。
+ * @param description - frontmatter description 原文。
+ * @returns 快照文本；描述为空时返回 undefined（调用方据此不写字段）。
+ */
+export function descriptionSnapshot(description: string | undefined): string | undefined {
+  if (description === undefined) return undefined
+  const flat = description.replace(/\s+/g, ' ').trim()
+  if (flat === '') return undefined
+  const MAX = 160
+  if (flat.length <= MAX) return flat
+  const head = flat.slice(0, MAX)
+  const boundary = head.lastIndexOf(' ')
+  return (boundary >= MAX / 2 ? head.slice(0, boundary) : head) + '…'
+}
+
+/**
+ * 描述快照里的中文版本字段。
+ *
+ * **宁缺勿造**：只有原文真的含汉字才写 `skillSummaryZh`，不做任何翻译、
+ * 不把英文拼成中文。旧提案没有这个字段时 UI 回退到 `skillSummary`。
+ */
+function zhSnapshot(description: string | undefined): string | undefined {
+  if (description === undefined || !/[\u3400-\u9fff]/.test(description)) return undefined
+  return descriptionSnapshot(description)
+}
+
+/**
  * 检查 6 个维度。
  * @param skill - 待扫描技能。
  * @returns 命中的维度列表。
@@ -220,11 +250,15 @@ export function toOptimizeProposal(finding: ScanFinding, now = Date.now()): Evol
   const painPoints = hits.map((hit, index) => `${String(index + 1)}. ${hit.pain}（证据：${hit.evidence}）`).join('\n')
   const optimizedAt = skill.optimizedAt
 
+  const summary = descriptionSnapshot(skill.description)
+  const summaryZh = zhSnapshot(skill.description)
   return {
     id: 'scan-' + skill.name + '-' + String(now),
     kind: 'optimize',
     skillName: skill.name,
     displayName: skill.name,
+    ...summary === undefined ? {} : { skillSummary: summary },
+    ...summaryZh === undefined ? {} : { skillSummaryZh: summaryZh },
     createdAt: now,
     status: 'pending',
     changeType: 'modify',
@@ -278,11 +312,15 @@ function buildPatchedSource(skill: ScannableSkill, hits: readonly DimensionHit[]
  * @returns 回收建议提案。
  */
 export function toReclaimProposal(skill: ScannableSkill, now = Date.now()): EvolutionProposal {
+  const summary = descriptionSnapshot(skill.description)
+  const summaryZh = zhSnapshot(skill.description)
   return {
     id: 'reclaim-' + skill.name + '-' + String(now),
     kind: 'reclaim',
     skillName: skill.name,
     displayName: skill.name,
+    ...summary === undefined ? {} : { skillSummary: summary },
+    ...summaryZh === undefined ? {} : { skillSummaryZh: summaryZh },
     createdAt: now,
     status: 'pending',
     source: 'scan',

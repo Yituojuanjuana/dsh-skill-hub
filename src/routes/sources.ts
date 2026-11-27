@@ -299,12 +299,16 @@ export function sourceRoutes(deps: SkillHubRouteDeps): RouteSpec[] {
           try {
             // 入回收站前快照来源与角色归属，恢复时挂回（见 sourceRestore）。
             const tagIds = (await deps.store.listTags()).filter((tag) => tag.skillNames.includes(name)).map((tag) => tag.id)
+            // 描述快照供回收站展开行展示；取不到就不写（老数据同理）。
+            const definition = await deps.skills.get(name)
+            const snapshotDescription = definition?.description?.trim() !== '' ? definition?.description : undefined
             const { path, source: trashSource } = await trashSkill(existing)
             await deps.store.addTrash({
               name,
               path,
               movedAt: Date.now(),
               sourcePath: trashSource,
+              ...snapshotDescription === undefined ? {} : { description: snapshotDescription },
               origin: { repo: source.repo, root: source.root, ...(source.ref !== undefined && source.ref !== '' ? { ref: source.ref } : {}), commitSha: source.commitSha },
               ...(tagIds.length > 0 ? { tagIds } : {}),
             })

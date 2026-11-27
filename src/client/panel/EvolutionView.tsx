@@ -131,7 +131,7 @@ function hasMetrics(metrics: EvolutionProposal['metrics']): boolean {
 }
 
 /** 一条提案卡片。 */
-function ProposalCard(props: {
+export function ProposalCard(props: {
   proposal: EvolutionProposal
   busy: boolean
   onAccept: (root: 'user-dsh' | 'user-agents') => void
@@ -334,8 +334,14 @@ function ProposalCard(props: {
         </div>
       ) : null}
 
-      {open && !isReclaim ? (
+      {open ? (
         <>
+          {/* 技能说明快照：老提案没有这个字段时整行不显示（保持原样）。 */}
+          {proposal.skillSummary !== undefined ? (
+            <div className={css.evolutionRationale}>
+              {tt('evolution.skillSummaryLabel')}: {proposal.skillSummaryZh ?? proposal.skillSummary}
+            </div>
+          ) : null}
           {/* 统计维度评估理由：说明这条提案为什么被判为优化/回收/拆分。 */}
           {proposal.metrics?.reason !== undefined && proposal.metrics.reason !== '' ? (
             <div className={css.evolutionMetricReason}>
@@ -343,14 +349,17 @@ function ProposalCard(props: {
               {proposal.metrics.reason}
             </div>
           ) : null}
-          <pre className={css.evolutionBody}>
-            {isNew
-              ? (proposal.draft ?? tt('evolution.noDraft'))
-              : [
-                  proposal.newSource === undefined ? '' : tt('evolution.newSource') + '\n' + proposal.newSource,
-                  proposal.testCases === undefined ? '' : tt('evolution.testCases') + '\n' + proposal.testCases,
-                ].filter((part) => part !== '').join('\n\n')}
-          </pre>
+          {/* 回收建议没有草稿/新源码，展开后只显示说明快照与评估理由。 */}
+          {!isReclaim ? (
+            <pre className={css.evolutionBody}>
+              {isNew
+                ? (proposal.draft ?? tt('evolution.noDraft'))
+                : [
+                    proposal.newSource === undefined ? '' : tt('evolution.newSource') + '\n' + proposal.newSource,
+                    proposal.testCases === undefined ? '' : tt('evolution.testCases') + '\n' + proposal.testCases,
+                  ].filter((part) => part !== '').join('\n\n')}
+            </pre>
+          ) : null}
         </>
       ) : null}
     </div>

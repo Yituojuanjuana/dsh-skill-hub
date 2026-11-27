@@ -33,6 +33,11 @@ export interface TrashEntry {
   /** 移入回收站前的原始路径（目录或文件）；旧版本条目没有该字段。 */
   sourcePath?: string
   /**
+   * 移入回收站时快照的技能描述（来自 frontmatter description），
+   * 供回收站展开行显示「这技能是做什么的」。旧数据没有该字段时显示占位文案。
+   */
+  description?: string
+  /**
    * 移入回收站前的来源跟踪快照（恢复时用它把技能重新挂回来源记录，
    * 否则恢复后的技能会丢失来源归属、变成「个人技能」）。
    */

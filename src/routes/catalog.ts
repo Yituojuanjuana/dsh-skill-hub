@@ -339,12 +339,17 @@ export function catalogRoutes(deps: SkillHubRouteDeps): RouteSpec[] {
         // 后的技能会丢失来源（变成「个人技能」）和角色分组。
         const tracked = await deps.store.getSourceForSkill(name)
         const tagIds = (await deps.store.listTags()).filter((tag) => tag.skillNames.includes(name)).map((tag) => tag.id)
+        // 回收站快照里的技能描述：先从已解析的技能定义取（正常路径），
+        // 失败再从当前可见技能表兜底（禁用/外部/项目技能）；取不到就不写字段。
+        const definition = resolved.ok ? resolved.skill : await deps.skills.get(name, cwd !== '' ? { cwd } : undefined)
+        const snapshotDescription = definition?.description?.trim() !== '' ? definition?.description : undefined
         const { path, source } = trashResult ?? await trashSkill((resolved as { ok: true; path: string }).path)
         await deps.store.addTrash({
           name,
           path,
           movedAt: Date.now(),
           sourcePath: source,
+          ...snapshotDescription === undefined ? {} : { description: snapshotDescription },
           ...(tracked !== undefined
             ? { origin: { repo: tracked.repo, root: tracked.root, ...(tracked.ref !== undefined && tracked.ref !== '' ? { ref: tracked.ref } : {}), commitSha: tracked.commitSha } }
             : {}),

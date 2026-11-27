@@ -61,6 +61,15 @@ export interface EvolutionProposal {
    */
   skillName: string
   /**
+   * 该技能 frontmatter description 的快照，用于回收/优化提案的可读性，
+   * 旧提案没有则 UI 整行不显示。只放 description 一行，超长按词边界截断。
+   */
+  skillSummary?: string
+  /**
+   * 当 description 确实含中文时的中文快照。宁缺勿造：没有真实中文就不写。
+   */
+  skillSummaryZh?: string
+  /**
    * 卡片展示用的中文名称（精简名词短语）。
    *
    * 缺省时 UI 回退显示 `skillName` —— 早期提案没有这个字段。
