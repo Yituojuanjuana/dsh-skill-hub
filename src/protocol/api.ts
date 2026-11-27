@@ -78,77 +78,7 @@ export const SKILL_HUB_API = {
   evolutionClear: '/api/skill-shelf/evolution/clear',
   evolutionReparse: '/api/skill-shelf/evolution/reparse',
   evolutionTuning: '/api/skill-shelf/evolution/tuning',
-  /** 运行与连接：状态卡（只读）。 */
-  opsStatus: '/api/skill-shelf/ops/status',
-  /** 运行与连接：三个按钮的执行入口（热重载 / 重启 / 重连隧道）。 */
-  opsAction: '/api/skill-shelf/ops/action',
-  /** 运行与连接：连接信息（隧道地址 / 配对码 / 设备 token）。 */
-  opsConnection: '/api/skill-shelf/ops/connection',
 } as const
-
-/**
- * 运行与连接面板能触发的动作。
- *
- * 每一项都对应 `dsh-control.ps1` 的一个子命令 —— 插件只做转发与解析，
- * 不在插件里另写 cloudflared / 重启逻辑（唯一执行体原则）。
- */
-export type OpsAction = 'reload' | 'restart' | 'tunnel-restart'
-
-/** 状态卡一次采样的结果（全部来自 dsh-control.ps1 status 的 JSON）。 */
-export interface OpsStatusResponse {
-  ok: boolean
-  /** 采样时刻（epoch ms，宿主时钟）。 */
-  at: number
-  /** 本次采样是否成功；失败时其余字段沿用上一次的旧值。 */
-  fresh: boolean
-  /** 上次成功采样的时刻（epoch ms）；从未成功时为 null。 */
-  lastSuccessAt: number | null
-  dsh: { running: boolean; pid: number | null; startedAt: string | null }
-  ingress: { port: number; listening: boolean }
-  tunnel: {
-    address: string | null
-    published: string | null
-    healthy: boolean
-    status: number
-    note: string | null
-    processes: number
-  }
-  bundle: { liveMtime: string | null; repoMtime: string | null; upToDate: boolean }
-  cooldownRemainingSec: number
-  pluginVersion: string
-  /** 采样失败时的原因（成功时缺省）。 */
-  error?: string
-}
-
-/** 一次动作请求的结果。 */
-export interface OpsActionResponse {
-  ok: boolean
-  action: OpsAction
-  /** 202 = 已接受（restart 是 detached 的，不在这里等它完成）。 */
-  status: number
-  message: string
-  /** restart 被拒绝时的人话原因（前端原样显示）。 */
-  rejectedReason?: string
-  /** 冷却剩余秒数（冷却期内点按钮时带回来，前端据此置灰）。 */
-  cooldownRemainingSec?: number
-  /** tunnel-restart 完成后的新域名。 */
-  address?: string
-}
-
-/** 连接信息：token 默认遮罩，只有显式请求明文时才返回。 */
-export interface OpsConnectionResponse {
-  ok: boolean
-  /** 隧道地址（与状态卡同源）。 */
-  tunnelUrl: string | null
-  /** 配对码（宿主「设置 → 远程连接」里那一串）。 */
-  pairCode: string | null
-  /** 设备 token：revealed=false 时是遮罩串，绝不回传明文。 */
-  deviceToken: string | null
-  /** 本次是否返回了 token 明文。 */
-  revealed: boolean
-  /** 读取不到时的原因。 */
-  note?: string
-}
 
 /**
  * Standalone alias for the permanent-stats path (also available as

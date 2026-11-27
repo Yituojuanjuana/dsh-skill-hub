@@ -31,10 +31,6 @@ import {
   type MarketSkillsShInstallResponse,
   type MarketStatsResponse,
   type PermanentStatsResponse,
-  type OpsAction,
-  type OpsActionResponse,
-  type OpsConnectionResponse,
-  type OpsStatusResponse,
   type EvolutionResponse,
   type EvolutionRunResponse,
   type EvolutionDecideResponse,
@@ -246,27 +242,6 @@ export class SkillHubApi {
   catalog(options?: { cwd?: string }): Promise<CatalogResponse> {
     const query = options?.cwd !== undefined && options.cwd !== '' ? '?cwd=' + encodeURIComponent(options.cwd) : ''
     return this.get<CatalogResponse>(SKILL_HUB_API.catalog, query)
-  }
-
-  /**
-   * 运行与连接：状态卡采样。
-   *
-   * 服务端每次都会真跑一次 `dsh-control.ps1 status`；采样失败时它返回上一次
-   * 成功的快照（`fresh=false`），所以这里不需要本地缓存，也不会因为一次失败
-   * 把卡片清空。
-   */
-  opsStatus(): Promise<OpsStatusResponse> {
-    return this.get<OpsStatusResponse>(SKILL_HUB_API.opsStatus)
-  }
-
-  /** 运行与连接：触发一个动作（热重载 / 重启 / 重连隧道）。 */
-  opsAction(action: OpsAction): Promise<OpsActionResponse> {
-    return this.post<OpsActionResponse>(SKILL_HUB_API.opsAction, { action })
-  }
-
-  /** 运行与连接：连接信息；`revealToken` 才回传 token 明文。 */
-  opsConnection(options?: { revealToken?: boolean }): Promise<OpsConnectionResponse> {
-    return this.post<OpsConnectionResponse>(SKILL_HUB_API.opsConnection, options?.revealToken === true ? { revealToken: true } : {})
   }
 
   /** One skill's detail (cwd selects a workspace's project skills). */

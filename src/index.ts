@@ -23,8 +23,7 @@ import type {} from '@deepseek-ai/dsh-session-query'
 import type {} from '@deepseek-ai/dsh-settings'
 import { CONFIG_FIELDS, HUB_CONFIG_DEFAULTS, HUB_ENTRY_ID, HEX_COLOR_RE, resolveHubConfig, type HubConfig } from './protocol.ts'
 import { SkillHubProvider } from './provider.ts'
-import { hostTrustFence, lazyEvolution, makeRoutes, type SkillHubRouteDeps } from './routes.ts'
-import { CURRENT_VERSION } from './update.ts'
+import { hostTrustFence, lazyEvolution, makeRoutes } from './routes.ts'
 import { wireEvolution, routeFromContext } from './evolution/wiring.ts'
 import { BUSINESS_WORKSPACE_HINTS } from './evolution/engine.ts'
 import { workspaceEntries } from './routes/catalog-data.ts'
@@ -625,51 +624,7 @@ export function apply(ctx: Context, config?: Config): void {
               }
               return undefined
             },
-          }, lazyEvolution(() => evolutionWiring?.routes), {
-            ...({
-              skills: ctx.skills,
-              store,
-              fence: hostTrustFence(() => ctx.get('connection')),
-              config: current,
-              saved,
-              updateConfig,
-            } satisfies SkillHubRouteDeps),
-            pluginVersion: () => CURRENT_VERSION,
-            // 「热重载插件」的真实执行路径：宿主的 hmr 服务重新解析 profile
-            // 的插件层并替换活的 Cordis fiber，**不重启进程**。
-            // 按请求现取服务（插件可能比 hmr 先起来）；取不到就让路由退回
-            // 脚本的 reload 子命令，并在 message 里如实说明。
-            reconcile: (() => {
-              const hmr = ctx.get('hmr') as { reconcileProfile?: (ids?: readonly string[]) => Promise<{ reloaded?: unknown[]; skipped?: unknown[] }> } | undefined
-              if (hmr?.reconcileProfile === undefined) return undefined
-              return async () => {
-                const result = await hmr.reconcileProfile!()
-                return {
-                  reloaded: Array.isArray(result?.reloaded) ? result.reloaded.map(String) : [],
-                  skipped: Array.isArray(result?.skipped) ? result.skipped.map(String) : [],
-                }
-              }
-            })(),
-            // restart 的 turn 闸门：任何一个活 Agent 的 openTurnStartSeq 非 null
-            // 就说明有对话在跑。服务按请求现取 —— 插件可能比 agents 先起来。
-            hasRunningTurn: () => {
-              const agents = ctx.get('agents') as
-                | { list?: () => Array<{ session?: unknown }>; turnBoundaryOf?: (session: unknown) => { openTurnStartSeq?: unknown } }
-                | undefined
-              if (agents?.list === undefined || agents.turnBoundaryOf === undefined) return false
-              try {
-                for (const agent of agents.list()) {
-                  if (agent.session === undefined) continue
-                  const boundary = agents.turnBoundaryOf(agent.session)
-                  if (boundary?.openTurnStartSeq !== null && boundary?.openTurnStartSeq !== undefined) return true
-                }
-              } catch {
-                // 查询失败按「没有在跑」处理：脚本侧还会再拦一次，
-                // 这里报错会让重启按钮永远不可用，比漏拦更糟。
-              }
-              return false
-            },
-          }).map((route) => webServer.register(route))
+          }, lazyEvolution(() => evolutionWiring?.routes)).map((route) => webServer.register(route))
           // 回调返回的是这个内层 fiber 的清理函数。
           return () => {
             for (const dispose of disposers) dispose()

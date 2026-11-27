@@ -29,11 +29,9 @@ import { foreignRoutes } from './routes/foreign.ts'
 import { zipImportRoutes } from './routes/zip-import.ts'
 import { usageRoutes } from './routes/usage.ts'
 import { evolutionRoutes, unavailableEvolution, type EvolutionRouteDeps } from './routes/evolution.ts'
-import { opsRoutes, type OpsRouteDeps } from './routes/ops.ts'
 
 export type { SkillHubRouteDeps, SkillLookupLike } from './routes/helpers.ts'
 export type { EvolutionRouteDeps } from './routes/evolution.ts'
-export type { OpsRouteDeps } from './routes/ops.ts'
 export { unavailableEvolution, lazyEvolution } from './routes/evolution.ts'
 export type { RouteFence } from './routes/http.ts'
 
@@ -74,7 +72,7 @@ export function hostTrustFence(_read: () => HostConnectionHandle | undefined, on
  * @param deps - skill registry view + sidecar store + trust fence.
  * @returns the exact-path routes plus the family's 404 catch-all.
  */
-export function makeRoutes(deps: SkillHubRouteDeps, evolution?: EvolutionRouteDeps, ops?: OpsRouteDeps): WebRoute[] {
+export function makeRoutes(deps: SkillHubRouteDeps, evolution?: EvolutionRouteDeps): WebRoute[] {
   // 各域返回裸 spec，统一在这里包上请求围栏（信任栅栏 → 方法 → 总开关
   // → JSON 体 → 统一错误映射），新路由不会漏掉围栏。
   const specs = [
@@ -88,8 +86,6 @@ export function makeRoutes(deps: SkillHubRouteDeps, evolution?: EvolutionRouteDe
     ...zipImportRoutes(deps),
     ...usageRoutes(deps),
     ...evolutionRoutes(deps, evolution ?? unavailableEvolution()),
-    // 「运行与连接」：状态卡 + 三个动作 + 连接信息。执行体只有 dsh-control.ps1。
-    ...opsRoutes(ops ?? { ...deps }),
     // 进化路由始终存在（否则「声明了没注册」的漂移检测会报警）；
     // 执行器缺失时它们回空队列，面板不需要区分「路由不存在」与「功能不可用」。
   ]
