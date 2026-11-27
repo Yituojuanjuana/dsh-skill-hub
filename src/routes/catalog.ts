@@ -381,22 +381,44 @@ export function catalogRoutes(deps: SkillHubRouteDeps): RouteSpec[] {
         const name = readString(body, 'name')
         if (name === '') { writeError(res, 400, 'name is required'); return }
         const cwd = readString(body, 'cwd')
-        const resolved = await resolveWritableSkill(deps, name, cwd !== '' ? cwd : undefined)
-        if (!resolved.ok) { writeError(res, resolved.status, resolved.error); return }
-        const modelInvocable = typeof body.modelInvocable === 'boolean' ? body.modelInvocable : resolved.skill.invocation.modelInvocable
-        const userInvocable = typeof body.userInvocable === 'boolean' ? body.userInvocable : resolved.skill.invocation.userInvocable
+        const lookup = cwd !== '' ? cwd : undefined
+        // 只改 SKILL.md 的 frontmatter —— 不需要 hub 能整体接管这个 source。
+        // 可用性判据刻意与「source 是否 hub 托管」解耦：先定位到磁盘文件，
+        // 再做严格路径包含判定（只能写用户可写根或已登记工作区的项目技能目录），
+        // 最后靠原子写的实际结果决定 409。三种拒绝：404 找不到 / 409 不可读写 /
+        // 403 路径跑出所有已知技能根。
+        const skill = await deps.skills.get(name, lookup !== undefined ? { cwd: lookup } : undefined)
+        if (skill === undefined) { writeError(res, 404, 'skill not found: ' + name); return }
+        const targetPath = skill.path
+        if (targetPath === undefined) { writeError(res, 404, 'skill has no file: ' + name); return }
+        const target = resolve(targetPath)
+        const inUserRoot = rootOfPath(target, homeOf(deps)) !== undefined
+        let inProjectRoot = false
+        if (!inUserRoot) {
+          const workspaces = await workspaceEntries(homeOf(deps))
+          for (const workspace of workspaces) {
+            const rel = relative(resolve(projectSkillsRoot(workspace.path)), target)
+            if (rel !== '' && !rel.startsWith('..') && !isAbsolute(rel)) { inProjectRoot = true; break }
+          }
+        }
+        if (!inUserRoot && !inProjectRoot) {
+          writeError(res, 403, 'skill path is outside every known skills root: ' + targetPath)
+          return
+        }
+        const modelInvocable = typeof body.modelInvocable === 'boolean' ? body.modelInvocable : skill.invocation.modelInvocable
+        const userInvocable = typeof body.userInvocable === 'boolean' ? body.userInvocable : skill.invocation.userInvocable
         let text: string
         try {
-          text = await readFile(resolved.path, 'utf8')
+          text = await readFile(target, 'utf8')
         } catch (error) {
           writeError(res, 409, 'skill file is not readable: ' + errorText(error))
           return
         }
         const next = setInvocationFlags(text, { modelInvocable, userInvocable })
-        const tmp = resolved.path + '.tmp-' + process.pid
+        const tmp = target + '.tmp-' + process.pid
         try {
           await writeFile(tmp, next, 'utf8')
-          await rename(tmp, resolved.path)
+          await rename(tmp, target)
         } catch (error) {
           await rm(tmp, { force: true }).catch(() => {})
           writeError(res, 409, 'skill file is not writable: ' + errorText(error))

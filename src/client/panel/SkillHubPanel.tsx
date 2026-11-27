@@ -17,7 +17,6 @@ import { IconSkillOutline16 } from '../icons.tsx'
 import type { SkillHubApi } from '../api.ts'
 import { errorMessage, tt } from '../helpers.ts'
 import { isProjectSource, type SortKey } from '../grouping.ts'
-import { dotStyle } from './format.ts'
 import { SkillDetailView } from './SkillDetailView.tsx'
 import { PanelBoundary } from './PanelErrorBoundary.tsx'
 import { LocationsView } from './LocationsView.tsx'
@@ -41,6 +40,16 @@ export interface SkillHubPanelProps {
   mode?: 'settings' | 'sidebar'
   /** 插件设置入口：点击「设置」按钮跳转到插件设置页（由宿主提供，缺省时隐藏按钮）。 */
   onOpenSettings?: () => void
+}
+
+/**
+ * 「source 由 hub 之外管理、只读」是一条能力提示（该 source 的安装/同步/
+ * 删除不由 hub 接管），不是一次失败 —— 用中性横幅而不是红色报错条。
+ * 文案保持原样，这里只决定视觉语气；invocation 的 frontmatter 编辑已与该
+ * 判定解耦，所以这条提示不再代表「按钮点不动」。
+ */
+function isReadOnlyNotice(message: string): boolean {
+  return /is managed outside the hub \(read-only\)/.test(message) || /由 hub 之外管理/.test(message)
 }
 
 export function SkillHubPanel(props: SkillHubPanelProps): React.JSX.Element {
@@ -366,7 +375,7 @@ export function SkillHubPanel(props: SkillHubPanelProps): React.JSX.Element {
       ) : null}
 
       {loadError !== null ? (
-        <div className={css.errorBanner} role='alert'>
+        <div className={isReadOnlyNotice(loadError) ? css.noticeBanner : css.errorBanner} role={isReadOnlyNotice(loadError) ? 'status' : 'alert'}>
           <span>{loadError}</span>
           <button type='button' className={css.button} aria-label={tt('err.dismiss')} onClick={() => { setLoadError(null) }}>{tt('err.dismiss')}</button>
         </div>
@@ -381,8 +390,8 @@ export function SkillHubPanel(props: SkillHubPanelProps): React.JSX.Element {
 
       {showLegend ? (
         <div className={css.legend}>
-          <span className={css.legendItem}><span className={css.dot + ' ' + css.dotModel} style={dotStyle(hubConfig?.dotModelColor)} />{tt('legend.model')}</span>
-          <span className={css.legendItem}><span className={css.dot + ' ' + css.dotUser} style={dotStyle(hubConfig?.dotUserColor)} />{tt('legend.user')}</span>
+          <span className={css.legendItem}>{tt('legend.model')}</span>
+          <span className={css.legendItem}>{tt('legend.user')}</span>
           <span className={css.legendHint}>{tt('legend.hint')}</span>
         </div>
       ) : null}

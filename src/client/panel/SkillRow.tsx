@@ -131,7 +131,8 @@ export function SkillRowImpl(props: SkillRowProps): JSX.Element {
           type='button'
           className={css.invocationChip + (invocation.modelInvocable ? ' ' + css.invocationChipOn : '')}
           aria-pressed={invocation.modelInvocable}
-          title={tt('legend.model')}
+          aria-label={tt('legend.modelFull')}
+          title={tt('legend.modelFull')}
           disabled={invoking || busyNames.has(skill.name)}
           onClick={(event) => { event.stopPropagation(); onInvocation({ modelInvocable: !invocation.modelInvocable }) }}
         >{tt('legend.model')}</button>
@@ -139,7 +140,8 @@ export function SkillRowImpl(props: SkillRowProps): JSX.Element {
           type='button'
           className={css.invocationChip + (invocation.userInvocable ? ' ' + css.invocationChipOn : '')}
           aria-pressed={invocation.userInvocable}
-          title={tt('legend.user')}
+          aria-label={tt('legend.userFull')}
+          title={tt('legend.userFull')}
           disabled={invoking || busyNames.has(skill.name)}
           onClick={(event) => { event.stopPropagation(); onInvocation({ userInvocable: !invocation.userInvocable }) }}
         >{tt('legend.user')}</button>

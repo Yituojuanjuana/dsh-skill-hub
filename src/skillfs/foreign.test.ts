@@ -8,7 +8,9 @@ import { readSkillInterface } from './scan.ts'
 
 describe('foreignRoots', () => {
   it('never lists the hub writable root ~/.agents/skills', () => {
-    const dirs = foreignRoots('/home/u').map((root) => root.dir)
+    // node:path.join 按平台输出分隔符：Windows 上是反斜杠。断言前统一成 '/'，
+    // 与下面 Trae 那条用例的处理方式一致，检查语义不变。
+    const dirs = foreignRoots('/home/u').map((root) => root.dir.replaceAll('\\', '/'))
     expect(dirs).not.toContain('/home/u/.agents/skills')
     expect(dirs.some((dir) => dir.endsWith('.claude/skills'))).toBe(true)
   })
@@ -25,7 +27,7 @@ describe('foreignRoots', () => {
   })
 
   it('includes the WorkBuddy user-level root ahead of the generic agents', () => {
-    const dirs = foreignRoots('/home/u').map((root) => root.dir)
+    const dirs = foreignRoots('/home/u').map((root) => root.dir.replaceAll('\\', '/'))
     expect(dirs).toContain('/home/u/.workbuddy/skills')
     expect(dirs.indexOf('/home/u/.workbuddy/skills')).toBeLessThan(dirs.indexOf('/home/u/.cursor/skills'))
   })

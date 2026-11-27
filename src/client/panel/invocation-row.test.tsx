@@ -54,13 +54,20 @@ function mount(p: SkillRowProps): HTMLElement[] {
 }
 
 describe('SkillRow invocation chips', () => {
-  it('两个文字按钮都在，点击各自翻转并调 setInvocation', async () => {
+  // 行内文案刻意缩到「模型 / 用户」两字，完整语义放进 title/aria-label；
+  // 因此定位按钮必须用 aria-label，不能按可见文案匹配，否则缩文案就炸测试。
+  const findByLabel = (buttons: HTMLElement[], full: string): HTMLElement =>
+    buttons.find((b) => b.getAttribute('aria-label') === full)!
+
+  it('两个紧凑按钮都在（模型 / 用户），点击各自翻转并调 setInvocation', async () => {
     const fn = vi.fn(async () => true)
     const buttons = mount(props(fn))
-    const model = buttons.find((b) => b.textContent === '模型可调用')!
-    const user = buttons.find((b) => b.textContent === '用户可调用')!
+    const model = findByLabel(buttons, '模型可调用 — 智能体可自动调用')
+    const user = findByLabel(buttons, '用户可调用 — 用户可在会话中调用')
     expect(model).toBeDefined()
     expect(user).toBeDefined()
+    expect(model.textContent).toBe('模型')
+    expect(user.textContent).toBe('用户')
     expect(model.getAttribute('aria-pressed')).toBe('true')
     expect(user.getAttribute('aria-pressed')).toBe('false')
     await act(async () => { model.click() })
@@ -72,7 +79,7 @@ describe('SkillRow invocation chips', () => {
   it('setInvocation 返回 false 时回滚到点击前的状态', async () => {
     const fn = vi.fn(async () => false)
     const buttons = mount(props(fn))
-    const model = buttons.find((b) => b.textContent === '模型可调用')!
+    const model = findByLabel(buttons, '模型可调用 — 智能体可自动调用')
     await act(async () => { model.click() })
     // 乐观期间变为关，失败后回到开
     expect(model.getAttribute('aria-pressed')).toBe('true')

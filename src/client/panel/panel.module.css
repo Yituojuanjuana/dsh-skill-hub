@@ -140,8 +140,10 @@
 .badgeReadonly { opacity: .5; }
 
 /* 调用开关：文字 chip（实心=开、描边=关），不再用彩色圆点。 */
-.invocationChips { display: flex; flex: none; align-items: center; gap: 8px; }
-.invocationChip { font-size: var(--hub-fs-11); line-height: 1.6; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--hub-border-2); background: transparent; color: var(--hub-text-4); cursor: pointer; white-space: nowrap; transition: background .12s ease, color .12s ease, border-color .12s ease; }
+.invocationChips { display: flex; flex: none; align-items: center; gap: 4px; }
+/* 紧凑 chip：文案只有「模型 / 用户」两个字，完整语义进 title/aria-label。
+   开/关同宽（靠 border 与 color 区分，背景只在开态填充），切换不撑宽行。 */
+.invocationChip { font-size: var(--hub-fs-11); line-height: 1.6; padding: 1px 5px; min-width: 30px; border-radius: 999px; border: 1px solid var(--hub-border-2); background: transparent; color: var(--hub-text-4); cursor: pointer; white-space: nowrap; transition: background .12s ease, color .12s ease, border-color .12s ease; }
 .invocationChip:hover:not(:disabled) { border-color: var(--hub-text-4); }
 .invocationChipOn { background: var(--hub-model); border-color: var(--hub-model); color: #fff; }
 .invocationChip:disabled { opacity: .5; cursor: default; }
@@ -170,6 +172,9 @@
 .updateLink { color: inherit; font-weight: 600; text-decoration: underline; }
 
 .errorBanner { display: flex; align-items: flex-start; gap: 10px; font-size: var(--hub-fs-13); color: var(--hub-danger-text); background: rgba(209,36,47,.08); border: 1px solid color-mix(in srgb, var(--hub-danger) 26%, transparent); border-radius: var(--hub-radius-md); padding: 10px 14px; white-space: pre-wrap; word-break: break-all; animation: hubSlideIn .22s ease; }
+/* 「source 由 hub 之外管理、只读」不是错误，只是一条能力提示：用中性色，
+   文案与关闭行为不变，只是不再像红色报错那样吓人。 */
+.noticeBanner { display: flex; align-items: flex-start; gap: 10px; font-size: var(--hub-fs-13); color: var(--hub-text-3); background: var(--hub-surface); border: 1px solid var(--hub-border); border-radius: var(--hub-radius-md); padding: 10px 14px; white-space: pre-wrap; word-break: break-all; animation: hubSlideIn .22s ease; }
 /* Green success banner (create finished); mirrors the error banner shape. */
 .successBanner { display: flex; align-items: flex-start; gap: 10px; font-size: var(--hub-fs-13); color: var(--hub-success-text); background: rgba(63,185,80,.09); border: 1px solid color-mix(in srgb, var(--hub-success) 26%, transparent); border-radius: var(--hub-radius-md); padding: 10px 14px; white-space: pre-wrap; word-break: break-all; animation: hubSlideIn .22s ease; }
 /* 横幅入场：从上轻微落下，提示「有结果了」但不突兀。 */
