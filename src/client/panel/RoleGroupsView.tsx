@@ -25,13 +25,14 @@ export function RoleGroupsView(props: { hub: SkillHubState }): JSX.Element {
   const { hub } = props
   const { catalog, expandedGroups, viewNames, actionNames, batchBusy, busyNames, toggleGroupExpanded } = hub
   const duplicateNames = useMemo(() => new Set(catalog?.duplicateNames ?? []), [catalog])
-  // 组间同样按各组最高排名成员排，别让固定 role 规则盖掉用户选的排序键。
-  // 角色视图**不受状态筛选影响**（见 role.filterNote）：必须读 searchedSorted
-  // ——搜索 + 调用方式过滤后、但不含状态过滤的名单。之前这里误读 hub.sorted，
-  // 于是当用户在「按目录」把状态设为「已启用/已停用」再切回「按角色」时，
-  // 分组变成空集、整页只剩一行说明；而状态下拉在角色视图里又是隐藏的，
-  // 用户没法把它改回来 —— 这就是「按角色整块空白」的根因。
-  const groups = useMemo(() => sortGroupsByRank(groupByRole(hub.searchedSorted), hub.searchedSorted), [hub.searchedSorted])
+  // 角色视图与「按目录」共用同一份状态筛选（`hub.sorted` 已含状态过滤），
+  // 因此状态下拉在角色视图里**显示且生效**。
+  //
+  // 历史：这里曾读 `searchedSorted`（不含状态过滤）以「保护完整名单」，结果
+  // 用户在「按目录」把状态设为「已启用/已停用」再切回来时分组变空集，而状态
+  // 下拉又被隐藏，用户无法自救 —— 连续两次被报成「按角色整块空白」。现在改为
+  // 与其它视图同源，并把筛选控件一并显示出来。
+  const groups = useMemo(() => sortGroupsByRank(groupByRole(hub.sorted), hub.sorted), [hub.sorted])
   const rowProps = { uses: hub.uses, hubConfig: hub.hubConfig, busyNames, editMode: hub.editMode, tagBusy: hub.tagBusy, duplicateNames, statusFilter: hub.statusFilter, hideSourceBadge: true, setInvocation: hub.setInvocation, toggle: hub.toggle, openDetail: hub.openDetail, requestDeleteSkill: hub.requestDeleteSkill, requestTrashSkill: hub.requestTrashSkill }
 
   /**
@@ -46,7 +47,17 @@ export function RoleGroupsView(props: { hub: SkillHubState }): JSX.Element {
     void hub.batchToggleNames(names, state !== 'on')
   }
 
-  if (groups.length === 0) return <div className={css.empty}>{tt('panel.empty')}</div>
+  if (groups.length === 0) {
+    // 可操作的空态：说清是「筛选把结果筛没了」，并给一键清除。
+    return (
+      <div className={css.empty}>
+        <div>{tt('role.emptyFiltered')}</div>
+        <button type='button' className={css.button} onClick={() => { hub.clearListFilters() }}>
+          {tt('role.clearFilters')}
+        </button>
+      </div>
+    )
+  }
   return (
     <>
       {groups.map((group) => {

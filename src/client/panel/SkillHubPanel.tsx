@@ -450,13 +450,12 @@ export function SkillHubPanel(props: SkillHubPanelProps): React.JSX.Element {
                   <option value='scene'>{tt('view.byRole')}</option>
                 </select>
               ) : null}
-              {rolesView ? null : (
-                <select className={css.select + ' ' + css.filterInline} value={statusFilter} aria-label={tt('filter.status')} onChange={(event) => { setStatusFilter(event.target.value as 'all' | 'enabled' | 'disabled') }}>
-                  <option value='all'>{tt('filter.statusAll')}</option>
-                  <option value='enabled'>{tt('filter.statusEnabled')}</option>
-                  <option value='disabled'>{tt('filter.statusDisabled')}</option>
-                </select>
-              )}
+              {/* 状态下拉在所有分类视图里都显示（角色视图同样受状态筛选影响）。 */}
+              <select className={css.select + ' ' + css.filterInline} value={statusFilter} aria-label={tt('filter.status')} onChange={(event) => { setStatusFilter(event.target.value as 'all' | 'enabled' | 'disabled') }}>
+                <option value='all'>{tt('filter.statusAll')}</option>
+                <option value='enabled'>{tt('filter.statusEnabled')}</option>
+                <option value='disabled'>{tt('filter.statusDisabled')}</option>
+              </select>
               <select className={css.select + ' ' + css.filterInline} value={hub.invocationFilter} aria-label={tt('filter.invocation')} onChange={(event) => { hub.setInvocationFilter(event.target.value as 'all' | 'model' | 'user') }}>
                 <option value='all'>{tt('filter.invocationAll')}</option>
                 <option value='model'>{tt('filter.modelOnly')}</option>
