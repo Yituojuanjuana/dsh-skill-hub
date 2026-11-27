@@ -448,8 +448,15 @@
 .filterField { display: inline-flex; align-items: center; gap: 6px; }
 .filterField .formLabel { margin: 0; }
 .filterField .select { max-width: 150px; }
-/* 角色视图的筛选说明：来源/状态两项在该视图不生效，隐藏后说明原因。 */
-.filterNote { flex-basis: 100%; margin: 0; font-size: var(--hub-fs-12); color: var(--hub-text-3); }
+/* 角色视图的筛选说明。
+ *
+ * 注意：这里是 `.panel`（flex-direction: column）的**直接子节点**，主轴是垂直的，
+ * 所以 `flex-basis` 作用于**高度**。这里绝不能写 `flex-basis: 100%` —— 那是当年
+ * 它还在 `.filterBar`（横向 flex-wrap 容器）里「占满一整行」的写法，搬到 column
+ * 容器后含义变成了「高度占满整个面板」，再叠加 `.panelWide > * { flex-shrink: 0 }`
+ * 就变成不可收缩的满屏高度，于是筛选条和下面列表之间出现半屏空白。
+ * 显式 auto + 不参与伸缩，才是这里想要的行为。 */
+.filterNote { flex: 0 0 auto; margin: 0; font-size: var(--hub-fs-12); color: var(--hub-text-3); }
 
 
 /* 键盘焦点环：只在 focus-visible（键盘操作）时出现，鼠标点击不打扰。 */
