@@ -332,7 +332,7 @@ export class SkillHubApi {
    *
    * 只改 tuning，不跑校准、不碰提案 —— 恢复默认不会让任何提案状态变化。
    */
-  updateEvolutionTuning(patch: { lock?: string; unlock?: string; reset?: boolean }): Promise<{ ok: true; tuning: EvolutionTuningState }> {
+  updateEvolutionTuning(patch: { lock?: string; unlock?: string; reset?: boolean; probabilityEnabled?: boolean }): Promise<{ ok: true; tuning: EvolutionTuningState }> {
     return this.post<{ ok: true; tuning: EvolutionTuningState }>(SKILL_HUB_API.evolutionTuning, patch)
   }
   reparseEvolution(): Promise<EvolutionReparseResponse> {

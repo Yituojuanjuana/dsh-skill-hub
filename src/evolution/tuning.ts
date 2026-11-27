@@ -96,6 +96,19 @@ export const MAX_STEP_RATIO = 0.2
 /** 同一参数两次调整之间至少需要多少条新裁决（防抖）。 */
 export const MIN_DECISIONS_BETWEEN_ADJUST = 3
 
+/**
+ * 同类提案出现概率的下界 / 上界与量化步长。
+ *
+ * 概率只决定「提案是否出现在待审核列表」，不参与落地决策。上界 1.0 表示
+ * 完全不抑制（默认值）；下界 0.25 保证每类仍有出场机会。
+ */
+export const PROBABILITY_MIN = 0.25
+export const PROBABILITY_MAX = 1
+/** 概率量化到 0.05 的整数倍，便于 UI 显示与确定性比较。 */
+export const PROBABILITY_STEP = 0.05
+/** 额外扫描名额上限：每类最多 +2，不会放宽 minValueScore。 */
+export const MAX_EXTRA_SLOTS = 2
+
 /** 校准留痕。 */
 export interface TuningRecord {
   params: TuningParams
@@ -107,6 +120,7 @@ export interface TuningRecord {
     rejected: number
     deferred: number
     buckets: Partial<Record<ReasonBucket, number>>
+    byKind?: Partial<Record<EvolutionDecision['kind'], { total: number; accepted: number; rejected: number; deferred: number }>>
   }
   /** 本次实际改动的参数键。 */
   applied: TuningKey[]
@@ -136,6 +150,8 @@ export function defaultTuning(): TuningState {
     basis: { total: 0, accepted: 0, rejected: 0, deferred: 0, buckets: {} },
     applied: [],
     adjustedAt: {},
+    kindProbability: {},
+    probabilityEnabled: true,
     locked: [],
   }
 }
@@ -218,6 +234,10 @@ export interface ComputeTuningResult {
   basis: TuningRecord['basis']
   /** 更新后的防抖水位。 */
   adjustedAt: Partial<Record<TuningKey, number>>
+  /** 各类提案本轮进入列表的概率（0.25–1.0）；缺省沿用 current 的值。 */
+  kindProbability: Partial<Record<EvolutionDecision['kind'], number>>
+  /** 各类提案因采纳率高而获得的额外扫描名额（每类最多 +2）。 */
+  extraSlots: Partial<Record<EvolutionDecision['kind'], number>>
 }
 
 /**
@@ -237,12 +257,19 @@ export function computeTuning(input: ComputeTuningInput): ComputeTuningResult {
   const total = decisions.length
 
   // ---- 依据统计 ----
-  const basis: TuningRecord['basis'] = { total, accepted: 0, rejected: 0, deferred: 0, buckets: {} }
+  const basis: TuningRecord['basis'] = { total, accepted: 0, rejected: 0, deferred: 0, buckets: {}, byKind: {} }
   const byKind = new Map<EvolutionDecision['kind'], EvolutionDecision[]>()
   for (const decision of decisions) {
     if (decision.action === 'accepted') basis.accepted++
     else if (decision.action === 'rejected') basis.rejected++
     else basis.deferred++
+    // 按类别累计（给「出现概率」卡片展示依据）。
+    const kindStat = basis.byKind![decision.kind] ?? { total: 0, accepted: 0, rejected: 0, deferred: 0 }
+    kindStat.total++
+    if (decision.action === 'accepted') kindStat.accepted++
+    else if (decision.action === 'rejected') kindStat.rejected++
+    else kindStat.deferred++
+    basis.byKind![decision.kind] = kindStat
     // freeform 只计数、不驱动参数，但 basis 里如实记录。
     basis.buckets[decision.reasonBucket] = (basis.buckets[decision.reasonBucket] ?? 0) + 1
     const list = byKind.get(decision.kind)
@@ -343,7 +370,42 @@ export function computeTuning(input: ComputeTuningInput): ComputeTuningResult {
     adjust('reasonSimilarityThreshold', -1)
   }
 
-  return { params, applied, basis, adjustedAt }
+  // ---- 出现概率：按每类裁决统计推导，只影响提案「是否进入列表」 ----
+  //
+  // 概率 = clamp(0.25, 1, 0.5 + 0.5 × (同意 - 驳回 - 0.5×暂缓) / 总数)，量化到 0.05。
+  // 暂缓按半票负面计（时机问题，不算全错）。样本不足（< MIN_SAMPLE）时沿用旧值。
+  // 关闭开关时概率恒为 1.0，且不给任何类别额外名额。
+  const probabilityEnabled = current.probabilityEnabled !== false
+  const kindProbability: Partial<Record<EvolutionDecision['kind'], number>> = { ...current.kindProbability }
+  const extraSlots: Partial<Record<EvolutionDecision['kind'], number>> = {}
+  for (const kind of ['new-skill', 'optimize', 'reclaim'] as const) {
+    const list = byKind.get(kind) ?? []
+    if (!probabilityEnabled) {
+      kindProbability[kind] = PROBABILITY_MAX
+      continue
+    }
+    if (list.length < MIN_SAMPLE) continue // 样本不足：沿用旧值，绝不臆测
+    let accepted = 0
+    let rejected = 0
+    let deferred = 0
+    for (const d of list) {
+      if (d.action === 'accepted') accepted++
+      else if (d.action === 'rejected') rejected++
+      else deferred++
+    }
+    const n = accepted + rejected + deferred
+    const raw = 0.5 + 0.5 * (accepted - rejected - 0.5 * deferred) / n
+    const clamped = Math.min(PROBABILITY_MAX, Math.max(PROBABILITY_MIN, raw))
+    const p = Math.round(clamped / PROBABILITY_STEP) * PROBABILITY_STEP
+    kindProbability[kind] = Math.round(p * 100) / 100
+    // 采纳率 ≥70% 时给该类多一个观察名额（上限 +2）。
+    // 只增加「输出数量」，绝不降低 minValueScore 或让提案自动落地。
+    if (accepted / n >= 0.7) {
+      extraSlots[kind] = Math.min(MAX_EXTRA_SLOTS, (extraSlots[kind] ?? 0) + 1)
+    }
+  }
+
+  return { params, applied, basis, adjustedAt, kindProbability, extraSlots }
 }
 
 /**

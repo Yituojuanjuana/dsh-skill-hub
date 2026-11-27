@@ -462,7 +462,7 @@ export function wireEvolution(deps: EvolutionWiringDeps): EvolutionWiring {
        * 只改 `tuning` 这一块，不跑校准、不碰提案 —— 恢复默认不会让任何提案
        * 状态变化，也不会写技能文件。
        */
-      tuning: async (patch: { lock?: string; unlock?: string; reset?: boolean }) => {
+      tuning: async (patch: { lock?: string; unlock?: string; reset?: boolean; probabilityEnabled?: boolean }) => {
         let next: EvolutionTuningState | undefined
         await store.update((current) => {
           const base = current.tuning ?? defaultTuning()
@@ -474,6 +474,15 @@ export function wireEvolution(deps: EvolutionWiringDeps): EvolutionWiring {
             if (patch.lock !== undefined) locked.add(patch.lock as TuningKey)
             if (patch.unlock !== undefined) locked.delete(patch.unlock as TuningKey)
             tuning = { ...base, locked: [...locked] }
+          }
+          if (patch.probabilityEnabled !== undefined) {
+            // 关掉开关时清空历史概率：下次打开会从 1.0 重新按样本统计，
+            // 开关本身只影响提案「是否出现」，不触碰任何提案状态。
+            tuning = {
+              ...tuning,
+              probabilityEnabled: patch.probabilityEnabled,
+              kindProbability: patch.probabilityEnabled ? tuning.kindProbability : {},
+            }
           }
           next = tuning
           return { ...current, tuning }
@@ -589,13 +598,18 @@ export function wireEvolution(deps: EvolutionWiringDeps): EvolutionWiring {
             reasonBucket: item.reasonBucket as never,
           }))
           const out = computeTuning({ decisions: decisions as never, current: base })
-          if (out.applied.length === 0) { next = base; return current }
+          // 概率块独立持久化：即使本次没有参数变化，也要写回概率 / 名额。
+          const probChanged = JSON.stringify(out.kindProbability) !== JSON.stringify(base.kindProbability ?? {})
+          if (out.applied.length === 0 && !probChanged) { next = base; return current }
           const tuning: EvolutionTuningState = {
             params: out.params,
             updatedAt: Date.now(),
             basis: out.basis as never,
             applied: out.applied,
             adjustedAt: out.adjustedAt as never,
+            kindProbability: out.kindProbability,
+            probabilityEnabled: base.probabilityEnabled !== false,
+            extraSlots: out.extraSlots as EvolutionTuningState['extraSlots'],
             locked: base.locked,
           }
           next = tuning

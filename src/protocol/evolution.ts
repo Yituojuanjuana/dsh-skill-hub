@@ -237,9 +237,20 @@ export interface EvolutionTuningState {
     rejected: number
     deferred: number
     buckets: Record<string, number>
+    /** 按提案类别拆分的裁决计数，给「出现概率」卡片展示依据。 */
+    byKind?: Partial<Record<EvolutionProposalKind, { total: number; accepted: number; rejected: number; deferred: number }>>
   }
   applied: string[]
   adjustedAt: Record<string, number>
+  /**
+   * 各类提案本轮进入列表的概率（0.25–1.0）。缺省 = 1.0（不抑制）。
+   * 只影响提案**是否出现在列表**，绝不自动落地任何提案。
+   * 另有一个内部开关 `probabilityEnabled`，关闭时概率恒为 1.0 且不给额外名额。
+   */
+  kindProbability?: Partial<Record<EvolutionProposalKind, number>>
+  probabilityEnabled?: boolean
+  /** 各类已累积的额外扫描名额（0–2），只增加输出数量，不放宽价值门槛。 */
+  extraSlots?: Partial<Record<EvolutionProposalKind, number>>
   /** 被用户锁定的参数键：校准跳过它们。 */
   locked: string[]
 }
@@ -256,6 +267,8 @@ export function defaultTuningState(): EvolutionTuningState {
     basis: { total: 0, accepted: 0, rejected: 0, deferred: 0, buckets: {} },
     applied: [],
     adjustedAt: {},
+    kindProbability: {},
+    probabilityEnabled: true,
     locked: [],
   }
 }

@@ -671,6 +671,8 @@ body:not([data-ds-dark-theme]) .panel {
 .tuningChanged { color: var(--hub-accent-text); }
 .tuningRowLocked td { opacity: .55; }
 .tuningLock { display: inline-flex; align-items: center; gap: 4px; color: var(--hub-text-4); font-size: var(--hub-fs-11); cursor: pointer; }
+.tuningProbability { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--hub-border); }
+.tuningProbabilityRow { display: grid; grid-template-columns: 90px 44px 1fr; gap: 8px; align-items: center; padding: 4px 0; font-size: var(--hub-fs-11); font-variant-numeric: tabular-nums; color: var(--hub-text-2); }
 /* ---- 面板错误边界卡片 -----------------------------------------------------
    把「整块白屏」换成一张可读的卡片。它只在渲染期异常时出现，是兜底不是修复。 */
 .errorCard { margin: 10px 0; padding: 12px 14px; border: 1px solid var(--hub-danger-border, #e5b4b4); border-radius: var(--hub-radius-md); background: var(--hub-danger-bg, #fdf3f3); }

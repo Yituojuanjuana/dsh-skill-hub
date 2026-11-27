@@ -490,6 +490,17 @@ export function EvolutionView(props: {
     }
   }
 
+  /** 概率开关：只影响提案是否出现在列表，绝不自动落地任何提案。 */
+  const toggleProbability = async (enabled: boolean): Promise<void> => {
+    setError(undefined)
+    try {
+      await api.updateEvolutionTuning({ probabilityEnabled: enabled })
+      await reload()
+    } catch (failure) {
+      setError(errorMessage(failure))
+    }
+  }
+
   /** 恢复默认参数并解除全部锁定。 */
   const resetTuning = async (): Promise<void> => {
     setError(undefined)
@@ -568,6 +579,7 @@ export function EvolutionView(props: {
           defaults={TUNING_DEFAULTS as unknown as Record<string, number>}
           busy={busyId !== undefined}
           onToggleLock={(key, locked) => { void toggleTuningLock(key, locked) }}
+          onToggleProbability={(enabled) => { void toggleProbability(enabled) }}
           onReset={() => { void resetTuning() }}
         />
       ) : null}

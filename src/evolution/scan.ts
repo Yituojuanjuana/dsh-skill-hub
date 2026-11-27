@@ -212,6 +212,61 @@ export interface ScanOptions {
  * @param options - 过滤与上限。
  * @returns 命中的技能（按维度数降序）。
  */
+/**
+ * FNV-1a 32-bit 稳定哈希。用于按 (类别, 技能名, 本地日期) 做确定性抽样：
+ * 同样的输入永远得到同样的结果，不用 Math.random，因此同一天同一技能
+ * 是否出现是可复现的，不会因为多跑几次就反复横跳。
+ */
+export function fnv1a32(input: string): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return h >>> 0
+}
+
+/** 本地日期 YYYY-MM-DD（不依赖 UTC，避免跨日边界漂移）。 */
+function localDate(now: number): string {
+  const d = new Date(now)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+/**
+ * 按「同类提案出现概率」对扫描候选做确定性过滤。
+ *
+ * - 只影响候选**是否进入待审核列表**，从不自动落地任何提案。
+ * - 概率缺省视为 1.0（不过滤）；0.25–1.0 之外的值会被夹取。
+ * - 返回被抑制的条数，调用方按类别汇总（scanning result 的 suppressedByProbability）。
+ */
+export function filterByProbability<T extends { name: string }>(
+  findings: readonly T[],
+  kind: 'optimize' | 'reclaim',
+  options: {
+    kindProbability?: Partial<Record<'optimize' | 'reclaim', number>>
+    now?: number
+    enabled?: boolean
+  } = {},
+): { findings: T[]; suppressedByProbability: number } {
+  let suppressedByProbability = 0
+  if (options.enabled === false) return { findings: [...findings], suppressedByProbability }
+  const date = localDate(options.now ?? Date.now())
+  const kept: T[] = []
+  const raw = options.kindProbability?.[kind]
+  const p = raw === undefined ? 1 : Math.min(1, Math.max(0.25, raw))
+  for (const finding of findings) {
+    if (p >= 1) { kept.push(finding); continue }
+    const key = `${kind}|${finding.name}|${date}`
+    const bucket = fnv1a32(key) % 1000
+    if (bucket < Math.round(p * 1000)) kept.push(finding)
+    else suppressedByProbability++
+  }
+  return { findings: kept, suppressedByProbability }
+}
+
 export function scanAll(skills: readonly ScannableSkill[], options: ScanOptions = {}): ScanFinding[] {
   const now = options.now ?? Date.now()
   const limit = options.limit ?? MAX_SCAN_PROPOSALS

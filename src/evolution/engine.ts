@@ -6,9 +6,9 @@
  * 2. 无价值时返回固定的「暂无技能进化提案」；
  * 3. 草稿必须带触发条件与测试用例（3 正向 + 1 异常）。
  */
-import type { EvolutionProposal, EvolutionRunResult, EvolutionRunStatus } from '../protocol/evolution.ts'
+import type { EvolutionProposal, EvolutionProposalKind, EvolutionRunResult, EvolutionRunStatus } from '../protocol/evolution.ts'
 import { runPipeline } from './pipeline.ts'
-import { MAX_SCAN_PROPOSALS, scanAll, toOptimizeProposal, toReclaimProposal, type ScannableSkill } from './scan.ts'
+import { MAX_SCAN_PROPOSALS, filterByProbability, scanAll, toOptimizeProposal, toReclaimProposal, type ScannableSkill } from './scan.ts'
 import { normalizeName, SKILL_ID_PATTERN, toDisplayName, toDescription } from './naming.ts'
 import type { ReviewMessage } from './review.ts'
 
@@ -54,7 +54,13 @@ export interface EvolutionEngineDeps {
    * 引擎只读它来决定过滤门槛与扫描上限，绝不写回 —— 写回只发生在
    * wiring.recalibrate()。
    */
-  readTuning?: () => Promise<{ minValueScore?: number; maxScanProposals?: number } | undefined>
+  readTuning?: () => Promise<{
+    minValueScore?: number
+    maxScanProposals?: number
+    kindProbability?: Partial<Record<EvolutionProposalKind, number>>
+    probabilityEnabled?: boolean
+    extraSlots?: Partial<Record<EvolutionProposalKind, number>>
+  } | undefined>
   /** 是否开启。 */
   enabled: () => boolean
   /** 单次最多读几个会话。 */
@@ -793,7 +799,7 @@ export class EvolutionEngine {
     //
     // 与轨迹分析互补：轨迹看「用户用出什么问题」，扫描看「技能本身写得怎样」。
     // 扫描产出的优化提案同样走价值评分与去重，最后与轨迹结果合并排序。
-    const scanned = await this.scanAllSkills(sources.trash ?? [], sources.usage ?? [])
+    const scanned = await this.scanAllSkills(sources.trash ?? [], sources.usage ?? [], tuning)
     let proposals = pipeline.proposals
     if (scanned.length > 0) {
       const scannedPipeline = runPipeline('', { ...sources }, this.now(), scanned, tuning)
@@ -868,6 +874,7 @@ export class EvolutionEngine {
   private async scanAllSkills(
     trash: ReadonlyArray<{ name: string }>,
     usage: ReadonlyArray<{ name: string; total: number; week: number }>,
+    tuning?: Awaited<ReturnType<NonNullable<EvolutionEngineDeps['readTuning']>>>,
   ): Promise<EvolutionProposal[]> {
     const listed = await this.deps.listSkills().catch(() => [])
     const usageByName = new Map(usage.map((row) => [row.name, row]))
@@ -889,20 +896,48 @@ export class EvolutionEngine {
       else scannable.push(item)
     }
 
-    const findings = scanAll(scannable, {
+    // 概率/额外名额只决定「哪些候选进入待审核列表」，全部候选都要先经过
+    // 正常的价值评分；过滤后仍逐条走 runPipeline，绝不自动落地任何提案。
+    const extraSlots = tuning?.extraSlots ?? {}
+    const limitFor = (kind: EvolutionProposalKind): number =>
+      MAX_SCAN_PROPOSALS + Math.min(2, Math.max(0, extraSlots[kind] ?? 0))
+    const optimizeFindings = scanAll(scannable, {
       trashed: new Set(trash.map((row) => row.name)),
       now: this.now(),
-      limit: MAX_SCAN_PROPOSALS,
+      limit: limitFor('optimize'),
     })
-    const optimize = findings.map((finding) => toOptimizeProposal(finding, this.now()))
+    const filteredOptimize = filterByProbability(
+      optimizeFindings.map((finding) => ({ name: finding.skill.name, finding })),
+      'optimize',
+      {
+        kindProbability: tuning?.kindProbability,
+        now: this.now(),
+        enabled: tuning?.probabilityEnabled !== false,
+      },
+    )
+    const optimize = filteredOptimize.findings.map((item) => toOptimizeProposal(item.finding, this.now()))
 
     // 闲置技能：转成「建议移入回收站」提案（不带源码、不占草稿）。
     const trashedNames = new Set(trash.map((row) => row.name))
-    const reclaim = idle
-      .filter((skill) => !trashedNames.has(skill.name))
-      .slice(0, MAX_SCAN_PROPOSALS)
-      .map((skill) => toReclaimProposal(skill, this.now()))
+    const reclaimCandidates = idle.filter((skill) => !trashedNames.has(skill.name)).slice(0, limitFor('reclaim'))
+    const filteredReclaim = filterByProbability(
+      reclaimCandidates.map((skill) => ({ name: skill.name, skill })),
+      'reclaim',
+      {
+        kindProbability: tuning?.kindProbability,
+        now: this.now(),
+        enabled: tuning?.probabilityEnabled !== false,
+      },
+    )
+    const reclaim = filteredReclaim.findings.map((item) => toReclaimProposal(item.skill, this.now()))
 
+    const suppressed = {
+      optimize: filteredOptimize.suppressedByProbability,
+      reclaim: filteredReclaim.suppressedByProbability,
+    }
+    if (suppressed.optimize > 0 || suppressed.reclaim > 0) {
+      this.deps.log?.('[dsh-skill-shelf] evolution probability suppressed ' + JSON.stringify(suppressed))
+    }
     return [...optimize, ...reclaim]
   }
 }

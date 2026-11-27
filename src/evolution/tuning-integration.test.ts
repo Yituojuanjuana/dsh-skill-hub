@@ -117,8 +117,8 @@ describe('集成：门槛被校准抬高后，中价值提案确实被过滤', (
 describe('集成：校准不会碰落地路径', () => {
   it('computeTuning never returns proposals or file paths', () => {
     const out = computeTuning({ decisions: narrowRejections(20), current: defaultTuning() })
-    // 输出只有参数、改动清单、统计、防抖水位 —— 没有任何提案或路径字段。
-    expect(Object.keys(out).sort()).toEqual(['adjustedAt', 'applied', 'basis', 'params'])
+    // 输出只有参数、改动清单、统计、防抖水位、出现概率/名额 —— 没有任何提案或路径字段。
+    expect(Object.keys(out).sort()).toEqual(['adjustedAt', 'applied', 'basis', 'extraSlots', 'kindProbability', 'params'])
     const serialized = JSON.stringify(out)
     expect(serialized).not.toContain('skills/')
     expect(serialized).not.toContain('SKILL.md')

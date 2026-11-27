@@ -26,13 +26,22 @@ export interface TuningCardProps {
   defaults: Record<string, number>
   onToggleLock: (key: string, locked: boolean) => void
   onReset: () => void
+  /** 概率开关：关闭时概率恒为 1.0，不生成任何额外名额。 */
+  onToggleProbability?: (enabled: boolean) => void
   busy: boolean
 }
 
+const PROBABILITY_KINDS = [
+  { kind: 'new-skill', label: 'evolution.probabilityKindNew' },
+  { kind: 'optimize', label: 'evolution.probabilityKindOptimize' },
+  { kind: 'reclaim', label: 'evolution.probabilityKindReclaim' },
+] as const
+
 export function TuningCard(props: TuningCardProps): JSX.Element {
-  const { tuning, defaults, onToggleLock, onReset, busy } = props
+  const { tuning, defaults, onToggleLock, onReset, onToggleProbability, busy } = props
   const [open, setOpen] = useState(false)
   const locked = new Set(tuning.locked)
+  const probabilityEnabled = tuning.probabilityEnabled !== false
   const changed = Object.keys(defaults).filter((key) => tuning.params[key] !== defaults[key])
   const fmt = (key: string, value: number | undefined): string => {
     if (value === undefined) return '-'
@@ -103,6 +112,40 @@ export function TuningCard(props: TuningCardProps): JSX.Element {
               })}
             </tbody>
           </table>
+          <div className={css.tuningProbability}>
+            <div className={css.tuningBasis}>
+              <strong>{tt('evolution.probabilityTitle')}</strong>
+              {' · '}
+              {tt('evolution.probabilityHint')}
+            </div>
+            <label className={css.tuningLock}>
+              <input
+                type='checkbox'
+                checked={probabilityEnabled}
+                disabled={busy || onToggleProbability === undefined}
+                onChange={(event) => { onToggleProbability?.(event.target.checked) }}
+              />
+              {tt('evolution.probabilityToggle')}
+            </label>
+            {PROBABILITY_KINDS.map(({ kind, label }) => {
+              const stat = tuning.basis.byKind?.[kind]
+              const p = probabilityEnabled ? tuning.kindProbability?.[kind] ?? 1 : 1
+              const rate = stat !== undefined && stat.total > 0
+                ? Math.round(stat.accepted / stat.total * 100)
+                : 0
+              return (
+                <div key={kind} className={css.tuningProbabilityRow}>
+                  <span>{tt(label)}</span>
+                  <span>{Math.round(p * 100)}%</span>
+                  <span className={css.tuningDefault}>
+                    {stat === undefined || stat.total === 0
+                      ? tt('evolution.probabilityInsufficient')
+                      : tt('evolution.probabilityBasis', { total: stat.total, rate })}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
         </div>
       ) : null}
     </section>

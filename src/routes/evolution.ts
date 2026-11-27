@@ -36,7 +36,7 @@ export interface EvolutionRouteDeps {
    *
    * 只改 tuning，不跑校准、不碰提案。
    */
-  tuning(patch: { lock?: string; unlock?: string; reset?: boolean }): Promise<{ tuning: EvolutionTuningState }>
+  tuning(patch: { lock?: string; unlock?: string; reset?: boolean; probabilityEnabled?: boolean }): Promise<{ tuning: EvolutionTuningState }>
   /** 按裁决历史重算参数（确定性，不经模型）。 */
   recalibrate(): Promise<{ tuning: EvolutionTuningState }>
   /** 跑一次进化（会一直跑到结束；后台任务用）。 */
@@ -269,6 +269,7 @@ export function evolutionRoutes(deps: SkillHubRouteDeps, evolution: EvolutionRou
             ...typeof patch.lock === 'string' ? { lock: patch.lock } : {},
             ...typeof patch.unlock === 'string' ? { unlock: patch.unlock } : {},
             ...patch.reset === true ? { reset: true } : {},
+            ...typeof patch.probabilityEnabled === 'boolean' ? { probabilityEnabled: patch.probabilityEnabled } : {},
           })
         } catch (error) {
           writeError(res, 500, errorText(error)); return
