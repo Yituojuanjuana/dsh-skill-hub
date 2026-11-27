@@ -31,6 +31,8 @@ export const SKILL_HUB_API = {
   catalog: '/api/skill-shelf/catalog',
   skill: '/api/skill-shelf/skill',
   skillDelete: '/api/skill-shelf/skill/delete',
+  /** 修改技能 frontmatter 的两个可调用性开关（写真实文件）。 */
+  skillInvocation: '/api/skill-shelf/skill/invocation',
   toggle: '/api/skill-shelf/toggle',
   toggleBatch: '/api/skill-shelf/toggle-batch',
   create: '/api/skill-shelf/create',

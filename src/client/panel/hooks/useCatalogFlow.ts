@@ -189,6 +189,46 @@ export function useCatalogFlow(
     }
   }, [api, shared, commitCatalog])
 
+  /**
+   * 改 frontmatter 的「模型/用户可调用」开关。
+   *
+   * 同样走乐观更新 + 单行回滚：调用开关和 toggle 一样是高频行内操作，
+   * 等 5 秒轮询再看到结果会像「点了没反应」。成功不直接信返回值改 catalog
+   * —— reload 一次让 catalog / 详情 / 菜单的状态一起对齐磁盘真值。
+   */
+  const setInvocation = useCallback(async (skill: CatalogSkill, patch: { modelInvocable?: boolean; userInvocable?: boolean }): Promise<boolean> => {
+    const key = skill.name + '\0' + (skill.workspace ?? '')
+    if (pendingToggles.current.has(key)) return false
+    pendingToggles.current.add(key)
+    setBusyNames((previous) => new Set(previous).add(skill.name))
+    const snapshot = catalogRef.current
+    setCatalog((previous) => patchInvocationInCatalog(previous, skill.name, patch))
+    shared.clearFail()
+    let sourceWillOverwrite = false
+    try {
+      const next = await api.setInvocation({
+        name: skill.name,
+        ...patch,
+        ...(skill.workspace !== undefined && skill.workspace !== '' ? { cwd: skill.workspace } : {}),
+      })
+      sourceWillOverwrite = next.sourceWillOverwrite === true
+      await load()
+    } catch (error) {
+      setCatalog((current) => (current === null || snapshot === null ? current : rollbackSkillToSnapshot(current, snapshot, skill.name)))
+      shared.fail(errorMessage(error))
+      return false
+    } finally {
+      pendingToggles.current.delete(key)
+      setBusyNames((previous) => {
+        const next = new Set(previous)
+        next.delete(skill.name)
+        return next
+      })
+    }
+    if (sourceWillOverwrite) shared.fail(tt('legend.syncOverwrite'))
+    return true
+  }, [api, shared, load])
+
   const enableDisabled = useCallback(async (record: DisabledSkill): Promise<void> => {
     setBusyNames((previous) => new Set(previous).add(record.name))
     await runFlow(shared, async () => {
@@ -312,11 +352,27 @@ export function useCatalogFlow(
     filtered, sorted, searchedSorted, shortenedCount,
     setDetail, setSearch, setWorkspace, setShowForm, setFormName, setFormDesc, setFormBody,
     setFormRoot, setFormWorkspace, setFormMessage, setInvocationFilter, setStatusFilter, setSortKey,
-    load, openDetail, toggle, enableDisabled, batchToggleNames, fixDiagnostic, create, clearListFilters,
+    load, openDetail, toggle, setInvocation, enableDisabled, batchToggleNames, fixDiagnostic, create, clearListFilters,
   }
 }
 
 /* ---------------------------------------------------------------- 乐观更新辅助 */
+
+/** 与 setInvocation 配套的单行乐观更新：只改目标行的 invocation 字段。 */
+export function patchInvocationInCatalog(
+  catalog: CatalogResponse | null,
+  name: string,
+  patch: { modelInvocable?: boolean; userInvocable?: boolean },
+): CatalogResponse | null {
+  if (catalog === null) return null
+  let changed = false
+  const skills = catalog.skills.map((skill) => {
+    if (skill.name !== name) return skill
+    changed = true
+    return { ...skill, invocation: { ...skill.invocation, ...patch } }
+  })
+  return changed ? { ...catalog, skills } : catalog
+}
 
 /**
  * 返回一份「把指定技能切到 enabled」的新 catalog（纯函数，不改入参）。

@@ -224,6 +224,23 @@ export interface SkillDeleteResponse {
   path: string
 }
 
+/** POST /api/skill-shelf/skill/invocation — 修改 frontmatter 里的两个调用开关。 */
+export interface SkillInvocationRequest {
+  name: string
+  modelInvocable?: boolean
+  userInvocable?: boolean
+  /** 工作区技能需要带 cwd（与 delete/toggle 一致）。 */
+  cwd?: string
+}
+
+export interface SkillInvocationResponse {
+  ok: true
+  name: string
+  invocation: { modelInvocable: boolean; userInvocable: boolean }
+  /** 该技能有上游来源：同步会覆盖这次 frontmatter 改动。UI 必须警告。 */
+  sourceWillOverwrite?: boolean
+}
+
 /** POST /api/skill-shelf/toggle */
 export interface ToggleRequest {
   /** Kebab-case skill name. */

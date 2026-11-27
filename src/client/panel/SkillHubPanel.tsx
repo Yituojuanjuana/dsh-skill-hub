@@ -252,6 +252,7 @@ export function SkillHubPanel(props: SkillHubPanelProps): React.JSX.Element {
     duplicateNames: new Set(catalog?.duplicateNames ?? []),
     statusFilter: hub.statusFilter,
     hideSourceBadge: true,
+    setInvocation: hub.setInvocation,
     toggle: hub.toggle,
     openDetail: hub.openDetail,
     requestDeleteSkill: hub.requestDeleteSkill,

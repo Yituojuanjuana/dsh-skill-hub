@@ -48,6 +48,8 @@ import {
   type SkillDetailResponse,
   type SkillDeleteRequest,
   type SkillDeleteResponse,
+  type SkillInvocationRequest,
+  type SkillInvocationResponse,
   type SkillTag,
   type SourceCheckRequest,
   type SourceCheckResponse,
@@ -252,6 +254,11 @@ export class SkillHubApi {
   /** Move one writable skill into the restorable trash. */
   deleteSkill(name: string): Promise<SkillDeleteResponse> {
     return this.post<SkillDeleteResponse>(SKILL_HUB_API.skillDelete, { name } satisfies SkillDeleteRequest)
+  }
+
+  /** 改 skill frontmatter 的调用开关；返回新状态（同步覆盖告警由 UI 处理）。 */
+  setInvocation(payload: SkillInvocationRequest): Promise<SkillInvocationResponse> {
+    return this.post<SkillInvocationResponse>(SKILL_HUB_API.skillInvocation, payload)
   }
 
   /** Toggle one skill; resolves with the fresh catalog from the route. */

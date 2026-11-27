@@ -130,6 +130,7 @@ export function WorkspaceView(props: { hub: SkillHubState }): JSX.Element {
     // the disabled sidecar. Keep rows visible so the switch always represents
     // the current model-invocation state.
     statusFilter: 'all' as const,
+    setInvocation: hub.setInvocation,
     toggle: hub.toggle,
     openDetail: hub.openDetail,
     requestDeleteSkill: hub.requestDeleteSkill,

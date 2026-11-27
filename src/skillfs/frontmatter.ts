@@ -169,6 +169,72 @@ export function repairFrontmatterFileText(text: string): string | null {
   return '---\n' + repaired + '\n---' + (body !== '' ? '\n' + body : '')
 }
 
+/**
+ * 只改两个可调用性开关，其余一切原样保留：字段顺序、注释、空行、CRLF/LF、BOM、
+ * 正文一个字节都不动。这里刻意不用 YAML stringify —— 那会重排字段、改引号、
+ * 丢注释，用户会看到「我只改了一个开关，整份 skill 都被格式化了」。
+ *
+ * true = 删除对应键（解析器默认值就是可调用）；false = 写「禁用」键。
+ */
+export function setInvocationFlags(text: string, flags: { modelInvocable: boolean; userInvocable: boolean }): string {
+  const bom = text.charCodeAt(0) === 0xfeff ? '\ufeff' : ''
+  const raw = bom === '' ? text : text.slice(1)
+  const eol = raw.includes('\r\n') ? '\r\n' : '\n'
+  // split 保留末尾的空串（文件以换行结束时），re-join 时会原样还回去。
+  const lines = raw.split(/\r?\n/)
+
+  const start = lines[0]?.trim() === '---' ? 0 : -1
+  let end = -1
+  if (start === 0) {
+    for (let i = 1; i < lines.length; i += 1) {
+      if (lines[i].trim() === '---') { end = i; break }
+    }
+  }
+
+  const wanted: Array<{ key: string; value: string; enable: boolean }> = [
+    { key: 'disable-model-invocation', value: 'true', enable: !flags.modelInvocable },
+    { key: 'user-invocable', value: 'false', enable: !flags.userInvocable },
+  ]
+
+  let head: string[]
+  let body: string[]
+  let closing: string
+  if (start === 0 && end > 0) {
+    head = lines.slice(1, end)
+    body = lines.slice(end + 1)
+    closing = lines[end] // 原样保留结束行（可能有尾随空格）。
+  } else {
+    // 没有 frontmatter：补一个最小块。正文里若有顶层 description: 行，
+    // 顺手带进 frontmatter 避免描述丢失；其余正文保持原样。
+    head = []
+    body = lines.slice()
+    const descIndex = body.findIndex((line) => /^description[ \t]*:/.test(line))
+    if (descIndex >= 0) head.push(body.splice(descIndex, 1)[0])
+    closing = '---'
+  }
+
+  for (const item of wanted) {
+    const re = new RegExp('^([ \\t]*)' + item.key.replace(/-/g, '\\-') + '([ \\t]*:).*$')
+    const indexes: number[] = []
+    head.forEach((line, i) => { if (re.test(line)) indexes.push(i) })
+    if (item.enable) {
+      if (indexes.length > 0) {
+        const first = indexes[0]
+        const indent = re.exec(head[first])?.[1] ?? ''
+        head[first] = indent + item.key + ': ' + item.value
+        for (const idx of indexes.slice(1).reverse()) head.splice(idx, 1)
+      } else {
+        head.push(item.key + ': ' + item.value)
+      }
+    } else {
+      for (const idx of indexes.reverse()) head.splice(idx, 1)
+    }
+  }
+
+  const result = [['---'], head, [closing], body].flat().join(eol)
+  return bom + result
+}
+
 /** Official boolean grammar: true/false, 1/0, and the common string spellings. */
 function frontmatterBoolean(data: Record<string, unknown>, key: string): boolean | undefined {
   if (!Object.hasOwn(data, key)) return undefined

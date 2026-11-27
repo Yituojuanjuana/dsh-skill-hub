@@ -3,7 +3,8 @@
  * create / stats。从 routes.ts 原样搬出，handler 逻辑不变。
  */
 
-import { readFile, stat } from 'node:fs/promises'
+import { readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { rm } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import type { SkillDefinition } from '@deepseek-ai/dsh-skill'
 import { isSkillName } from '@deepseek-ai/dsh-skill'
@@ -12,6 +13,7 @@ import {
   type CreateResponse,
   type DisabledSkill,
   type SkillDeleteResponse,
+  type SkillInvocationResponse,
   type SkillDetail,
   type SkillDetailResponse,
   type ToggleBatchResponse,
@@ -19,6 +21,7 @@ import {
   type WritableRoot,
 } from '../protocol.ts'
 import { createSkill, createSkillInDir, occupancyOf, parseFrontmatter, readSkillInterface, rootOfPath, rootPath, trashSkill } from '../skillfs.ts'
+import { setInvocationFlags } from '../skillfs/frontmatter.ts'
 import { foreignRootOfPath, projectSkillsRoot } from '../skillfs/paths.ts'
 import { errorText } from '../error-text.ts'
 import {
@@ -364,6 +367,49 @@ export function catalogRoutes(deps: SkillHubRouteDeps): RouteSpec[] {
         await deps.store.removeSkillFromTags(name)
         deps.invalidate?.()
         writeJson(res, 200, { ok: true, name, path } satisfies SkillDeleteResponse)
+      },
+    },
+    // ------------------------------------------------------ skill/invocation
+    // 与 toggle 不同：这里**写真实 SKILL.md 的 frontmatter**（用户明确要改文件），
+    // 只改两个键、原子写（临时文件 + rename）。路由自身经 createRoute 挂统一围栏。
+    {
+      path: SKILL_HUB_API.skillInvocation,
+      methods: ['POST'],
+      jsonBody: true,
+      serialize: true,
+      handler: async ({ res, body }) => {
+        const name = readString(body, 'name')
+        if (name === '') { writeError(res, 400, 'name is required'); return }
+        const cwd = readString(body, 'cwd')
+        const resolved = await resolveWritableSkill(deps, name, cwd !== '' ? cwd : undefined)
+        if (!resolved.ok) { writeError(res, resolved.status, resolved.error); return }
+        const modelInvocable = typeof body.modelInvocable === 'boolean' ? body.modelInvocable : resolved.skill.invocation.modelInvocable
+        const userInvocable = typeof body.userInvocable === 'boolean' ? body.userInvocable : resolved.skill.invocation.userInvocable
+        let text: string
+        try {
+          text = await readFile(resolved.path, 'utf8')
+        } catch (error) {
+          writeError(res, 409, 'skill file is not readable: ' + errorText(error))
+          return
+        }
+        const next = setInvocationFlags(text, { modelInvocable, userInvocable })
+        const tmp = resolved.path + '.tmp-' + process.pid
+        try {
+          await writeFile(tmp, next, 'utf8')
+          await rename(tmp, resolved.path)
+        } catch (error) {
+          await rm(tmp, { force: true }).catch(() => {})
+          writeError(res, 409, 'skill file is not writable: ' + errorText(error))
+          return
+        }
+        deps.invalidate?.()
+        const tracked = await deps.store.getSourceForSkill(name)
+        writeJson(res, 200, {
+          ok: true,
+          name,
+          invocation: { modelInvocable, userInvocable },
+          ...tracked !== undefined ? { sourceWillOverwrite: true } : {},
+        } satisfies SkillInvocationResponse)
       },
     },
     // -------------------------------------------------------------- toggle

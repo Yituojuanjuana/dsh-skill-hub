@@ -139,6 +139,13 @@
 .badge { font-size: var(--hub-fs-11); padding: 1px 7px; border-radius: 999px; border: 1px solid var(--hub-border-2); color: var(--hub-text); white-space: nowrap; line-height: 1.6; }
 .badgeReadonly { opacity: .5; }
 
+/* 调用开关：文字 chip（实心=开、描边=关），不再用彩色圆点。 */
+.invocationChips { display: flex; flex: none; align-items: center; gap: 8px; }
+.invocationChip { font-size: var(--hub-fs-11); line-height: 1.6; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--hub-border-2); background: transparent; color: var(--hub-text-4); cursor: pointer; white-space: nowrap; transition: background .12s ease, color .12s ease, border-color .12s ease; }
+.invocationChip:hover:not(:disabled) { border-color: var(--hub-text-4); }
+.invocationChipOn { background: var(--hub-model); border-color: var(--hub-model); color: #fff; }
+.invocationChip:disabled { opacity: .5; cursor: default; }
+
 /* iOS-style switch (kept, already matches the system look). */
 /* v0.4：开关加一点内阴影，开状态用品牌色 + 柔光，手感更实。 */
 .switch { flex: none; width: 38px; height: 22px; padding: 2px; border: 1px solid var(--hub-border-2); border-radius: var(--hub-radius-pill); background: var(--dsw-alias-bg-module-platform, rgba(128,128,128,.3)); cursor: pointer; transition: background .18s ease, border-color .18s ease, transform .12s ease, box-shadow .18s ease; }

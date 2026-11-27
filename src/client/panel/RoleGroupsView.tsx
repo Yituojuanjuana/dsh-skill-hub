@@ -27,7 +27,7 @@ export function RoleGroupsView(props: { hub: SkillHubState }): JSX.Element {
   const duplicateNames = useMemo(() => new Set(catalog?.duplicateNames ?? []), [catalog])
   // 组间同样按各组最高排名成员排，别让固定 role 规则盖掉用户选的排序键。
   const groups = useMemo(() => sortGroupsByRank(groupByRole(hub.sorted), hub.sorted), [hub.sorted])
-  const rowProps = { uses: hub.uses, hubConfig: hub.hubConfig, busyNames, editMode: hub.editMode, tagBusy: hub.tagBusy, duplicateNames, statusFilter: hub.statusFilter, hideSourceBadge: true, toggle: hub.toggle, openDetail: hub.openDetail, requestDeleteSkill: hub.requestDeleteSkill, requestTrashSkill: hub.requestTrashSkill }
+  const rowProps = { uses: hub.uses, hubConfig: hub.hubConfig, busyNames, editMode: hub.editMode, tagBusy: hub.tagBusy, duplicateNames, statusFilter: hub.statusFilter, hideSourceBadge: true, setInvocation: hub.setInvocation, toggle: hub.toggle, openDetail: hub.openDetail, requestDeleteSkill: hub.requestDeleteSkill, requestTrashSkill: hub.requestTrashSkill }
 
   /**
    * Whole-role toggle. The members come from the classifier, not a tag, so

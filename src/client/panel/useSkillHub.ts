@@ -216,7 +216,7 @@ export function useSkillHub(api: SkillHubApi) {
     setShowLegend, setEditMode,
     setVersionDialog: marketFlow.setVersionDialog,
     toggleGroupExpanded, toggleSubdivide, setAllGroupsExpanded, checkUpdate: meta.checkUpdate, loadMarket: marketFlow.loadMarket,
-    openDetail: catalogFlow.openDetail, toggle: catalogFlow.toggle, enableDisabled: catalogFlow.enableDisabled,
+    openDetail: catalogFlow.openDetail, toggle: catalogFlow.toggle, setInvocation: catalogFlow.setInvocation, enableDisabled: catalogFlow.enableDisabled,
     batchToggleNames: catalogFlow.batchToggleNames,
     runConfirmed: sourceFlow.runConfirmed, checkSources: sourceFlow.checkSources,
     requestSync: sourceFlow.requestSync, requestDelete: sourceFlow.requestDelete,

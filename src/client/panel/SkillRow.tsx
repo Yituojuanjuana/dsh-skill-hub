@@ -8,7 +8,7 @@ import type { CatalogSkill, HubConfig, PermanentStat } from '../../protocol.ts'
 import type { SkillStatusFilter } from './hooks/useCatalogFlow.ts'
 import { IconTrashOutline16 } from '../icons.tsx'
 import { isDisplayNameDistinct, tt } from '../helpers.ts'
-import { dotStyle, formatDateTime, formatSuccessRate, relativeTimeText } from './format.ts'
+import { formatDateTime, formatSuccessRate, relativeTimeText } from './format.ts'
 import { sourceLabel } from './source-label.ts'
 import css from './panel.module.css'
 
@@ -33,6 +33,8 @@ export interface SkillRowProps {
   statusFilter?: SkillStatusFilter
   /** Hide the discovery-root badge — the by-location view already names it on the card. */
   hideSourceBadge?: boolean
+  /** 改 frontmatter 的模型/用户可调用开关；Promise resolve 为 false 表示失败需回滚。 */
+  setInvocation: (skill: CatalogSkill, patch: { modelInvocable?: boolean; userInvocable?: boolean }) => Promise<boolean>
   toggle: (skill: CatalogSkill, enabled: boolean) => Promise<void>
   openDetail: (name: string, workspace?: string) => Promise<void>
   requestDeleteSkill: (name: string) => void
@@ -46,8 +48,11 @@ export interface SkillRowProps {
 }
 
 export function SkillRowImpl(props: SkillRowProps): JSX.Element {
-  const { skill, uses, permanentUses, hubConfig, busyNames, editMode, tagBusy, duplicateNames, hideSourceBadge, toggle, openDetail, requestDeleteSkill, requestTrashSkill } = props
+  const { skill, uses, permanentUses, hubConfig, busyNames, editMode, tagBusy, duplicateNames, hideSourceBadge, setInvocation, toggle, openDetail, requestDeleteSkill, requestTrashSkill } = props
   const [menuOpen, setMenuOpen] = useState(false)
+  /** 调用开关的本地乐观覆盖：null 表示跟随 catalog 真值。所有 hook 在 early return 之前。 */
+  const [invOverride, setInvOverride] = useState<{ modelInvocable: boolean; userInvocable: boolean } | null>(null)
+  const [invoking, setInvoking] = useState(false)
   /**
    * 菜单的实测坐标。
    *
@@ -78,12 +83,19 @@ export function SkillRowImpl(props: SkillRowProps): JSX.Element {
 
   const isDuplicate = duplicateNames.has(skill.name)
   const externalSource = hideSourceBadge !== true && skill.source.startsWith('agent-') ? sourceLabel(skill.source) : null
-  /** 单一状态圆点：模型可调 → 蓝；否则用户可调 → 绿。与聊天 / 菜单同规则。 */
-  const dot = skill.invocation.modelInvocable
-    ? <span className={css.dot + ' ' + css.dotModel} style={dotStyle(hubConfig?.dotModelColor)} title={tt('legend.model')} />
-    : skill.invocation.userInvocable
-      ? <span className={css.dot + ' ' + css.dotUser} style={dotStyle(hubConfig?.dotUserColor)} title={tt('legend.user')} />
-      : null
+  const invocation = invOverride ?? skill.invocation
+  /** 点击调用开关：乐观本地覆盖 → 调后端 → 失败回滚到点击前的值；在途禁点。 */
+  const onInvocation = (patch: { modelInvocable?: boolean; userInvocable?: boolean }): void => {
+    if (invoking) return
+    const before: { modelInvocable: boolean; userInvocable: boolean } = { ...invocation }
+    const next = { ...before, ...patch }
+    setInvOverride(next)
+    setInvoking(true)
+    void setInvocation(skill, patch).then((ok) => {
+      if (!ok) setInvOverride(before)
+      else setInvOverride(null) // 成功后 catalog 已被 reload，跟随真值
+    }).catch(() => setInvOverride(before)).finally(() => setInvoking(false))
+  }
   return (
     <div className={css.row + (skill.modelOverride === true ? ' ' + css.rowOff : '')}>
       <button
@@ -107,7 +119,6 @@ export function SkillRowImpl(props: SkillRowProps): JSX.Element {
           ) : null}
           {/* 最近一次调用：直接跟在调用量后面，不再甩到行尾。 */}
           {permStat !== undefined && permStat.lastUsed > 0 && hubConfig?.showUseTime !== false ? <span className={css.useTimeInline} title={tt('row.lastUsedHint')}>{relativeTimeText(permStat.lastUsed)}</span> : null}
-          {dot}
           {isDuplicate ? <span className={css.badge + ' ' + css.statusError} title={tt('row.duplicateHint')}>{tt('row.duplicate')}</span> : null}
           {/* 安装时间靠右：与调用量/最近调用分属不同性质，放在行尾对齐成列。 */}
           {skill.addedAt !== undefined && skill.addedAt > 0 ? <span className={css.installedAt} title={tt('row.installedHint') + ' ' + formatDateTime(skill.addedAt)}>{tt('row.installed')} {relativeTimeText(skill.addedAt)}</span> : null}
@@ -115,6 +126,24 @@ export function SkillRowImpl(props: SkillRowProps): JSX.Element {
           <div className={css.rowDesc} title={skill.description}>{skill.shortDescription ?? skill.description}</div>
         </div>
       </button>
+      <span className={css.invocationChips}>
+        <button
+          type='button'
+          className={css.invocationChip + (invocation.modelInvocable ? ' ' + css.invocationChipOn : '')}
+          aria-pressed={invocation.modelInvocable}
+          title={tt('legend.model')}
+          disabled={invoking || busyNames.has(skill.name)}
+          onClick={(event) => { event.stopPropagation(); onInvocation({ modelInvocable: !invocation.modelInvocable }) }}
+        >{tt('legend.model')}</button>
+        <button
+          type='button'
+          className={css.invocationChip + (invocation.userInvocable ? ' ' + css.invocationChipOn : '')}
+          aria-pressed={invocation.userInvocable}
+          title={tt('legend.user')}
+          disabled={invoking || busyNames.has(skill.name)}
+          onClick={(event) => { event.stopPropagation(); onInvocation({ userInvocable: !invocation.userInvocable }) }}
+        >{tt('legend.user')}</button>
+      </span>
       {skill.writable || skill.toggleable === true
         ? <>
             <button

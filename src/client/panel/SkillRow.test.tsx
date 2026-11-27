@@ -28,6 +28,7 @@ const baseProps: SkillRowProps = {
   editMode: false,
   tagBusy: false,
   duplicateNames: new Set(),
+  setInvocation: async () => true,
   toggle: async () => {},
   openDetail: async () => {},
   requestDeleteSkill: () => {},

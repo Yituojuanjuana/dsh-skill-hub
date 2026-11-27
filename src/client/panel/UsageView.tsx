@@ -105,6 +105,7 @@ export function UsageView(props: { hub: SkillHubState }): JSX.Element {
                   editMode: hub.editMode,
                   tagBusy: hub.tagBusy,
                   duplicateNames: new Set(catalog?.duplicateNames ?? []),
+                  setInvocation: hub.setInvocation,
                   toggle: hub.toggle,
                   openDetail: hub.openDetail,
                   requestDeleteSkill: hub.requestDeleteSkill,
