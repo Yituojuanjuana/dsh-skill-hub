@@ -16,6 +16,7 @@ import { SkillHubApi } from './api.ts'
 import { errorMessage, tt } from './helpers.ts'
 import type { HubKey } from './locales.ts'
 import { ColorField, NumberField, PluginSettingsCard, SecretField, SwitchField } from './settings-card.tsx'
+import { OpsSection } from './panel/OpsSection.tsx'
 import { booleanField, CardForm, colorField, secretField, type CardShell, type FieldState, type FormScope } from './settings-form.ts'
 // 复用卡片自己的样式表：更新提示 pill 与版本徽标必须同一套 token 与尺寸。
 import css from './settings-card.module.css'
@@ -187,21 +188,27 @@ export function SkillHubSettingsCard(props: SkillHubSettingsCardProps): ReactEle
       onSave={props.save}
       onDiscard={props.discard}
     >
-      {FIELD_ROWS.map((row) => {
-        const value = state[row.field]
-        const common = {
-          label: t(row.label),
-          hint: t(row.hint),
-          ...fieldProps,
-          ...value,
-          onEdit: (text: string) => { props.edit(row.field, text) },
-          onReset: () => { props.resetField(row.field) },
-        }
-        if (row.kind === 'switch') return <SwitchField key={row.field} {...common} />
-        if (row.kind === 'color') return <ColorField key={row.field} {...common} id={row.id} inheritLabel={t('settings.inherit')} defaultColor={row.defaultColor} />
-        if (row.kind === 'number') return <NumberField key={row.field} {...common} id={row.id} inheritLabel={t('settings.inherit')} />
-        return <SecretField key={row.field} {...common} id={row.id} placeholder={t(row.placeholder)} />
-      })}
+      {/* 字段区 + 「运行与连接」一起作为单个 children 传入（该 slot 只收
+          单个 ReactElement）。「运行与连接」不是新 tab，挂在同一张设置卡底部；
+          它自己读状态、自己发动作，不进配置表单 —— 保存/放弃不该影响它。 */}
+      <div>
+        {FIELD_ROWS.map((row) => {
+          const value = state[row.field]
+          const common = {
+            label: t(row.label),
+            hint: t(row.hint),
+            ...fieldProps,
+            ...value,
+            onEdit: (text: string) => { props.edit(row.field, text) },
+            onReset: () => { props.resetField(row.field) },
+          }
+          if (row.kind === 'switch') return <SwitchField key={row.field} {...common} />
+          if (row.kind === 'color') return <ColorField key={row.field} {...common} id={row.id} inheritLabel={t('settings.inherit')} defaultColor={row.defaultColor} />
+          if (row.kind === 'number') return <NumberField key={row.field} {...common} id={row.id} inheritLabel={t('settings.inherit')} />
+          return <SecretField key={row.field} {...common} id={row.id} placeholder={t(row.placeholder)} />
+        })}
+        <OpsSection />
+      </div>
     </PluginSettingsCard>
   )
 }

@@ -16,6 +16,7 @@
 
 export { SKILL_HUB_API, SKILL_HUB_API_ROOT, SKILL_HUB_WRITE_HEADER, SKILL_HUB_WRITE_VALUE, SKILL_USAGE_API } from './protocol/api.ts'
 export type { PermanentStat, PermanentStatsResponse } from './protocol/api.ts'
+export type { OpsAction, OpsActionResponse, OpsConnectionResponse, OpsStatusResponse } from './protocol/api.ts'
 export type {
   WritableRoot,
   HubInvocation,

@@ -1,0 +1,49 @@
+/* 「运行与连接」一节的样式。
+ *
+ * 全部走既有 hub token（--hub-*），不引入新的色板；深色主题由
+ * panel.module.css 里同一套变量自动跟随。 */
+
+.section { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.title { margin: 0; font-size: var(--hub-fs-14); font-weight: 700; color: var(--hub-text); }
+.hint { margin: 0; font-size: var(--hub-fs-12); color: var(--hub-text-3); line-height: 1.5; }
+
+.card { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid var(--hub-border); border-radius: var(--hub-radius-md); background: var(--hub-card-bg); }
+.cardHead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cardTitle { font-size: var(--hub-fs-13); font-weight: 600; color: var(--hub-text); }
+
+.row { display: flex; align-items: baseline; gap: 10px; font-size: var(--hub-fs-12); }
+.rowLabel { flex: 0 0 132px; color: var(--hub-text-3); }
+.rowValue { flex: 1 1 auto; min-width: 0; color: var(--hub-text); word-break: break-all; }
+
+.ok { color: var(--hub-success-text); }
+.warn { color: var(--hub-warn-text); }
+.bad { color: var(--hub-danger-text); }
+
+.pending { margin: 0; font-size: var(--hub-fs-12); color: var(--hub-text-3); }
+.stale { margin: 2px 0 0; font-size: var(--hub-fs-11); color: var(--hub-warn-text); line-height: 1.5; }
+
+.actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.actionBtn { padding: 6px 14px; font-size: var(--hub-fs-12); border: 1px solid var(--hub-border-2); border-radius: var(--hub-radius-sm); background: var(--hub-card-bg); color: var(--hub-text); cursor: pointer; }
+.actionBtn:hover:not(:disabled) { background: var(--hub-card-bg-hover); }
+.actionBtn:disabled { opacity: .5; cursor: default; }
+
+.dangerBtn { padding: 6px 14px; font-size: var(--hub-fs-12); border: 1px solid var(--hub-danger); border-radius: var(--hub-radius-sm); background: var(--hub-danger); color: #fff; cursor: pointer; }
+.dangerBtn:hover:not(:disabled) { filter: brightness(1.06); }
+.dangerBtn:disabled { opacity: .5; cursor: default; }
+
+.cooldown { font-size: var(--hub-fs-11); color: var(--hub-text-3); }
+
+.success { margin: 0; font-size: var(--hub-fs-12); color: var(--hub-success-text); }
+.error { margin: 0; font-size: var(--hub-fs-12); color: var(--hub-danger-text); }
+
+.copyWrap { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.copyText { font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: var(--hub-fs-11); word-break: break-all; }
+.masked { font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: var(--hub-fs-11); color: var(--hub-text-3); }
+.miniBtn { padding: 1px 8px; font-size: var(--hub-fs-11); border: 1px solid var(--hub-border-2); border-radius: var(--hub-radius-pill); background: transparent; color: var(--hub-text-2); cursor: pointer; }
+.miniBtn:hover { background: var(--hub-hover); }
+
+.overlay { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(0,0,0,.38); }
+.dialog { width: min(420px, 100%); display: flex; flex-direction: column; gap: 12px; padding: 18px 20px; border-radius: var(--hub-radius-lg); background: var(--dsw-alias-bg-layer-1, #fff); box-shadow: 0 20px 60px rgba(0,0,0,.28); }
+.dialogTitle { margin: 0; font-size: var(--hub-fs-14); font-weight: 700; color: var(--hub-text); }
+.dialogBody { margin: 0; font-size: var(--hub-fs-12); color: var(--hub-text-2); line-height: 1.6; }
+.dialogActions { display: flex; justify-content: flex-end; gap: 8px; }
