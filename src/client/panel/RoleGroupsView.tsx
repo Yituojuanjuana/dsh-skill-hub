@@ -49,9 +49,14 @@ export function RoleGroupsView(props: { hub: SkillHubState }): JSX.Element {
 
   if (groups.length === 0) {
     // 可操作的空态：说清是「筛选把结果筛没了」，并给一键清除。
+    // 同时把真实计数打出来 —— 万一将来又出现「整块空白」，这一行能立刻区分
+    // 「数据没到」和「渲染没出」。
     return (
       <div className={css.empty}>
         <div>{tt('role.emptyFiltered')}</div>
+        <div className={css.hintLine}>
+          {tt('role.counts', { skills: hub.sorted.length, groups: 0 })}
+        </div>
         <button type='button' className={css.button} onClick={() => { hub.clearListFilters() }}>
           {tt('role.clearFilters')}
         </button>
@@ -60,6 +65,12 @@ export function RoleGroupsView(props: { hub: SkillHubState }): JSX.Element {
   }
   return (
     <>
+      {/* 计数行：无论分组是否折叠、是否被筛掉，这一行始终可见。
+          它的作用是让「角色视图」永远不可能是纯空白 —— 空白页本身无法区分
+          「数据没到」「分组算空」「渲染没出」，一行计数就能。 */}
+      <div className={css.hintLine + ' ' + css.hintRowTight}>
+        {tt('role.counts', { skills: hub.sorted.length, groups: groups.length })}
+      </div>
       {groups.map((group) => {
         const key = 'role:' + group.id
         const expanded = expandedGroups.has(key)
