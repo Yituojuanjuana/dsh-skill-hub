@@ -114,7 +114,11 @@ export function SkillRowImpl(props: SkillRowProps): JSX.Element {
             <span className={css.permStat} title={tt('row.permStatHint')}>
               {tt('row.day') + ' ' + permStat.today + ' · ' + tt('row.week') + ' ' + permStat.week + ' · ' + tt('row.total') + ' ' + permStat.total}
               {' ｜ '}
-              <span className={css.permRate} title={tt('row.successRateHint')}>{tt('row.successRate') + '：' + formatSuccessRate(permStat)}</span>
+              <span className={css.permRate} title={tt('row.successRateHint')}>
+                {formatSuccessRate(permStat) === '-'
+                  ? <span title={tt('row.successRateHint')}>{tt('row.successRateUnknown')}</span>
+                  : tt('row.successRate') + '：' + formatSuccessRate(permStat)}
+              </span>
             </span>
           ) : null}
           {/* 最近一次调用：直接跟在调用量后面，不再甩到行尾。 */}
@@ -127,24 +131,35 @@ export function SkillRowImpl(props: SkillRowProps): JSX.Element {
         </div>
       </button>
       <span className={css.invocationChips}>
-        <button
-          type='button'
-          className={css.invocationChip + (invocation.modelInvocable ? ' ' + css.invocationChipOn : '')}
-          aria-pressed={invocation.modelInvocable}
-          aria-label={tt('legend.modelFull')}
-          title={tt('legend.modelFull')}
-          disabled={invoking || busyNames.has(skill.name)}
-          onClick={(event) => { event.stopPropagation(); onInvocation({ modelInvocable: !invocation.modelInvocable }) }}
-        >{tt('legend.model')}</button>
-        <button
-          type='button'
-          className={css.invocationChip + (invocation.userInvocable ? ' ' + css.invocationChipOn : '')}
-          aria-pressed={invocation.userInvocable}
-          aria-label={tt('legend.userFull')}
-          title={tt('legend.userFull')}
-          disabled={invoking || busyNames.has(skill.name)}
-          onClick={(event) => { event.stopPropagation(); onInvocation({ userInvocable: !invocation.userInvocable }) }}
-        >{tt('legend.user')}</button>
+        {skill.invocationWritable === false ? (
+          // 不可写：静态文字，灰底、无 hover、无 pointer、无 click handler。
+          // title 说明原因，用户一眼能看出「这个改不了」，而不是点了报红字。
+          <>
+            <span className={css.invocationChip + ' ' + css.invocationChipStatic} title={tt('legend.invocationReadOnly')}>{tt('legend.model')}</span>
+            <span className={css.invocationChip + ' ' + css.invocationChipStatic} title={tt('legend.invocationReadOnly')}>{tt('legend.user')}</span>
+          </>
+        ) : (
+          <>
+            <button
+              type='button'
+              className={css.invocationChip + (invocation.modelInvocable ? ' ' + css.invocationChipOn : '')}
+              aria-pressed={invocation.modelInvocable}
+              aria-label={tt('legend.modelFull')}
+              title={tt('legend.modelFull')}
+              disabled={invoking || busyNames.has(skill.name)}
+              onClick={(event) => { event.stopPropagation(); onInvocation({ modelInvocable: !invocation.modelInvocable }) }}
+            >{tt('legend.model')}</button>
+            <button
+              type='button'
+              className={css.invocationChip + (invocation.userInvocable ? ' ' + css.invocationChipOn : '')}
+              aria-pressed={invocation.userInvocable}
+              aria-label={tt('legend.userFull')}
+              title={tt('legend.userFull')}
+              disabled={invoking || busyNames.has(skill.name)}
+              onClick={(event) => { event.stopPropagation(); onInvocation({ userInvocable: !invocation.userInvocable }) }}
+            >{tt('legend.user')}</button>
+          </>
+        )}
       </span>
       {skill.writable || skill.toggleable === true
         ? <>

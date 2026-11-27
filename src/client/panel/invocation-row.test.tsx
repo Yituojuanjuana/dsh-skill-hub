@@ -18,6 +18,7 @@ const skill: CatalogSkill = {
   provider: 'test',
   writable: false,
   source: 'user-dsh',
+  invocationWritable: true,
 }
 
 function props(setInvocation: SkillRowProps['setInvocation']): SkillRowProps {
@@ -84,5 +85,20 @@ describe('SkillRow invocation chips', () => {
     // 乐观期间变为关，失败后回到开
     expect(model.getAttribute('aria-pressed')).toBe('true')
     expect(fn).toHaveBeenCalledOnce()
+  })
+
+  it('invocationWritable=false 时渲染静态文字，无 click handler', async () => {
+    const fn = vi.fn(async () => true)
+    const p = props(fn)
+    p.skill = { ...skill, invocationWritable: false }
+    const buttons = mount(p)
+    // 只有组开关（role=switch）是 button；调用 chip 都是静态 span。
+    const invocationButtons = buttons.filter((b) => b.textContent === '模型' || b.textContent === '用户')
+    expect(invocationButtons).toHaveLength(0)
+    const chips = container.querySelectorAll('span[title="该来源的技能由外部工具管理，无法在此修改调用权限"]')
+    expect(chips).toHaveLength(2)
+    expect([...chips].map((c) => c.textContent)).toEqual(['模型', '用户'])
+    await act(async () => { (chips[0] as HTMLElement).click() })
+    expect(fn).not.toHaveBeenCalled()
   })
 })

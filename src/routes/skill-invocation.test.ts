@@ -137,6 +137,31 @@ describe('POST skill/invocation route', () => {
     expect(String((res.json() as ErrorResponse).error)).toContain('skill not found')
   })
 
+  it('写回 SKILL.md 后 addedAt 不变（birthtime 不被 rename 打坏）', async () => {
+    const { statSnapshot } = await import('../skillfs/write-inplace.ts')
+    const before = await statSnapshot(skillPath)
+    const res = await invoke({ name: 'demo', userInvocable: false })
+    expect(res.status).toBe(200)
+    const after = await statSnapshot(skillPath)
+    expect(after.birthtimeMs).toBe(before.birthtimeMs)
+    expect(after.ino).toBe(before.ino)
+  })
+
+  it(' Trae 国内版（中文/空格路径）技能可改；越界路径 403', async () => {
+    // 模拟 agent-trae-cn 根：userHome 下的 .trae-cn/skills，路径含中文与空格。
+    const traeSkill = join(dir, '.trae-cn', 'skills', '技能 with space', 'SKILL.md')
+    await mkdir(join(dir, '.trae-cn', 'skills', '技能 with space'), { recursive: true })
+    await writeFile(traeSkill, '---\nname: trae-skill\ndescription: t\n---\nbody\n', 'utf8')
+    deps.skills.get = async () => ({
+      name: 'trae-skill', description: 't',
+      invocation: { modelInvocable: true, userInvocable: true },
+      source: 'agent-trae-cn', provider: 'filesystem', path: traeSkill, content: 'body',
+    })
+    const res = await invoke({ name: 'trae-skill', userInvocable: false })
+    expect(res.status).toBe(200)
+    expect(await readFile(traeSkill, 'utf8')).toContain('user-invocable: false')
+  })
+
   it('实测闭环：写入后重新解析 SKILL.md，新状态反映到 catalog 定义', async () => {
     // 证据：点「用户可调用」→ 路由写 frontmatter → invalidate → 重新
     // 解析同一份 SKILL.md 得到的 invocation 就是写入后的值（catalog 真值）。

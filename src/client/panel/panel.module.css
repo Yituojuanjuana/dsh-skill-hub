@@ -147,6 +147,9 @@
 .invocationChip:hover:not(:disabled) { border-color: var(--hub-text-4); }
 .invocationChipOn { background: var(--hub-model); border-color: var(--hub-model); color: #fff; }
 .invocationChip:disabled { opacity: .5; cursor: default; }
+/* 不可写：静态文字，灰底描边、无 hover、无 pointer 光标 —— 与可点 chip 一眼可分。 */
+.invocationChipStatic { cursor: default; opacity: .55; pointer-events: none; }
+.invocationChipStatic:hover { border-color: var(--hub-border-2); }
 
 /* iOS-style switch (kept, already matches the system look). */
 /* v0.4：开关加一点内阴影，开状态用品牌色 + 柔光，手感更实。 */

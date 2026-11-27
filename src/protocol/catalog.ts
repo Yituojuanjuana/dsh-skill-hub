@@ -28,6 +28,14 @@ export interface CatalogSkill {
   modelOverride?: boolean
   /** 技能来源标识（user-dsh/user-agents/project-dsh/project-agents/...）。 */
   source: string
+  /**
+   * 前端能否修改该技能的调用权限（写 SKILL.md frontmatter）。
+   *
+   * 服务端按「路径是否落在任一已知技能根内 + 文件是否可写」算，与路由的
+   * invocation 写入判据同源 —— 避免「按钮能点但后端 403」。
+   * 旧数据缺字段时前端按 true 处理（保持旧行为）。
+   */
+  invocationWritable?: boolean
   /** SKILL.md creation time (epoch ms); used for "added" sorting. Absent when unknown. */
   addedAt?: number
   /** SKILL.md last-modified time (epoch ms); used for "updated" display. Absent when unknown. */
