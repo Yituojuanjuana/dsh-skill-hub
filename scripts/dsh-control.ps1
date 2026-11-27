@@ -161,8 +161,60 @@ function Test-TunnelHealth {
   }
 }
 
-function Get-BundleState {
-  $live = $null
+# 等日志里出现新地址（只读 offset 之后新写入的那一段）。
+#
+# tunnel-restart 与 heal 共用：两处都需要「起完进程等它报地址」，写两份必然
+# 走偏（0.7.0 自测时 heal 就漏了发布这一步）。
+function Wait-NewAddress {
+  param([long]$AfterOffset = 0, [int]$TimeoutSec = 90)
+  $deadline = (Get-Date).AddSeconds($TimeoutSec)
+  while ((Get-Date) -lt $deadline) {
+    Start-Sleep -Seconds 2
+    if (-not (Test-Path -LiteralPath $TunnelLog)) { continue }
+    try {
+      $fs = [System.IO.File]::Open($TunnelLog, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+      try {
+        $start = 0
+        if ($AfterOffset -gt 0 -and $AfterOffset -le $fs.Length) { $start = $AfterOffset }
+        $fs.Position = $start
+        $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::UTF8)
+        $text = $sr.ReadToEnd(); $sr.Dispose()
+      } finally { $fs.Dispose() }
+      $m = [regex]::Matches($text, 'https://[a-z0-9-]+\.trycloudflare\.com')
+      if ($m.Count -gt 0) { return $m[$m.Count - 1].Value }
+    } catch { }
+  }
+  return $null
+}
+
+# 把地址推到本地副本 + endpoint-repo，并 git push。
+# 失败只记日志，不抛 —— 地址已经拿到，推送失败不该让整个动作判失败。
+function Publish-Endpoint {
+  param([string]$Address)
+  if ([string]::IsNullOrWhiteSpace($Address)) { return $false }
+  try {
+    $enc = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText($EndpointTxt, $Address, $enc)
+    [System.IO.File]::WriteAllText($EndpointMirror, $Address, $enc)
+    Write-Audit ('[PUBLISH] local endpoint updated: ' + $Address)
+  } catch {
+    Write-Audit ('[ERROR] write endpoint failed: ' + $_.Exception.Message)
+    return $false
+  }
+  if (Test-Path -LiteralPath $RepoDir) {
+    & git -C $RepoDir add endpoint.txt 2>&1 | Out-Null
+    & git -C $RepoDir commit -m ('publish endpoint ' + $Address) 2>&1 | Out-Null
+    $pushOut = (& git -C $RepoDir push origin main 2>&1 | Out-String)
+    if ($LASTEXITCODE -ne 0) {
+      Write-Audit ('[WARN] push failed: ' + (($pushOut.Trim() -replace '\s+', ' ')))
+      return $false
+    }
+    Write-Audit '[PUBLISH] pushed endpoint.txt'
+  }
+  return $true
+}
+
+function Get-BundleState {  $live = $null
   $repo = $null
   try { if (Test-Path -LiteralPath $LiveBundle) { $live = (Get-Item -LiteralPath $LiveBundle).LastWriteTime } } catch { }
   try { if (Test-Path -LiteralPath $RepoBundle) { $repo = (Get-Item -LiteralPath $RepoBundle).LastWriteTime } } catch { }
@@ -210,7 +262,7 @@ function Write-Result {
 
 function Invoke-Status {
   $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
-  $root = Get-DshRoot -All $all
+  $dshProc = Get-DshRoot -All $all
   $ingress = Test-Ingress
   $addr = Resolve-TunnelAddress
   $published = Get-PublishedEndpoint
@@ -223,9 +275,9 @@ function Invoke-Status {
     command   = 'status'
     at        = (Get-Date).ToString('o')
     dsh       = @{
-      running   = ($root -ne $null)
-      pid       = $(if ($root -ne $null) { [int]$root.ProcessId } else { $null })
-      startedAt = $(if ($root -ne $null) { ([datetime]$root.CreationDate).ToString('o') } else { $null })
+      running   = ($dshProc -ne $null)
+      pid       = $(if ($dshProc -ne $null) { [int]$dshProc.ProcessId } else { $null })
+      startedAt = $(if ($dshProc -ne $null) { ([datetime]$dshProc.CreationDate).ToString('o') } else { $null })
     }
     ingress   = @{ port = $IngressPort; listening = $ingress }
     tunnel    = @{
@@ -281,8 +333,8 @@ function Invoke-Restart {
   }
 
   $all = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
-  $root = Get-DshRoot -All $all
-  if ($root -eq $null) {
+  $dshProc = Get-DshRoot -All $all
+  if ($dshProc -eq $null) {
     Write-Audit '[SKIP] restart refused: DSH is not running'
     return @{ ok = $false; command = 'restart'; code = 'not-running'; message = 'DSH 没有在运行，无需重启' }
   }
@@ -355,49 +407,14 @@ function Invoke-TunnelRestart {
   }
 
   # 等新地址出现（只读新写入的那段日志）。
-  $addr = $null
-  $deadline = (Get-Date).AddSeconds(90)
-  while ((Get-Date) -lt $deadline) {
-    Start-Sleep -Seconds 2
-    if (-not (Test-Path -LiteralPath $TunnelLog)) { continue }
-    try {
-      $fs = [System.IO.File]::Open($TunnelLog, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-      try {
-        $start = 0
-        if ($offset -gt 0 -and $offset -le $fs.Length) { $start = $offset }
-        $fs.Position = $start
-        $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::UTF8)
-        $text = $sr.ReadToEnd(); $sr.Dispose()
-      } finally { $fs.Dispose() }
-      $m = [regex]::Matches($text, 'https://[a-z0-9-]+\.trycloudflare\.com')
-      if ($m.Count -gt 0) { $addr = $m[$m.Count - 1].Value; break }
-    } catch { }
-  }
+  $addr = Wait-NewAddress -AfterOffset $offset -TimeoutSec 90
 
   if ($addr -eq $null) {
     Write-Audit '[WARN] no new address appeared within 90s'
     return @{ ok = $false; command = 'tunnel-restart'; code = 'no-address'; message = '新隧道已启动但 90 秒内没有拿到域名' }
   }
 
-  # 推 endpoint.txt（本地副本 + 仓库 + git push）。
-  try {
-    $enc = New-Object System.Text.UTF8Encoding($false)
-    [System.IO.File]::WriteAllText($EndpointTxt, $addr, $enc)
-    [System.IO.File]::WriteAllText($EndpointMirror, $addr, $enc)
-    Write-Audit ('[PUBLISH] local endpoint updated: ' + $addr)
-  } catch {
-    Write-Audit ('[ERROR] write endpoint failed: ' + $_.Exception.Message)
-  }
-  if (Test-Path -LiteralPath $RepoDir) {
-    & git -C $RepoDir add endpoint.txt 2>&1 | Out-Null
-    & git -C $RepoDir commit -m ('publish endpoint ' + $addr) 2>&1 | Out-Null
-    $pushOut = (& git -C $RepoDir push origin main 2>&1 | Out-String)
-    if ($LASTEXITCODE -ne 0) {
-      Write-Audit ('[WARN] push failed: ' + (($pushOut.Trim() -replace '\s+', ' ')))
-    } else {
-      Write-Audit '[PUBLISH] pushed endpoint.txt'
-    }
-  }
+  [void](Publish-Endpoint -Address $addr)
 
   $health = Test-TunnelHealth -BaseUrl $addr
   return @{
@@ -437,14 +454,26 @@ function Invoke-Heal {
       Write-Audit '[ERROR] cloudflared.exe not found'
       return @{ ok = $false; command = 'heal'; actions = $actions; message = '找不到 cloudflared.exe' }
     }
+    $offset = 0
+    if (Test-Path -LiteralPath $TunnelLog) { try { $offset = (Get-Item -LiteralPath $TunnelLog).Length } catch { } }
     try {
       $np = Start-Process -FilePath $exe -ArgumentList @('tunnel', '--url', $TargetUrl, '--no-autoupdate', '--logfile', $TunnelLog, '--loglevel', 'info') -WindowStyle Hidden -PassThru
       Write-Audit ('[HEAL] started cloudflared pid={0} (was none)' -f $np.Id)
-      return @{ ok = $true; command = 'heal'; actions = $actions; changed = $true; message = 'started tunnel' }
     } catch {
       Write-Audit ('[ERROR] start cloudflared failed: ' + $_.Exception.Message)
       return @{ ok = $false; command = 'heal'; actions = $actions; message = $_.Exception.Message }
     }
+    # 起完必须把新地址发布出去：否则 endpoint.txt 还指着上一条已经死掉的隧道，
+    # 手机端会连到旧域名（0.7.0 自测时就漏了这一步，隧道活了但地址没更新）。
+    $addr = Wait-NewAddress -AfterOffset $offset -TimeoutSec 90
+    if ($addr -eq $null) {
+      $actions += 'no-address'
+      Write-Audit '[WARN] started cloudflared but no address appeared within 90s'
+      return @{ ok = $false; command = 'heal'; actions = $actions; changed = $true; message = '已启动隧道但 90 秒内没有拿到域名' }
+    }
+    $actions += 'published'
+    Publish-Endpoint -Address $addr
+    return @{ ok = $true; command = 'heal'; actions = $actions; changed = $true; address = $addr; message = ('started tunnel and published ' + $addr) }
   }
 
   # 已有隧道：只在**确实**不健康时才换，且绝不因为「进程存在」就再起一个。
@@ -467,6 +496,21 @@ function Invoke-Heal {
     $actions += 'tunnel-unanswered'
     Write-Audit ('[HEAL] tunnel did not answer this round ({0}); keeping it, will retry next cycle' -f $health.note)
     return @{ ok = $true; command = 'heal'; actions = $actions; changed = $false; address = $addr; message = 'tunnel did not answer, kept as is' }
+  }
+
+  # 隧道活着且健康：仍要确认 endpoint 指向的就是当前地址。
+  # 只判健康不判地址，会出现「隧道换了域名但 endpoint.txt 还指着旧的」——
+  # 手机端连旧域名失败，而 status 一路报 healthy（0.7.0 自测时就是这么漏的）。
+  $published = Get-PublishedEndpoint
+  if ($addr -ne $null -and $published -ne $addr) {
+    $actions += 'republish'
+    if ($DryRun) {
+      Write-Audit ('[DRYRUN] would republish endpoint: {0} -> {1}' -f $published, $addr)
+      return @{ ok = $true; command = 'heal'; dryRun = $true; actions = $actions; changed = $false; address = $addr; message = 'would republish endpoint' }
+    }
+    [void](Publish-Endpoint -Address $addr)
+    Write-Audit ('[HEAL] endpoint was stale ({0}), republished {1}' -f $published, $addr)
+    return @{ ok = $true; command = 'heal'; actions = $actions; changed = $true; address = $addr; message = 'republished endpoint' }
   }
 
   Write-Audit ('[HEAL] healthy (pid count={0}, address={1})' -f $procs.Count, $addr)

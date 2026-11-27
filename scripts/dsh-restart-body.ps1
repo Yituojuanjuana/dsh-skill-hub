@@ -51,12 +51,12 @@ function Get-DshRoot {
 Write-Audit '[START] restart body invoked'
 
 $all  = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
-$root = Get-DshRoot -All $all
-if ($root -eq $null) {
+$dshProc = Get-DshRoot -All $all
+if ($dshProc -eq $null) {
   Write-Audit '[SKIP] DSH is already closed; a closed app is a user decision, not a fault'
   exit 0
 }
-Write-Audit ('[INFO] DSH root pid={0} started={1}' -f $root.ProcessId, $root.CreationDate)
+Write-Audit ('[INFO] DSH root pid={0} started={1}' -f $dshProc.ProcessId, $dshProc.CreationDate)
 
 if (-not (Test-Path -LiteralPath $AppExe)) {
   Write-Audit ('[ERROR] app executable not found: ' + $AppExe)
@@ -67,7 +67,7 @@ if (-not (Test-Path -LiteralPath $AppExe)) {
 
 $closed = $false
 try {
-  $proc = Get-Process -Id $root.ProcessId -ErrorAction Stop
+  $proc = Get-Process -Id $dshProc.ProcessId -ErrorAction Stop
   $closed = $proc.CloseMainWindow()
   Write-Audit ('[CLOSE] CloseMainWindow returned {0}' -f $closed)
 } catch {
