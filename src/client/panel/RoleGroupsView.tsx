@@ -26,7 +26,12 @@ export function RoleGroupsView(props: { hub: SkillHubState }): JSX.Element {
   const { catalog, expandedGroups, viewNames, actionNames, batchBusy, busyNames, toggleGroupExpanded } = hub
   const duplicateNames = useMemo(() => new Set(catalog?.duplicateNames ?? []), [catalog])
   // 组间同样按各组最高排名成员排，别让固定 role 规则盖掉用户选的排序键。
-  const groups = useMemo(() => sortGroupsByRank(groupByRole(hub.sorted), hub.sorted), [hub.sorted])
+  // 角色视图**不受状态筛选影响**（见 role.filterNote）：必须读 searchedSorted
+  // ——搜索 + 调用方式过滤后、但不含状态过滤的名单。之前这里误读 hub.sorted，
+  // 于是当用户在「按目录」把状态设为「已启用/已停用」再切回「按角色」时，
+  // 分组变成空集、整页只剩一行说明；而状态下拉在角色视图里又是隐藏的，
+  // 用户没法把它改回来 —— 这就是「按角色整块空白」的根因。
+  const groups = useMemo(() => sortGroupsByRank(groupByRole(hub.searchedSorted), hub.searchedSorted), [hub.searchedSorted])
   const rowProps = { uses: hub.uses, hubConfig: hub.hubConfig, busyNames, editMode: hub.editMode, tagBusy: hub.tagBusy, duplicateNames, statusFilter: hub.statusFilter, hideSourceBadge: true, setInvocation: hub.setInvocation, toggle: hub.toggle, openDetail: hub.openDetail, requestDeleteSkill: hub.requestDeleteSkill, requestTrashSkill: hub.requestTrashSkill }
 
   /**

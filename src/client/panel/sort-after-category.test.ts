@@ -109,7 +109,8 @@ describe('grouped views order by the current sort key', () => {
 
   it('both grouped views call sortGroupsByRank', () => {
     expect(LOCATIONS).toContain('sortGroupsByRank(groupByLocation(hub.sorted), hub.sorted)')
-    expect(ROLES).toContain('sortGroupsByRank(groupByRole(hub.sorted), hub.sorted)')
+    // 角色视图用 searchedSorted（不受状态筛选影响），仍走 sortGroupsByRank。
+    expect(ROLES).toContain('sortGroupsByRank(groupByRole(hub.searchedSorted), hub.searchedSorted)')
   })
 })
 
