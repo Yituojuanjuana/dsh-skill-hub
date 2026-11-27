@@ -16,6 +16,7 @@ export interface MigratedStore {
   collectionOrder?: unknown
   sourceGroupOrder?: unknown
   invocationOverrides?: unknown
+  firstSeenAt?: unknown
 }
 
 /**
@@ -81,6 +82,7 @@ export function migrateStore(parsed: unknown): MigratedStore | null {
     ...(Array.isArray(record.collectionOrder) ? { collectionOrder: record.collectionOrder } : {}),
     ...(Array.isArray(record.sourceGroupOrder) ? { sourceGroupOrder: record.sourceGroupOrder } : {}),
     ...(Array.isArray(record.invocationOverrides) ? { invocationOverrides: record.invocationOverrides } : {}),
+    ...(record.firstSeenAt !== undefined ? { firstSeenAt: record.firstSeenAt } : {}),
   }
 }
 
@@ -96,6 +98,7 @@ export interface HydratedState {
   collectionOrder: string[]
   sourceGroupOrder: string[]
   invocationOverrides: string[]
+  firstSeenAt: Record<string, number>
 }
 
 /** 小优化：统一的非空字符串数组清洗（去空、去重可选由调用方处理）。 */
@@ -251,5 +254,15 @@ export function hydrateMigratedState(migrated: MigratedStore): HydratedState {
   const sourceGroupOrder = cleanStringList(migrated.sourceGroupOrder)
   const invocationOverrides = cleanStringList(migrated.invocationOverrides)
 
-  return { entries, config, tagsById, sourcesByRepo, marketSources, trashByPath, marketStats, collectionOrder, sourceGroupOrder, invocationOverrides }
+  // 首次观测时间：只保留「非空字符串路径 → 有限正数」的条目。坏条目丢弃，
+  // 旧状态文件没有这个字段时自然得到空对象（回落 birthtime）。
+  const firstSeenAt: Record<string, number> = {}
+  const savedFirstSeen = migrated.firstSeenAt as Record<string, unknown> | undefined
+  if (savedFirstSeen !== null && typeof savedFirstSeen === 'object') {
+    for (const [path, value] of Object.entries(savedFirstSeen)) {
+      if (path !== '' && typeof value === 'number' && Number.isFinite(value) && value > 0) firstSeenAt[path] = value
+    }
+  }
+
+  return { entries, config, tagsById, sourcesByRepo, marketSources, trashByPath, marketStats, collectionOrder, sourceGroupOrder, invocationOverrides, firstSeenAt }
 }

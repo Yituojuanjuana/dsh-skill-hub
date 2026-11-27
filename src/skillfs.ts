@@ -30,6 +30,7 @@ export * from './skillfs/scan.ts'
 export * from './skillfs/hash.ts'
 export * from './skillfs/foreign.ts'
 export * from './skillfs/zip.ts'
+export * from './skillfs/write-inplace.ts'
 
 /**
  * Scaffold a directory-bundle skill: <root>/<name>/SKILL.md with a frontmatter

@@ -39,6 +39,7 @@ export interface StoreState {
    * 用 Set 是为了让 add/remove 的幂等判定 O(1)，落盘时转数组。
    */
   invocationOverrides: Set<string>
+  firstSeenAt: Map<string, number>
 }
 
 /** 领域 slice 能看到的全部能力。 */
@@ -64,6 +65,7 @@ function emptyState(): StoreState {
     collectionOrder: [],
     sourceGroupOrder: [],
     invocationOverrides: new Set<string>(),
+    firstSeenAt: new Map<string, number>(),
   }
 }
 
@@ -179,9 +181,10 @@ export function createStoreCore(file: string = statePath()): StoreCore {
       marketStats: hydrated.marketStats,
       collectionOrder: hydrated.collectionOrder,
       sourceGroupOrder: hydrated.sourceGroupOrder,
-    } satisfies Omit<StoreState, 'invocationOverrides'>
+    } satisfies Omit<StoreState, 'invocationOverrides' | 'firstSeenAt'>
     Object.assign(state, hydratedState)
     state.invocationOverrides = new Set(hydrated.invocationOverrides)
+    state.firstSeenAt = new Map(Object.entries(hydrated.firstSeenAt))
     await ensureDefaultTag()
   }
 
@@ -213,6 +216,7 @@ export function createStoreCore(file: string = statePath()): StoreCore {
         ...(state.collectionOrder.length > 0 ? { collectionOrder: [...state.collectionOrder] } : {}),
         ...(state.sourceGroupOrder.length > 0 ? { sourceGroupOrder: [...state.sourceGroupOrder] } : {}),
         ...(state.invocationOverrides.size > 0 ? { invocationOverrides: [...state.invocationOverrides] } : {}),
+        ...(state.firstSeenAt.size > 0 ? { firstSeenAt: Object.fromEntries(state.firstSeenAt) } : {}),
       }
       if (writeBlock !== null) throw new StoreError('conflict', writeBlock)
       await mkdir(dirname(file), { recursive: true })

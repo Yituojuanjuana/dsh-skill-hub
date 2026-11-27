@@ -34,6 +34,15 @@ export interface StoreFile {
    * 污染。台账 `disabled[]` 记「谁被停用了」，真值在这份路径集合里。
    */
   invocationOverrides?: string[]
+  /**
+   * 技能「首次被观测到」的时间戳（毫秒），按发现文件绝对路径索引。
+   *
+   * 第二道时间防线：文件被 rename/替换后 birthtime 会变，但用户看到的
+   * 「安装时间」不该跟着跳。首次在 catalog 里看到某路径就落盘，之后
+   * addedAt 优先取这里的值，缺失才回落到 birthtime。旧状态文件没有这个
+   * 字段时平滑降级为 birthtime（不因为升级清空任何人的安装时间）。
+   */
+  firstSeenAt?: Record<string, number>
 }
 
 /** Resolve the DSH home directory (the filesystem provider's user-dsh root base). */

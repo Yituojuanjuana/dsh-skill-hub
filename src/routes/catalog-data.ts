@@ -17,6 +17,7 @@ import {
 import { rootPath, readSkillInterface, scanDiagnostics, type SkillInterface } from '../skillfs.ts'
 import { CURRENT_VERSION } from '../update.ts'
 import { homeOf, isWritableSource, type SkillHubRouteDeps } from './deps.ts'
+import { canWriteInvocation } from './invocation-writable.ts'
 
 /**
  * 目录中存在的技能名集合。默认（`includeDisabled` 未显式关闭）为「启用目录 ∪
@@ -176,7 +177,14 @@ export async function buildCatalog(deps: SkillHubRouteDeps, cwd?: string): Promi
   // 安装时间，列表里那一列是空的。路径缺失时才回退到按可写根推断。
   // 全部技能并发收集（面板每 5 秒轮询一次，逐个串行 stat 会让响应随技能
   // 数量线性变慢）。
+  // 调用权限可写性：与路由共用判据。每个技能一次 access(W_OK)，并发收集。
+  const invocationWritableByName = new Map<string, boolean>()
+  await Promise.all([...byName.entries()].map(async ([logicalKey, { skill }]) => {
+    invocationWritableByName.set(logicalKey, await canWriteInvocation(skill.path, deps))
+  }))
   const timesByName = new Map<string, { addedAt: number; updatedAt: number }>()
+  /** 本次观测到的「路径 → birthtime」，交给 store 登记 firstSeenAt（只补新键）。 */
+  const observed = new Map<string, number>()
   await Promise.all([...byName.entries()].map(async ([logicalKey, { skill }]) => {
     const candidates: string[] = []
     if (skill.path !== undefined) candidates.push(skill.path)
@@ -187,6 +195,7 @@ export async function buildCatalog(deps: SkillHubRouteDeps, cwd?: string): Promi
     for (const candidate of candidates) {
       try {
         const times = await stat(candidate)
+        if (times.birthtimeMs > 0) observed.set(candidate, times.birthtimeMs)
         timesByName.set(logicalKey, { addedAt: times.birthtimeMs, updatedAt: times.mtimeMs })
         return
       } catch {
@@ -194,6 +203,24 @@ export async function buildCatalog(deps: SkillHubRouteDeps, cwd?: string): Promi
       }
     }
   }))
+  // 首次观测时间落盘（只补新键，绝不覆盖）；这是「安装时间不被写回/替换打坏」
+  // 的第二道防线。失败不能影响目录返回 —— best-effort。
+  if (observed.size > 0) {
+    await deps.store.recordFirstSeen([...observed].map(([path, at]) => ({ path, at }))).catch(() => false)
+  }
+  // addedAt 口径：持久化的 firstSeenAt 优先，且与当前 birthtime 取较小值。
+  // 「较小值」是折中：firstSeenAt 记录了首次观测（可能晚于真实安装），而
+  // birthtime 若被 rename 重置会变大 —— 取较小者能挡住「安装时间变刚刚」。
+  // 旧状态文件没有 firstSeenAt 时全部回落 birthtime，不因升级清空任何人的时间。
+  const firstSeen: Record<string, number> = await deps.store.listFirstSeen().catch(() => ({}))
+  for (const [logicalKey, times] of timesByName) {
+    const skill = byName.get(logicalKey)?.skill
+    const path = skill?.path
+    const persisted = path !== undefined ? firstSeen[path] : undefined
+    if (persisted !== undefined && persisted > 0) {
+      times.addedAt = Math.min(persisted, times.addedAt)
+    }
+  }
   // UI metadata from agents/openai.yaml (codex SkillInterface) — best-effort, no error if missing.
   // 按逻辑键（name[+workspace+source]）而非技能名缓存：两个工作区的同名项目
   // 技能是不同的行，否则会互相串显示最后读到的那份 interface。
@@ -238,6 +265,9 @@ export async function buildCatalog(deps: SkillHubRouteDeps, cwd?: string): Promi
       // hub 关掉的模型调用（项目技能停用）：UI 据此显示开关状态与提示。
       ...(skill.path !== undefined && overridden.has(skill.path) ? { modelOverride: true } : {}),
       source: skill.source,
+      // 调用权限能否修改：与 /skill/invocation 路由共用同一判据，
+      // 前端据此显示可点按钮或静态文字，杜绝「能点但后端 403」。
+      invocationWritable: invocationWritableByName.get(logicalKey) ?? false,
       ...(workspace !== undefined ? { workspace, workspaceTitle: workspaceTitle ?? workspace } : {}),
     }
     const times = timesByName.get(logicalKey)

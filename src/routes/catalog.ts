@@ -3,8 +3,7 @@
  * create / stats。从 routes.ts 原样搬出，handler 逻辑不变。
  */
 
-import { readFile, rename, stat, writeFile } from 'node:fs/promises'
-import { rm } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import type { SkillDefinition } from '@deepseek-ai/dsh-skill'
 import { isSkillName } from '@deepseek-ai/dsh-skill'
@@ -20,10 +19,11 @@ import {
   type ToggleResponse,
   type WritableRoot,
 } from '../protocol.ts'
-import { createSkill, createSkillInDir, occupancyOf, parseFrontmatter, readSkillInterface, rootOfPath, rootPath, trashSkill } from '../skillfs.ts'
+import { createSkill, createSkillInDir, occupancyOf, parseFrontmatter, readSkillInterface, rootOfPath, rootPath, trashSkill, writeInPlaceWithBackup } from '../skillfs.ts'
 import { setInvocationFlags } from '../skillfs/frontmatter.ts'
 import { foreignRootOfPath, projectSkillsRoot } from '../skillfs/paths.ts'
 import { errorText } from '../error-text.ts'
+import { isWithinKnownSkillRoot } from './invocation-writable.ts'
 import {
   applyInterface,
   buildCatalog,
@@ -48,10 +48,13 @@ import {
  * 文件创建/修改时间 → 详情行的 addedAt/updatedAt（读取失败时省略字段，
  * 详情页不显示这两行）。禁用态与启用态详情共用。
  */
-async function applyFileTimes(row: { addedAt?: number; updatedAt?: number }, path: string): Promise<void> {
+async function applyFileTimes(row: { addedAt?: number; updatedAt?: number }, path: string, deps?: SkillHubRouteDeps): Promise<void> {
   try {
     const times = await stat(path)
-    row.addedAt = times.birthtimeMs
+    // 与 catalog 行一致：持久化的 firstSeenAt 优先且与 birthtime 取较小值，
+    // 防止 rename 写回把详情页的「添加时间」也刷成刚刚。
+    const persisted = deps !== undefined ? await deps.store.getFirstSeenAt(path).catch(() => undefined) : undefined
+    row.addedAt = persisted !== undefined && persisted > 0 ? Math.min(persisted, times.birthtimeMs) : times.birthtimeMs
     row.updatedAt = times.mtimeMs
   } catch {
     // 文件不可读时省略时间字段。
@@ -249,7 +252,7 @@ export function catalogRoutes(deps: SkillHubRouteDeps): RouteSpec[] {
                   path: record.path,
                   content: parsed.value.content,
                 }
-                await applyFileTimes(disabledDetail, record.path)
+                await applyFileTimes(disabledDetail, record.path, deps)
                 writeJson(res, 200, { ok: true, skill: disabledDetail } satisfies SkillDetailResponse)
                 return
               }
@@ -262,7 +265,7 @@ export function catalogRoutes(deps: SkillHubRouteDeps): RouteSpec[] {
         }
         const detail = toDetail(skill)
         if (skill.path !== undefined) {
-          await applyFileTimes(detail, skill.path)
+          await applyFileTimes(detail, skill.path, deps)
           // Claude Code 的 argument-hint 不在官方 SkillDefinition 里，详情接口
           // 单独从发现文件读出来，避免导入后这行元数据静默消失。
           try {
@@ -371,7 +374,7 @@ export function catalogRoutes(deps: SkillHubRouteDeps): RouteSpec[] {
     },
     // ------------------------------------------------------ skill/invocation
     // 与 toggle 不同：这里**写真实 SKILL.md 的 frontmatter**（用户明确要改文件），
-    // 只改两个键、原子写（临时文件 + rename）。路由自身经 createRoute 挂统一围栏。
+    // 只改两个键、原位写（保留 birthtime = 安装时间）+ 同目录备份回滚。路由自身经 createRoute 挂统一围栏。
     {
       path: SKILL_HUB_API.skillInvocation,
       methods: ['POST'],
@@ -392,16 +395,10 @@ export function catalogRoutes(deps: SkillHubRouteDeps): RouteSpec[] {
         const targetPath = skill.path
         if (targetPath === undefined) { writeError(res, 404, 'skill has no file: ' + name); return }
         const target = resolve(targetPath)
-        const inUserRoot = rootOfPath(target, homeOf(deps)) !== undefined
-        let inProjectRoot = false
-        if (!inUserRoot) {
-          const workspaces = await workspaceEntries(homeOf(deps))
-          for (const workspace of workspaces) {
-            const rel = relative(resolve(projectSkillsRoot(workspace.path)), target)
-            if (rel !== '' && !rel.startsWith('..') && !isAbsolute(rel)) { inProjectRoot = true; break }
-          }
-        }
-        if (!inUserRoot && !inProjectRoot) {
+        // 与 catalog 行的 invocationWritable 共用同一判据（见 invocation-writable.ts）：
+        // hub 自有可写根 / 已登记工作区项目目录 / 外部 Agent 根（含 Trae）。
+        // path.resolve + relative 判定，不用字符串前缀，中文/空格/../ 都安全。
+        if (!(await isWithinKnownSkillRoot(targetPath, deps))) {
           writeError(res, 403, 'skill path is outside every known skills root: ' + targetPath)
           return
         }
@@ -415,12 +412,9 @@ export function catalogRoutes(deps: SkillHubRouteDeps): RouteSpec[] {
           return
         }
         const next = setInvocationFlags(text, { modelInvocable, userInvocable })
-        const tmp = target + '.tmp-' + process.pid
         try {
-          await writeFile(tmp, next, 'utf8')
-          await rename(tmp, target)
+          await writeInPlaceWithBackup(target, next)
         } catch (error) {
-          await rm(tmp, { force: true }).catch(() => {})
           writeError(res, 409, 'skill file is not writable: ' + errorText(error))
           return
         }
