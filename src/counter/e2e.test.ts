@@ -23,7 +23,8 @@ describe('e2e: a real skill call becomes day/week/total counts', () => {
     expect(entries).toHaveLength(1)
     expect(entries[0].name).toBe('writing-for-agents')
     const stats = aggregate(entries, now)
-    expect(stats.get('writing-for-agents')).toEqual({ today: 1, week: 1, total: 1, lastUsed: now })
+    // ptc-dispatch 自带 isError:false → 账本这次带 ok:true，成功率可判定。
+    expect(stats.get('writing-for-agents')).toEqual({ today: 1, week: 1, total: 1, lastUsed: now, successRate: 1 })
   })
 
   it('accumulates repeated calls to the same skill', async () => {

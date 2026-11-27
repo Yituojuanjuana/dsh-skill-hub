@@ -74,7 +74,7 @@ describe('history backfill', () => {
 
   it('returns zeroes when the sessions root does not exist', async () => {
     const result = await backfillFromSessionLogs(join(tmpdir(), 'definitely-missing-dir-xyz'), [], async () => {})
-    expect(result).toEqual({ files: 0, found: 0, appended: 0, skipped: 0 })
+    expect(result).toEqual({ files: 0, found: 0, appended: 0, skipped: 0, upgraded: 0 })
   })
 
   it('keys entries by name and timestamp together', () => {

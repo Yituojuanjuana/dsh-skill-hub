@@ -30,10 +30,19 @@ export function aggregate(entries: readonly LedgerEntry[], now: number): Map<str
   const dow = d.getDay() // 0=Sun
   const weekStart = todayStart - ((dow + 6) % 7) * DAY // Monday 00:00
   const rows = new Map<string, UsageRow>()
+  // (name, ts) 去重：结果回填会追加一条同键但带 ok 的记录，后者覆盖前者，
+  // 总调用次数不翻倍。同键时带 ok 的版本胜出（无论顺序）。
+  const dedup = new Map<string, LedgerEntry>()
+  for (const e of entries) {
+    if (typeof e?.name !== 'string' || !e.name || !Number.isFinite(e.ts)) continue
+    const key = e.name + '\0' + e.ts
+    const prev = dedup.get(key)
+    if (prev === undefined || (typeof e.ok === 'boolean' && typeof prev.ok !== 'boolean')) dedup.set(key, e)
+  }
   // 成功率单独累计：只有带 `ok` 标记的条目才计入分母，避免历史无标记数据
   // 把成功率稀释成 0。
   const known = new Map<string, { ok: number; total: number }>()
-  for (const e of entries) {
+  for (const e of dedup.values()) {
     if (typeof e?.name !== 'string' || !e.name || !Number.isFinite(e.ts)) continue
     let row = rows.get(e.name)
     if (!row) { row = { today:0, week:0, total:0, lastUsed:0 }; rows.set(e.name, row) }

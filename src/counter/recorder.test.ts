@@ -21,7 +21,8 @@ describe('recorder', () => {
     const onCall = createSkillCallHandler(file)
     await onCall(ptcDispatch('skill', { name: 'alpha' }))
     const { entries } = await readLedger(file)
-    expect(entries).toEqual([{ name: 'alpha', ts: 1000 }])
+    // ptc-dispatch 自带 isError:false → 直接落一条带 ok:true 的账本条目。
+    expect(entries).toEqual([{ name: 'alpha', ts: 1000, ok: true }])
   })
 
   it('records a direct skill tool call and a user slash invocation', async () => {
