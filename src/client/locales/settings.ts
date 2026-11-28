@@ -1,7 +1,7 @@
 /** 设置卡。从 locales.ts 按前缀拆出，键集合不变。 */
 export const zhSettings = {
   'settings.title': '技能书架',
-  'settings.description': '技能书架：本地技能的浏览与治理面板。按目录、角色或工作区分组查看，也可平铺；台账记录每个技能的日 / 周 / 总调用量与成功率。导入前做内容审计，来源可同步并检测本地改动，移除的技能进可恢复的回收站，诊断能定位并修复加载问题。技能进化从会话中挖掘提案，经人工审核后可落地到对应项目工作区；侧栏入口可在设置里关闭。',
+  'settings.description': '技能书架：本地技能的浏览与治理面板。按目录、角色或工作区分组查看，也可平铺；角色由技能名称与描述的关键词规则自动归类。台账记录每个技能的日 / 周 / 总调用量与成功率，成功率按每次调用的实际结果记录，未记录到结果的显示为「未知」而不是 0%。技能行的「模型 / 用户」可调用开关会写回该技能 SKILL.md 的 frontmatter，写入采用原位覆盖，因此安装时间不会被改动。导入前做内容审计，来源可同步并检测本地改动，移除的技能进可恢复的回收站（展开可见说明），诊断能定位并修复加载问题。技能进化从会话中挖掘提案并给出出现概率，每次裁决都进台账，经人工审核后可落地到对应项目工作区；侧栏入口可在设置里关闭。',
   'settings.enabled': '启用插件',
   'settings.enabledHint': '关闭后技能书架的路由、入口与公告全部下线。',
   'settings.announceToAgent': '向 Agent 公告',
@@ -39,7 +39,7 @@ export const zhSettings = {
 
 export const enSettings: Record<keyof typeof zhSettings, string> = {
   'settings.title': 'Skill Shelf',
-  'settings.description': 'Skill Shelf is the browse-and-govern panel for local skills. View them grouped by directory, role, or workspace — or as a flat list — with a ledger tracking day / week / total call counts and success rate per skill. Imports are content-audited first; tracked sources can be synced with local-edit detection; removed skills go to a restorable trash; diagnostics locate and repair loading problems. Skill evolution mines proposals from session history and, after human review, applies them into the owning project workspace. The sidebar entry can be turned off in settings.',
+  'settings.description': 'Skill Shelf is the browse-and-govern panel for local skills. View them grouped by directory, role, or workspace — or as a flat list. Roles are derived by keyword rules over each skill\'s name and description. The ledger tracks day / week / total call counts and success rate per skill; the rate is recorded from each call\'s actual result, and calls with no recorded result show as unknown rather than 0%. The per-row model / user invocation switches write back to that skill\'s SKILL.md frontmatter in place, so the recorded install time is never disturbed. Imports are content-audited first; tracked sources can be synced with local-edit detection; removed skills go to a restorable trash (expand for the note); diagnostics locate and repair loading problems. Skill evolution mines proposals from session history with an occurrence probability, logs every decision to a ledger, and after human review applies them into the owning project workspace. The sidebar entry can be turned off in settings.',
   'settings.enabled': 'Enable plugin',
   'settings.enabledHint': 'Disables the Skill Shelf routes, entries, and announcement.',
   'settings.announceToAgent': 'Announce to agent',
