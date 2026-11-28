@@ -15,24 +15,22 @@ import type { UpdateApplyResponse, UpdateCheckResponse } from '../protocol.ts'
 import { SkillHubApi } from './api.ts'
 import { errorMessage, tt } from './helpers.ts'
 import type { HubKey } from './locales.ts'
-import { ColorField, NumberField, PluginSettingsCard, SecretField, SwitchField } from './settings-card.tsx'
-import { booleanField, CardForm, colorField, secretField, type CardShell, type FieldState, type FormScope } from './settings-form.ts'
+import { ColorField, PluginSettingsCard, SwitchField } from './settings-card.tsx'
+import { booleanField, CardForm, colorField, type CardShell, type FieldState, type FormScope } from './settings-form.ts'
 // 复用卡片自己的样式表：更新提示 pill 与版本徽标必须同一套 token 与尺寸。
 import css from './settings-card.module.css'
-// Single source for the TS-side dot defaults (the panel CSS mirrors these).
-import { DEFAULT_DOT_MODEL_COLOR, DEFAULT_DOT_USER_COLOR } from './panel/format.ts'
+// Single source for the TS-side dot default (the panel CSS mirrors it).
+import { DEFAULT_DOT_USER_COLOR } from './panel/format.ts'
 
 /** The card's projected state. */
 export interface SkillHubSettingsState extends CardShell {
   enabled: FieldState
   announceToAgent: FieldState
-  dotModelColor: FieldState
   dotUserColor: FieldState
   showUseCount: FieldState
   showUseTime: FieldState
   showGroupSummary: FieldState
   showSidebarCard: FieldState
-  githubToken: FieldState
 }
 
 /** The card's editable config fields (every projected key beyond the CardShell). */
@@ -42,8 +40,6 @@ type SkillHubField = Exclude<keyof SkillHubSettingsState, keyof CardShell>
 type FieldRow =
   | { kind: 'switch'; field: SkillHubField; label: HubKey; hint: HubKey }
   | { kind: 'color'; field: SkillHubField; id: string; label: HubKey; hint: HubKey; defaultColor: string }
-  | { kind: 'number'; field: SkillHubField; id: string; label: HubKey; hint: HubKey }
-  | { kind: 'secret'; field: SkillHubField; id: string; label: HubKey; hint: HubKey; placeholder: HubKey }
 
 /** The business face the card's slot registration injects. */
 export interface SkillHubSettingsCardFace {
@@ -68,7 +64,7 @@ export class SkillHubSettingsCardController {
 
   /** @param scope - the hub settings scope the card edits (FormScope-compatible). */
   constructor(scope: FormScope) {
-    this.form = new CardForm(scope, [booleanField('enabled'), booleanField('announceToAgent'), colorField('dotModelColor'), colorField('dotUserColor'), booleanField('showUseCount'), booleanField('showUseTime'), booleanField('showGroupSummary'), booleanField('showSidebarCard'), secretField('githubToken')])
+    this.form = new CardForm(scope, [booleanField('enabled'), booleanField('announceToAgent'), colorField('dotUserColor'), booleanField('showUseCount'), booleanField('showUseTime'), booleanField('showGroupSummary'), booleanField('showSidebarCard')])
     this.store = this.form.bind(() => this.projection())
   }
 
@@ -77,13 +73,11 @@ export class SkillHubSettingsCardController {
       ...this.form.shell(),
       enabled: this.form.field('enabled'),
       announceToAgent: this.form.field('announceToAgent'),
-      dotModelColor: this.form.field('dotModelColor'),
       dotUserColor: this.form.field('dotUserColor'),
       showUseCount: this.form.field('showUseCount'),
       showUseTime: this.form.field('showUseTime'),
       showGroupSummary: this.form.field('showGroupSummary'),
       showSidebarCard: this.form.field('showSidebarCard'),
-      githubToken: this.form.field('githubToken'),
     }
   }
 
@@ -103,14 +97,11 @@ export class SkillHubSettingsCardController {
 const FIELD_ROWS: readonly FieldRow[] = [
   { kind: 'switch', field: 'enabled', label: 'settings.enabled', hint: 'settings.enabledHint' },
   { kind: 'switch', field: 'announceToAgent', label: 'settings.announceToAgent', hint: 'settings.announceToAgentHint' },
-  { kind: 'color', field: 'dotModelColor', id: 'skill-hub-dot-model-color', label: 'settings.dotModelColor', hint: 'settings.dotModelColorHint', defaultColor: DEFAULT_DOT_MODEL_COLOR },
   { kind: 'color', field: 'dotUserColor', id: 'skill-hub-dot-user-color', label: 'settings.dotUserColor', hint: 'settings.dotUserColorHint', defaultColor: DEFAULT_DOT_USER_COLOR },
   { kind: 'switch', field: 'showUseCount', label: 'settings.showUseCount', hint: 'settings.showUseCountHint' },
   { kind: 'switch', field: 'showUseTime', label: 'settings.showUseTime', hint: 'settings.showUseTimeHint' },
   { kind: 'switch', field: 'showGroupSummary', label: 'settings.showGroupSummary', hint: 'settings.showGroupSummaryHint' },
   { kind: 'switch', field: 'showSidebarCard', label: 'settings.showSidebarCard', hint: 'settings.showSidebarCardHint' },
-  // 进化默认关闭：它会调模型，不能默认开。
-  { kind: 'secret', field: 'githubToken', id: 'skill-hub-github-token', label: 'settings.githubToken', hint: 'settings.githubTokenHint', placeholder: 'settings.githubTokenPlaceholder' },
 ]
 
 /**
@@ -180,7 +171,6 @@ export function SkillHubSettingsCard(props: SkillHubSettingsCardProps): ReactEle
     <PluginSettingsCard
       t={t}
       titleKey='settings.title'
-      descriptionKey='settings.description'
       version={version}
       versionExtra={versionExtra}
       state={state}
@@ -198,9 +188,7 @@ export function SkillHubSettingsCard(props: SkillHubSettingsCardProps): ReactEle
           onReset: () => { props.resetField(row.field) },
         }
         if (row.kind === 'switch') return <SwitchField key={row.field} {...common} />
-        if (row.kind === 'color') return <ColorField key={row.field} {...common} id={row.id} inheritLabel={t('settings.inherit')} defaultColor={row.defaultColor} />
-        if (row.kind === 'number') return <NumberField key={row.field} {...common} id={row.id} inheritLabel={t('settings.inherit')} />
-        return <SecretField key={row.field} {...common} id={row.id} placeholder={t(row.placeholder)} />
+        return <ColorField key={row.field} {...common} id={row.id} inheritLabel={t('settings.inherit')} defaultColor={row.defaultColor} />
       })}
     </PluginSettingsCard>
   )

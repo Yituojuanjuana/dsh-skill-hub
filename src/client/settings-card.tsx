@@ -19,8 +19,13 @@ export interface PluginSettingsCardProps {
   t: (key: HubKey) => string
   /** Locale key of the card title. */
   titleKey: HubKey
-  /** Locale key of the card description. */
-  descriptionKey: HubKey
+  /**
+   * Locale key of the card description (optional). The plugin page already
+   * shows the plugin's own intro above this card, so a second near-identical
+   * paragraph here reads as duplicated copy; callers that have an intro
+   * elsewhere omit it, and only the header title remains.
+   */
+  descriptionKey?: HubKey
   /** 插件自身版本（可选）：显示在标题旁的小徽标；缺省不渲染。 */
   version?: string
   /**
@@ -58,7 +63,7 @@ export function PluginSettingsCard(props: PluginSettingsCardProps): ReactElement
     >
       <span className={css.headText}>
         <span className={css.name}>{title}{props.version !== undefined ? <span className={css.versionTag}>v{props.version}</span> : null}{props.versionExtra}</span>
-        <span className={css.description}>{props.t(props.descriptionKey)}</span>
+        {props.descriptionKey !== undefined ? <span className={css.description}>{props.t(props.descriptionKey)}</span> : null}
       </span>
       {state.dirty ? <span className={css.pending}>{props.t('settings.unsaved')}</span> : null}
       <IconChevronDownOutline14 className={open ? css.chevronOpen : css.chevron} />

@@ -211,7 +211,6 @@
     "locale/*.json",
     "DETAIL.md",
     "DETAIL.zh.md",
-    "preview.svg",
     "preview.png",
     "preview-real.png",
     "preview-real@2x.png",

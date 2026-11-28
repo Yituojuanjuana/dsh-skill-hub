@@ -128,7 +128,7 @@ npm test           # 576 tests, 41 suites
 npm run build      # tsc + tsdown → lib/index.js + lib/client.js
 ```
 
-**插件管理页** 的展示元数据与代码一起发布，读取时不需要启用插件：`locale/en.json` + `locale/zh.json`（`meta.title` / `meta.description` / `meta.detail`）、`icon.svg`，以及只含一张图的详情文档 `DETAIL.md` / `DETAIL.zh.md` 与 `preview.svg`。`engines.dsh` 故意写得与 peer 范围一样宽 —— 一旦声明就由它单独判定兼容性，下限收窄会拒绝今天还能用的宿主。`market/index.json` 是社区索引用的 format-1 条目，发版时同步更新其中的 `version` 与 `publishTimestamp`。
+**插件管理页** 的展示元数据与代码一起发布，读取时不需要启用插件：`locale/en.json` + `locale/zh.json`（`meta.title` / `meta.description` / `meta.detail`）、`icon.svg`，以及只含一张界面截图的详情文档 `DETAIL.md` / `DETAIL.zh.md`（图即 `preview-real.png`）。`engines.dsh` 故意写得与 peer 范围一样宽 —— 一旦声明就由它单独判定兼容性，下限收窄会拒绝今天还能用的宿主。`market/index.json` 是社区索引用的 format-1 条目，发版时同步更新其中的 `version` 与 `publishTimestamp`。
 
 > 同一 `$DSH_HOME` + cwd 下勿开两个 `dsh web` — 无会话日志锁，会 `seq gap` 损坏。换 `DSH_HOME` 或先关旧实例。
 

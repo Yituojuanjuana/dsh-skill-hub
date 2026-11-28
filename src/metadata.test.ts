@@ -30,7 +30,7 @@ describe('plugin display metadata', () => {
   })
 
   it('ships the locales, icon and detail documents', () => {
-    for (const entry of ['locale/*.json', 'icon.svg', 'DETAIL.md', 'DETAIL.zh.md', 'preview.svg']) {
+    for (const entry of ['locale/*.json', 'icon.svg', 'DETAIL.md', 'DETAIL.zh.md', 'preview-real.png']) {
       expect(manifest.files).toContain(entry)
     }
   })
@@ -53,14 +53,13 @@ describe('plugin display metadata', () => {
     }
   })
 
-  it('points every detail document at the vector preview and the real screenshot', () => {
-    // DETAIL 里两张图各司其职：`preview.svg` 是矢量示意（多倍率下清晰，
-    // 也是市场封面用的那张），`preview-real.png` 是真实界面截图。
-    // 两个语言版本必须引用同一组，且文件都存在、非空。
+  it('points every detail document at exactly one real screenshot', () => {
+    // 详情页只放一张真实界面截图：`preview-real.png`。示意图 `preview.svg`
+    // 已退役，两个语言版本都必须只剩这一张，且文件存在、非空。
     for (const { language, meta } of locales()) {
       const detail = readFileSync(new URL(meta.detail as string, root), 'utf8')
       const images = [...detail.matchAll(/!\[[^\]]*\]\(([^)]+)\)/g)].map((match) => match[1])
-      expect(images, language).toEqual(['preview.svg', 'preview-real.png'])
+      expect(images, language).toEqual(['preview-real.png'])
       for (const image of images) {
         expect(statSync(new URL(image, root)).size, language + ':' + image).toBeGreaterThan(0)
       }

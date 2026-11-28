@@ -128,7 +128,7 @@ npm test           # 576 tests, 41 suites
 npm run build      # tsc + tsdown → lib/index.js + lib/client.js
 ```
 
-Display metadata for the **Plugins manager** page ships beside the code and is read without activating the plugin: `locale/en.json` + `locale/zh.json` (`meta.title` / `meta.description` / `meta.detail`), `icon.svg`, and the one-image detail document `DETAIL.md` / `DETAIL.zh.md` with its `preview.svg`. `engines.dsh` is kept as wide as the peer ranges on purpose — once declared it alone decides compatibility, so a narrower floor would refuse hosts that work today. `market/index.json` is the format-1 entry for a community index; regenerate its `publishTimestamp` and `version` when releasing.
+Display metadata for the **Plugins manager** page ships beside the code and is read without activating the plugin: `locale/en.json` + `locale/zh.json` (`meta.title` / `meta.description` / `meta.detail`), `icon.svg`, and the one-image detail document `DETAIL.md` / `DETAIL.zh.md` with its `preview-real.png` screenshot. `engines.dsh` is kept as wide as the peer ranges on purpose — once declared it alone decides compatibility, so a narrower floor would refuse hosts that work today. `market/index.json` is the format-1 entry for a community index; regenerate its `publishTimestamp` and `version` when releasing.
 
 > Don't run two `dsh web` on the same `$DSH_HOME` + cwd — no session-log lock (`seq gap` corruption). Use separate `DSH_HOME`.
 
